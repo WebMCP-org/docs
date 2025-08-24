@@ -1,0 +1,80 @@
+---
+title: 'Introduction'
+description: 'Example section for API Reference docs'
+---
+
+<Note>
+  If you're not looking to build API reference documentation, you can delete this section by removing the api-reference folder.
+</Note>
+
+## Welcome
+
+Welcome to the API Reference documentation. Here you'll find comprehensive information about our API endpoints, authentication methods, and response formats.
+
+## Authentication
+
+All API requests require authentication. You can authenticate using an API key in the request header:
+
+```bash
+curl https://api.example.com/v1/endpoint \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Base URL
+
+All API requests should be made to:
+
+```
+https://api.example.com/v1
+```
+
+## Response Format
+
+All responses are returned in JSON format:
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data here
+  },
+  "error": null
+}
+```
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+| Status Code | Description |
+|------------|-------------|
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 404 | Not Found |
+| 500 | Internal Server Error |
+
+## Rate Limiting
+
+API requests are limited to:
+- 1000 requests per hour for free tier
+- 10000 requests per hour for pro tier
+
+## Need Help?
+
+<CardGroup cols={2}>
+  <Card
+    title="API Status"
+    icon="signal"
+    href="https://status.example.com"
+  >
+    Check the current API status and uptime
+  </Card>
+  <Card
+    title="Support"
+    icon="headset"
+    href="mailto:api-support@example.com"
+  >
+    Contact our API support team
+  </Card>
+</CardGroup>

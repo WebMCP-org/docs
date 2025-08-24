@@ -1,0 +1,13 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "Documentation powered by Mintlify",
+  "scripts": {
+    "dev": "mintlify dev",
+    "build": "mintlify build",
+    "preview": "mintlify preview"
+  },
+  "devDependencies": {
+    "mintlify": "^4.0.0"
+  }
+}
