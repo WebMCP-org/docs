@@ -1,0 +1,101 @@
+---
+title: 'Quickstart'
+description: 'Start building awesome documentation in under 5 minutes'
+---
+
+## Setup your development
+
+Learn how to update your docs locally and deploy them to production.
+
+### Edit and preview
+
+<AccordionGroup>
+  <Accordion icon="github" title="Clone your docs locally">
+    During onboarding, we created a repository on your GitHub account with your docs content.
+    
+    You can clone this repository locally and make changes to the content.
+    
+    <CodeGroup>
+      ```bash Terminal
+      git clone https://github.com/[your-username]/[your-repo-name].git
+      ```
+    </CodeGroup>
+  </Accordion>
+  <Accordion icon="rectangle-terminal" title="Preview changes">
+    Mintlify allows you to preview changes locally before pushing to your repository. 
+    
+    Install our CLI:
+    <CodeGroup>
+      ```bash npm
+      npm i -g mintlify
+      ```
+      ```bash yarn
+      yarn global add mintlify
+      ```
+    </CodeGroup>
+    
+    Run the following command at the root of your documentation:
+    
+    ```bash
+    mintlify dev
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Deploy your changes
+
+<AccordionGroup>
+
+  <Accordion icon="git" title="Push to GitHub">
+    <CodeGroup>
+      ```bash Terminal
+      git add .
+      git commit -m "Update documentation"
+      git push
+      ```
+    </CodeGroup>
+  </Accordion>
+
+  <Accordion icon="rocket" title="Deploy to production">
+    Your changes will be automatically deployed to production after pushing to the default branch.
+    
+    Check your dashboard for deployment status and logs.
+  </Accordion>
+
+</AccordionGroup>
+
+## Update your docs
+
+Add content directly in your files with MDX syntax and React components. You can use any of our components to make your documentation interactive.
+
+<CardGroup>
+
+<Card title="Style Your Docs" icon="paintbrush" href="/settings/global">
+  Add custom branding, fonts, backgrounds and more.
+</Card>
+
+<Card
+  title="Add API Endpoints"
+  icon="square-code"
+  href="/api-playground/configuration"
+>
+  Implement your OpenAPI spec and enable API user interaction.
+</Card>
+
+<Card
+  title="Integrate Analytics"
+  icon="chart-mixed"
+  href="/analytics/supported-integrations"
+>
+  Draw insights from user interactions with your documentation.
+</Card>
+
+<Card
+  title="Host on a Custom Domain"
+  icon="browser"
+  href="/settings/custom-domain/subdomain"
+>
+  Keep your docs on your own domain for a seamless user experience.
+</Card>
+
+</CardGroup>

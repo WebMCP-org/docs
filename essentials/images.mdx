@@ -1,0 +1,77 @@
+---
+title: 'Images'
+description: 'Add images and media to your documentation'
+icon: 'image'
+---
+
+## Basic Images
+
+The simplest way to add an image is using markdown syntax:
+
+```md
+![Alt text](/path/to/image.png)
+```
+
+## HTML Images
+
+For more control over image display, use HTML:
+
+```html
+<img
+  src="/path/to/image.png"
+  alt="Description of image"
+  width="500"
+/>
+```
+
+## Responsive Images
+
+Use responsive images that adapt to light and dark modes:
+
+```html
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="Hero Dark"
+/>
+```
+
+## Frames
+
+Use the Frame component to add a border around images:
+
+<Frame>
+  <img src="/api-placeholder.svg" alt="API Documentation" />
+</Frame>
+
+```jsx
+<Frame>
+  <img src="/api-placeholder.svg" alt="API Documentation" />
+</Frame>
+```
+
+## Image Optimization
+
+Mintlify automatically optimizes images for performance:
+
+- Images are lazy-loaded
+- Responsive sizing
+- WebP format conversion
+- CDN delivery
+
+## Hosting Images
+
+You can host images in several ways:
+
+1. **Local**: Place images in your repository's `/images` folder
+2. **External**: Use absolute URLs from image hosting services
+3. **CDN**: Images are automatically served via Mintlify's CDN
+
+<Tip>
+  For best performance, use SVG for icons and illustrations, and optimize JPG/PNG images before uploading.
+</Tip>
