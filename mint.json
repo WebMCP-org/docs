@@ -13,25 +13,17 @@
     "anchors": {
       "from": "#1F5EFF",
       "to": "#4B7BFF"
+    },
+    "background": {
+      "dark": "#0A0A0A"
     }
   },
-  "theme": {
-    "background": {
-      "light": "#FFFFFF",
-      "dark": "#0A0A0A"
-    },
-    "foreground": {
-      "light": "#171717",
-      "dark": "#FAFAFA"
-    },
-    "muted": {
-      "light": "#F5F5F5",
-      "dark": "#262626"
-    },
-    "border": {
-      "light": "#E5E5E5",
-      "dark": "#262626"
-    }
+  "modeToggle": {
+    "default": "light",
+    "isHidden": false
+  },
+  "background": {
+    "style": "solid"
   },
   "topbarLinks": [
     {
