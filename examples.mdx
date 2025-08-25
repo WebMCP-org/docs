@@ -1,0 +1,296 @@
+---
+title: 'Examples'
+description: 'Explore ready-to-use WebMCP examples for various frameworks and use cases'
+---
+
+## Official Examples
+
+All examples are available in the [MCP-B Examples Repository](https://github.com/MiguelsPizza/mcp-b-examples).
+
+<CardGroup cols={2}>
+  <Card
+    title="Vanilla TypeScript"
+    icon="js"
+    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/vanilla-ts"
+  >
+    A simple todo app demonstrating core MCP-B concepts
+  </Card>
+  
+  <Card
+    title="React"
+    icon="react"
+    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/react"
+  >
+    Modern React application with hooks integration
+  </Card>
+  
+  <Card
+    title="Script Tag"
+    icon="code"
+    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/script-tag"
+  >
+    No build tools required - just add a script tag
+  </Card>
+  
+  <Card
+    title="Live Demo"
+    icon="play"
+    href="https://mcp-b.ai"
+  >
+    Try MCP-B in action with our live demo site
+  </Card>
+</CardGroup>
+
+## Vanilla TypeScript Example
+
+The vanilla TypeScript example demonstrates:
+- Dynamic tool registration and unregistration
+- Todo CRUD operations exposed as tools
+- Visual feedback for AI actions
+- State management without frameworks
+
+### Key Features
+
+```typescript
+// Dynamic tool registration based on todos
+todos.forEach(todo => {
+  server.tool(
+    `toggleTodo_${todo.id}`,
+    `Toggle todo: ${todo.text}`,
+    {},
+    async () => {
+      todo.completed = !todo.completed;
+      render();
+      return {
+        content: [{
+          type: "text",
+          text: `Toggled todo: ${todo.text}`
+        }]
+      };
+    }
+  );
+});
+```
+
+## React Example
+
+The React example showcases:
+- Integration with React hooks and state
+- Component-based tool organization
+- Modern React patterns with TypeScript
+- Real-time UI updates from tool calls
+
+### React Hook Integration
+
+```tsx
+import { useMcpServer } from '@mcp-b/mcp-react-hooks';
+
+function TodoApp() {
+  const { server } = useMcpServer("todo-app", "1.0.0");
+  const [todos, setTodos] = useState([]);
+  
+  useEffect(() => {
+    server.tool("addTodo", "Add a new todo", 
+      { text: z.string() },
+      async ({ text }) => {
+        setTodos([...todos, { id: Date.now(), text }]);
+        return { content: [{ type: "text", text: "Added" }] };
+      }
+    );
+  }, [todos]);
+}
+```
+
+## Script Tag Example
+
+Perfect for adding MCP-B to existing websites without build tools:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/@mcp-b/browser-bundle/dist/index.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  
+  <script>
+    // MCP-B is available globally
+    const { McpServer, TabServerTransport } = window.MCP;
+    
+    const server = new McpServer({
+      name: "simple-site",
+      version: "1.0.0"
+    });
+    
+    server.tool("getMessage", "Get page message", {}, async () => {
+      return {
+        content: [{
+          type: "text",
+          text: document.getElementById('app').innerText
+        }]
+      };
+    });
+    
+    server.connect(new TabServerTransport({ 
+      allowedOrigins: ["*"] 
+    }));
+  </script>
+</body>
+</html>
+```
+
+## Community Examples
+
+<CardGroup cols={2}>
+  <Card
+    title="Vue.js"
+    icon="vuejs"
+    href="https://github.com/besian/mcp-b-vue-example"
+  >
+    Vue 3 composition API integration by Besian
+  </Card>
+  
+  <Card
+    title="Nuxt 3"
+    icon="nuxt"
+    href="https://github.com/mikechao/mcp-b-nuxt-example"
+  >
+    Full-stack Nuxt 3 with SSR support by Mike Chao
+  </Card>
+</CardGroup>
+
+## Common Patterns
+
+### Tool Lifecycle Management
+
+```javascript
+// Register tools when component mounts
+componentDidMount() {
+  this.registerTools();
+}
+
+// Unregister when unmounting
+componentWillUnmount() {
+  this.unregisterTools();
+}
+
+// Dynamic tool updates
+updateTools(newState) {
+  this.unregisterTools();
+  this.registerTools(newState);
+}
+```
+
+### Authentication-Aware Tools
+
+```javascript
+// Only expose admin tools for admin users
+if (user.role === 'admin') {
+  server.tool("deleteAll", "Delete all items", {}, async () => {
+    await fetch('/api/admin/delete-all', {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+    return { content: [{ type: "text", text: "Deleted" }] };
+  });
+}
+```
+
+### Visual Feedback
+
+```javascript
+server.tool("highlightElement", "Highlight an element", 
+  { selector: z.string() },
+  async ({ selector }) => {
+    const element = document.querySelector(selector);
+    if (element) {
+      element.style.backgroundColor = 'yellow';
+      setTimeout(() => {
+        element.style.backgroundColor = '';
+      }, 2000);
+    }
+    return { content: [{ type: "text", text: "Highlighted" }] };
+  }
+);
+```
+
+## Running the Examples
+
+### Quick Start
+
+1. Clone the examples repository:
+```bash
+git clone https://github.com/MiguelsPizza/mcp-b-examples.git
+cd mcp-b-examples
+```
+
+2. Choose an example:
+```bash
+cd vanilla-ts  # or react, script-tag
+```
+
+3. Install and run:
+```bash
+npm install
+npm run dev
+```
+
+4. Open in Chrome with MCP-B extension installed
+
+### Testing Tools
+
+1. Open the MCP-B extension popup
+2. Navigate to the "Tools" tab
+3. See all available tools from the page
+4. Use the chat interface or inspector to call tools
+
+## Building Your Own
+
+When creating your own MCP-B integration:
+
+<Steps>
+  <Step title="Start with an example">
+    Clone the example closest to your use case
+  </Step>
+  
+  <Step title="Identify existing functionality">
+    List the actions users can take in your app
+  </Step>
+  
+  <Step title="Wrap as tools">
+    Create MCP tools that wrap your existing functions
+  </Step>
+  
+  <Step title="Add validation">
+    Use Zod schemas to validate tool inputs
+  </Step>
+  
+  <Step title="Test with extension">
+    Use the MCP-B extension to test your tools
+  </Step>
+  
+  <Step title="Add feedback">
+    Provide visual feedback when tools are called
+  </Step>
+</Steps>
+
+## Need Help?
+
+<CardGroup>
+  <Card
+    title="Discord Community"
+    icon="discord"
+    href="https://discord.gg/your-discord"
+  >
+    Get help from the community
+  </Card>
+  
+  <Card
+    title="GitHub Issues"
+    icon="github"
+    href="https://github.com/MiguelsPizza/WebMCP/issues"
+  >
+    Report bugs or request features
+  </Card>
+</CardGroup>

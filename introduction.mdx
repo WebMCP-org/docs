@@ -1,71 +1,160 @@
 ---
-title: Introduction
-description: 'Welcome to your documentation. This is where your users start their journey.'
+title: 'WebMCP Documentation'
+description: 'Bringing the power of MCP to the web - Enable AI agents to interact with your website through structured tools'
 ---
 
-<img
-  className="block dark:hidden"
-  src="/images/hero-light.svg"
-  alt="Hero Light"
-/>
-<img
-  className="hidden dark:block"
-  src="/images/hero-dark.svg"
-  alt="Hero Dark"
-/>
+<Note>
+  🚨 **Important**: Version 1.0.0 is now available on NPM with breaking changes! Make sure to update your dependencies.
+</Note>
 
-## Setting up
+## Welcome to WebMCP
 
-The first step to world-class documentation is setting up your environment.
+WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server. This enables AI agents to interact with your site deterministically, respecting user authentication and scoping tools to specific pages or user states.
 
 <CardGroup cols={2}>
   <Card
-    title="Edit Your Docs"
-    icon="pen-to-square"
-    href="https://mintlify.com/docs/quickstart"
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
   >
-    Get your documentation up and running locally for easy editing and previewing.
+    Get WebMCP running on your website in minutes
   </Card>
   <Card
-    title="Preview Changes"
-    icon="eye"
-    href="https://mintlify.com/docs/development"
+    title="Live Demo"
+    icon="play"
+    href="https://mcp-b.ai"
   >
-    Preview your changes locally before pushing to production.
-  </Card>
-</CardGroup>
-
-## Make it yours
-
-Update your documentation to match your brand and add valuable content for your users.
-
-<CardGroup cols={2}>
-  <Card
-    title="Customize Style"
-    icon="palette"
-    href="https://mintlify.com/docs/settings/global"
-  >
-    Customize your documentation to match your brand's colors and styling.
+    See MCP-B in action with interactive examples
   </Card>
   <Card
-    title="Reference APIs"
+    title="Examples"
     icon="code"
-    href="https://mintlify.com/docs/api-playground/openapi"
+    href="/examples"
   >
-    Automatically generate API reference pages from an OpenAPI spec.
+    Explore ready-to-use examples for various frameworks
   </Card>
   <Card
-    title="Add Components"
-    icon="screwdriver-wrench"
-    href="https://mintlify.com/docs/components/accordion"
+    title="GitHub"
+    icon="github"
+    href="https://github.com/MiguelsPizza/WebMCP"
   >
-    Build interactive features using Mintlify's built-in components.
-  </Card>
-  <Card
-    title="Get Inspiration"
-    icon="stars"
-    href="https://mintlify.com/customers"
-  >
-    Check out our showcase of our favorite documentation sites.
+    View source code and contribute
   </Card>
 </CardGroup>
+
+## What is WebMCP?
+
+WebMCP is a protocol that exposes functions in your browser JavaScript to LLMs as MCP tools. Websites expose existing functionality (e.g., APIs, forms, or state) as structured tools that AI agents can call directly.
+
+### Key Components
+
+<CardGroup cols={2}>
+  <Card
+    title="Tab Transports"
+    icon="window"
+  >
+    Use postMessage for communication between your website's MCP server and clients in the same tab
+  </Card>
+  <Card
+    title="Extension Transports"
+    icon="puzzle"
+  >
+    Use Chrome's runtime messaging for communication with browser extensions
+  </Card>
+</CardGroup>
+
+## Why WebMCP?
+
+- **Deterministic AI Interactions**: Let AI interact with your site through well-defined tools
+- **Respects Authentication**: Works with existing session cookies and user authentication
+- **Page-Scoped Tools**: Expose different tools based on page context or user state
+- **No Backend Required**: Run entirely in the browser with client-side JavaScript
+- **Framework Agnostic**: Works with vanilla JS, React, Vue, or any framework
+
+## Architecture Overview
+
+```mermaid
+graph LR
+    A[AI Agent] --> B[MCP Client]
+    B --> C[WebMCP Extension]
+    C --> D[Tab Transport]
+    D --> E[Your Website]
+    E --> F[MCP Server]
+    F --> G[Tools]
+```
+
+## Community
+
+<CardGroup cols={3}>
+  <Card
+    title="Discord"
+    icon="discord"
+    href="https://discord.gg/your-discord"
+  >
+    Join our community for support and discussions
+  </Card>
+  <Card
+    title="NPM"
+    icon="npm"
+    href="https://www.npmjs.com/package/@mcp-b/transports"
+  >
+    Install our packages from NPM
+  </Card>
+  <Card
+    title="License"
+    icon="scale-balanced"
+    href="https://github.com/MiguelsPizza/WebMCP/blob/main/LICENSE"
+  >
+    AGPL-3.0 License
+  </Card>
+</CardGroup>
+
+## Quick Example
+
+Here's a simple example of exposing a tool on your website:
+
+```javascript
+import { TabServerTransport } from "@mcp-b/transports";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// Create the server
+const server = new McpServer({
+  name: "my-website",
+  version: "1.0.0",
+});
+
+// Expose a tool
+server.tool("getPageInfo", "Get current page info", {}, async () => {
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        title: document.title,
+        url: window.location.href,
+      }),
+    }],
+  };
+});
+
+// Connect the transport
+await server.connect(new TabServerTransport({ 
+  allowedOrigins: ["*"] 
+}));
+```
+
+## Next Steps
+
+<Steps>
+  <Step title="Install the Extension">
+    Get the MCP-B Chrome Extension from the Chrome Web Store
+  </Step>
+  <Step title="Follow the Quickstart">
+    Set up WebMCP on your website in minutes
+  </Step>
+  <Step title="Explore Examples">
+    Check out working examples for different frameworks
+  </Step>
+  <Step title="Build Your Integration">
+    Create custom tools for your specific use case
+  </Step>
+</Steps>

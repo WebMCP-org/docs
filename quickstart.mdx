@@ -1,101 +1,266 @@
 ---
-title: 'Quickstart'
-description: 'Start building awesome documentation in under 5 minutes'
+title: 'Quick Start'
+description: 'Get WebMCP running on your website in minutes'
 ---
 
-## Setup your development
+<Info>
+  **Prerequisites**: 
+  - Node.js 22.12+ (check with `node --version`)
+  - pnpm 10+ (install via `npm install -g pnpm`)
+  - A website with JavaScript (vanilla, React, etc.)
+  - [MCP-B Chrome Extension](https://chrome.google.com/webstore/detail/mcp-b) installed for testing
+</Info>
 
-Learn how to update your docs locally and deploy them to production.
+## Installation Methods
 
-### Edit and preview
+Choose your preferred installation method:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Clone your docs locally">
-    During onboarding, we created a repository on your GitHub account with your docs content.
+<Tabs>
+  <Tab title="NPM Package">
+    ## Step 1: Install Dependencies
     
-    You can clone this repository locally and make changes to the content.
+    ```bash npm
+    npm install @mcp-b/transports @modelcontextprotocol/sdk zod
+    ```
     
-    <CodeGroup>
-      ```bash Terminal
-      git clone https://github.com/[your-username]/[your-repo-name].git
-      ```
-    </CodeGroup>
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Preview changes">
-    Mintlify allows you to preview changes locally before pushing to your repository. 
+    ```bash pnpm
+    pnpm add @mcp-b/transports @modelcontextprotocol/sdk zod
+    ```
     
-    Install our CLI:
-    <CodeGroup>
-      ```bash npm
-      npm i -g mintlify
-      ```
-      ```bash yarn
-      yarn global add mintlify
-      ```
-    </CodeGroup>
+    ```bash yarn
+    yarn add @mcp-b/transports @modelcontextprotocol/sdk zod
+    ```
+  </Tab>
+  
+  <Tab title="Script Tag">
+    ## Simple Script Integration
     
-    Run the following command at the root of your documentation:
+    Add MCP-B to any website using just a script tag - no build tools required:
+    
+    ```html
+    <script src="https://unpkg.com/@mcp-b/browser-bundle/dist/index.js"></script>
+    <script>
+      // Your MCP server code here
+    </script>
+    ```
+  </Tab>
+  
+  <Tab title="Development Setup">
+    ## Clone and Build from Source
+    
+    For contributors or advanced customization:
     
     ```bash
-    mintlify dev
+    git clone https://github.com/MiguelsPizza/WebMCP.git
+    cd WebMCP
+    pnpm install
+    pnpm build:shared  # Build internal shared packages
+    pnpm dev          # Start development mode
     ```
-  </Accordion>
-</AccordionGroup>
+  </Tab>
+</Tabs>
 
-### Deploy your changes
+## Step 2: Create Your MCP Server
+
+Create a single MCP server instance and connect it via Tab Transport. Here's a complete example:
+
+```javascript
+import { TabServerTransport } from "@mcp-b/transports";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+
+// Create the server (one per site)
+const server = new McpServer({
+  name: "my-website",
+  version: "1.0.0",
+});
+
+// Example: Expose a tool with input validation
+server.tool(
+  "addToCart",
+  "Add an item to the shopping cart",
+  {
+    productId: z.string().describe("The product ID to add"),
+    quantity: z.number().min(1).describe("Quantity to add"),
+  },
+  async ({ productId, quantity }) => {
+    // Your existing app logic here
+    const result = await fetch('/api/cart/add', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, quantity })
+    });
+    
+    return {
+      content: [{
+        type: "text",
+        text: `Added ${quantity} of product ${productId} to cart`,
+      }],
+    };
+  }
+);
+
+// Connect the transport
+await server.connect(new TabServerTransport({ 
+  allowedOrigins: ["*"]  // Adjust for security
+}));
+```
+
+## Step 3: Test Your Integration
+
+<Steps>
+  <Step title="Start your website">
+    Run your site via a dev server (e.g., `npm run dev`)
+  </Step>
+  
+  <Step title="Open in Chrome">
+    Visit your page with the MCP-B extension installed
+  </Step>
+  
+  <Step title="Open extension popup">
+    Click the MCP-B icon in your toolbar
+  </Step>
+  
+  <Step title="Test your tools">
+    - Go to the "Tools" tab to see exposed tools
+    - Use the chat interface to interact with AI
+    - Or manually invoke tools via the inspector
+  </Step>
+</Steps>
+
+## Framework Examples
+
+<CardGroup cols={2}>
+  <Card
+    title="Vanilla TypeScript"
+    icon="js"
+    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/vanilla-ts"
+  >
+    Simple todo app with dynamic tool registration
+  </Card>
+  
+  <Card
+    title="React"
+    icon="react"
+    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/react"
+  >
+    Modern React app with hooks and state management
+  </Card>
+  
+  <Card
+    title="Vue"
+    icon="vuejs"
+    href="https://github.com/besian/mcp-b-vue-example"
+  >
+    Vue.js integration example by community
+  </Card>
+  
+  <Card
+    title="Nuxt 3"
+    icon="nuxt"
+    href="https://github.com/mikechao/mcp-b-nuxt-example"
+  >
+    Nuxt 3 example with SSR support
+  </Card>
+</CardGroup>
+
+## Best Practices
 
 <AccordionGroup>
-
-  <Accordion icon="git" title="Push to GitHub">
-    <CodeGroup>
-      ```bash Terminal
-      git add .
-      git commit -m "Update documentation"
-      git push
-      ```
-    </CodeGroup>
+  <Accordion title="Security Considerations">
+    - Only expose tools you'd allow via UI
+    - Use `allowedOrigins` to restrict access
+    - Validate all tool inputs with Zod schemas
+    - Tools run in your page's context with same permissions
   </Accordion>
-
-  <Accordion icon="rocket" title="Deploy to production">
-    Your changes will be automatically deployed to production after pushing to the default branch.
-    
-    Check your dashboard for deployment status and logs.
+  
+  <Accordion title="Tool Design">
+    - Wrap existing app logic, don't duplicate it
+    - Use descriptive tool names and descriptions
+    - Add visual feedback for AI actions (notifications, highlights)
+    - Keep tools focused on single actions
   </Accordion>
-
+  
+  <Accordion title="Authentication">
+    - Use `credentials: 'same-origin'` for authenticated API calls
+    - Tools respect existing session cookies
+    - Scope admin tools to admin pages only
+  </Accordion>
+  
+  <Accordion title="Performance">
+    - Create one server instance per site
+    - Use tool caching for expensive operations
+    - Register/unregister tools dynamically based on page state
+  </Accordion>
 </AccordionGroup>
 
-## Update your docs
+## Connect to Desktop Apps
 
-Add content directly in your files with MDX syntax and React components. You can use any of our components to make your documentation interactive.
+To use your website's tools from Claude Desktop or Cursor:
+
+### 1. Install the Native Server
+
+```bash
+npm install -g @mcp-b/native-server
+```
+
+### 2. Run the Native Host
+
+```bash
+@mcp-b/native-server
+```
+
+This starts a server on port 12306.
+
+### 3. Configure Your MCP Client
+
+Add to Claude's config or Cursor's `.cursor/mcp.json`:
+
+```json
+{
+  "type": "streamable-http",
+  "url": "http://127.0.0.1:12306/mcp",
+  "note": "WebMCP bridge to browser tools"
+}
+```
+
+<Warning>
+  If you have both the Chrome Web Store extension and a dev build, disable one to avoid port conflicts.
+</Warning>
+
+## What's Next?
 
 <CardGroup>
-
-<Card title="Style Your Docs" icon="paintbrush" href="/settings/global">
-  Add custom branding, fonts, backgrounds and more.
-</Card>
-
-<Card
-  title="Add API Endpoints"
-  icon="square-code"
-  href="/api-playground/configuration"
->
-  Implement your OpenAPI spec and enable API user interaction.
-</Card>
-
-<Card
-  title="Integrate Analytics"
-  icon="chart-mixed"
-  href="/analytics/supported-integrations"
->
-  Draw insights from user interactions with your documentation.
-</Card>
-
-<Card
-  title="Host on a Custom Domain"
-  icon="browser"
-  href="/settings/custom-domain/subdomain"
->
-  Keep your docs on your own domain for a seamless user experience.
-</Card>
-
+  <Card
+    title="Explore Examples"
+    icon="code"
+    href="/examples"
+  >
+    See complete working examples for different use cases
+  </Card>
+  
+  <Card
+    title="Advanced Usage"
+    icon="gear"
+    href="/advanced"
+  >
+    Learn about dynamic tools, caching, and more
+  </Card>
+  
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference/introduction"
+  >
+    Complete API documentation for all packages
+  </Card>
+  
+  <Card
+    title="Troubleshooting"
+    icon="wrench"
+    href="/troubleshooting"
+  >
+    Common issues and solutions
+  </Card>
 </CardGroup>
