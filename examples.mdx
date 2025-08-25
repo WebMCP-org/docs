@@ -1,43 +1,47 @@
 ---
 title: 'Examples'
-description: 'Explore ready-to-use WebMCP examples for various frameworks and use cases'
+description: 'Explore various WebMCP implementations and use cases'
 ---
+
+<Info>
+  All examples are available in the [WebMCP Examples Repository](https://github.com/WebMCP-org/examples)
+</Info>
 
 ## Official Examples
 
-All examples are available in the [MCP-B Examples Repository](https://github.com/MiguelsPizza/mcp-b-examples).
+Our examples demonstrate WebMCP integration across different frameworks and use cases.
 
 <CardGroup cols={2}>
   <Card
     title="Vanilla TypeScript"
     icon="js"
-    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/vanilla-ts"
+    href="https://github.com/WebMCP-org/examples/tree/main/vanilla-ts"
   >
     A simple todo app demonstrating core MCP-B concepts
   </Card>
   
   <Card
-    title="React"
-    icon="react"
-    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/react"
+    title="React Flow Voice Agent"
+    icon="microphone"
+    href="https://github.com/WebMCP-org/examples/tree/main/reactFlowVoiceAgent"
   >
-    Modern React application with hooks integration
+    Advanced React app with voice input, visual flow, and Gemini AI
   </Card>
   
   <Card
     title="Script Tag"
     icon="code"
-    href="https://github.com/MiguelsPizza/mcp-b-examples/tree/main/script-tag"
+    href="https://github.com/WebMCP-org/examples/tree/main/script-tag"
   >
     No build tools required - just add a script tag
   </Card>
   
   <Card
-    title="Live Demo"
-    icon="play"
-    href="https://mcp-b.ai"
+    title="Login Flow"
+    icon="lock"
+    href="https://github.com/WebMCP-org/examples/tree/main/login"
   >
-    Try MCP-B in action with our live demo site
+    Authentication and session management with MCP-B
   </Card>
 </CardGroup>
 
@@ -221,8 +225,8 @@ server.tool("highlightElement", "Highlight an element",
 
 1. Clone the examples repository:
 ```bash
-git clone https://github.com/MiguelsPizza/mcp-b-examples.git
-cd mcp-b-examples
+git clone https://github.com/WebMCP-org/examples.git
+cd examples
 ```
 
 2. Choose an example:
@@ -232,8 +236,8 @@ cd vanilla-ts  # or react, script-tag
 
 3. Install and run:
 ```bash
-npm install
-npm run dev
+pnpm install --ignore-workspace
+pnpm dev
 ```
 
 4. Open in Chrome with MCP-B extension installed
@@ -279,9 +283,9 @@ When creating your own MCP-B integration:
 
 <CardGroup>
   <Card
-    title="Discord Community"
-    icon="discord"
-    href="https://discord.gg/your-discord"
+    title="GitHub Discussions"
+    icon="comment"
+    href="https://github.com/WebMCP-org/npm-packages/discussions"
   >
     Get help from the community
   </Card>
@@ -289,7 +293,7 @@ When creating your own MCP-B integration:
   <Card
     title="GitHub Issues"
     icon="github"
-    href="https://github.com/MiguelsPizza/WebMCP/issues"
+    href="https://github.com/WebMCP-org/npm-packages/issues"
   >
     Report bugs or request features
   </Card>
