@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Documentation",
+  "name": "WebMCP Documentation",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg"
@@ -23,19 +23,27 @@
     "isHidden": false
   },
   "background": {
-    "style": "solid"
+    "style": "gradient"
   },
   "topbarLinks": [
     {
-      "name": "Support",
-      "url": "mailto:support@example.com"
+      "name": "GitHub",
+      "url": "https://github.com/MiguelsPizza/WebMCP"
+    },
+    {
+      "name": "Discord",
+      "url": "https://discord.gg/your-discord"
     }
   ],
   "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://dashboard.example.com"
+    "name": "Get Extension",
+    "url": "https://chrome.google.com/webstore/detail/mcp-b"
   },
   "tabs": [
+    {
+      "name": "Documentation",
+      "url": "/"
+    },
     {
       "name": "API Reference",
       "url": "api-reference"
@@ -43,32 +51,40 @@
   ],
   "anchors": [
     {
-      "name": "Documentation",
-      "icon": "book-open-cover",
-      "url": "https://docs.example.com"
+      "name": "Live Demo",
+      "icon": "play",
+      "url": "https://mcp-b.ai"
     },
     {
-      "name": "Community",
-      "icon": "slack",
-      "url": "https://example.com/join"
+      "name": "NPM Package",
+      "icon": "npm",
+      "url": "https://www.npmjs.com/package/@mcp-b/transports"
     },
     {
-      "name": "Blog",
-      "icon": "newspaper",
-      "url": "https://blog.example.com"
+      "name": "Examples",
+      "icon": "code",
+      "url": "https://github.com/MiguelsPizza/mcp-b-examples"
     }
   ],
   "navigation": [
     {
-      "group": "Get Started",
+      "group": "Getting Started",
       "pages": [
         "introduction",
         "quickstart",
-        "development"
+        "examples"
       ]
     },
     {
-      "group": "Essentials",
+      "group": "Guides",
+      "pages": [
+        "development",
+        "advanced",
+        "troubleshooting"
+      ]
+    },
+    {
+      "group": "Documentation Essentials",
       "pages": [
         "essentials/markdown",
         "essentials/code",
@@ -94,8 +110,7 @@
     }
   ],
   "footerSocials": {
-    "x": "https://x.com/example",
-    "github": "https://github.com/example",
-    "linkedin": "https://www.linkedin.com/company/example"
+    "github": "https://github.com/MiguelsPizza/WebMCP",
+    "discord": "https://discord.gg/your-discord"
   }
 }

@@ -1,0 +1,430 @@
+---
+title: 'Advanced Usage'
+description: 'Advanced WebMCP features and patterns for production applications'
+---
+
+## Dynamic Tool Management
+
+### Registering and Unregistering Tools
+
+Tools can be dynamically registered and unregistered based on application state:
+
+```javascript
+// Register tools based on user role
+if (user.isAdmin) {
+  server.tool("deleteUser", "Delete a user", 
+    { userId: z.string() },
+    async ({ userId }) => {
+      await deleteUser(userId);
+      return { content: [{ type: "text", text: "User deleted" }] };
+    }
+  );
+}
+
+// Unregister when no longer needed
+server.unregisterTool("deleteUser");
+```
+
+### Page-Specific Tools
+
+Register different tools for different pages:
+
+```javascript
+// Router-based tool registration
+router.on('route:change', (route) => {
+  // Clear previous page tools
+  clearPageTools();
+  
+  switch(route.name) {
+    case 'dashboard':
+      registerDashboardTools();
+      break;
+    case 'settings':
+      registerSettingsTools();
+      break;
+    case 'admin':
+      if (user.isAdmin) {
+        registerAdminTools();
+      }
+      break;
+  }
+});
+```
+
+## Tool Caching
+
+Optimize performance with tool result caching:
+
+```javascript
+server.tool(
+  "expensiveQuery",
+  "Run an expensive database query",
+  { query: z.string() },
+  async ({ query }) => {
+    const result = await runExpensiveQuery(query);
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  },
+  {
+    annotations: {
+      cache: true,  // Enable caching
+      cacheTTL: 300 // Cache for 5 minutes
+    }
+  }
+);
+```
+
+## State Synchronization
+
+### React State Sync
+
+```typescript
+import { useMcpServer } from '@mcp-b/mcp-react-hooks';
+import { useEffect, useState } from 'react';
+
+function SyncedComponent() {
+  const { server } = useMcpServer("app", "1.0.0");
+  const [state, setState] = useState({ count: 0 });
+  
+  useEffect(() => {
+    // Sync tool with React state
+    server.tool("increment", "Increment counter", {}, async () => {
+      setState(prev => ({ ...prev, count: prev.count + 1 }));
+      return { 
+        content: [{ 
+          type: "text", 
+          text: `Count is now ${state.count + 1}` 
+        }] 
+      };
+    });
+    
+    return () => server.unregisterTool("increment");
+  }, [state.count]);
+}
+```
+
+### Vuex/Pinia Integration
+
+```javascript
+// Vuex store integration
+const store = useStore();
+
+server.tool("updateStore", "Update Vuex store",
+  { key: z.string(), value: z.any() },
+  async ({ key, value }) => {
+    store.commit('updateValue', { key, value });
+    return { 
+      content: [{ 
+        type: "text", 
+        text: `Updated ${key} in store` 
+      }] 
+    };
+  }
+);
+```
+
+## Security Patterns
+
+### Input Validation
+
+Always validate tool inputs with Zod:
+
+```javascript
+import { z } from 'zod';
+
+const EmailSchema = z.string().email();
+const PhoneSchema = z.string().regex(/^\+?[\d\s-()]+$/);
+
+server.tool("contactUser", "Contact a user",
+  {
+    email: EmailSchema,
+    phone: PhoneSchema.optional(),
+    message: z.string().max(1000)
+  },
+  async ({ email, phone, message }) => {
+    // Inputs are validated before reaching here
+    await sendContact({ email, phone, message });
+    return { content: [{ type: "text", text: "Message sent" }] };
+  }
+);
+```
+
+### Rate Limiting
+
+Implement rate limiting for sensitive operations:
+
+```javascript
+const rateLimiter = new Map();
+
+function rateLimit(key, maxCalls = 10, window = 60000) {
+  const now = Date.now();
+  const calls = rateLimiter.get(key) || [];
+  const recentCalls = calls.filter(time => now - time < window);
+  
+  if (recentCalls.length >= maxCalls) {
+    throw new Error('Rate limit exceeded');
+  }
+  
+  recentCalls.push(now);
+  rateLimiter.set(key, recentCalls);
+}
+
+server.tool("sensitiveOperation", "Perform sensitive operation",
+  { data: z.string() },
+  async ({ data }) => {
+    rateLimit('sensitiveOperation', 5, 60000); // 5 calls per minute
+    
+    // Perform operation
+    const result = await performSensitiveOp(data);
+    return { content: [{ type: "text", text: result }] };
+  }
+);
+```
+
+## Multi-Transport Setup
+
+Use multiple transports for different contexts:
+
+```javascript
+import { TabServerTransport, ExtensionTransport } from "@mcp-b/transports";
+
+// Tab transport for same-tab clients
+const tabTransport = new TabServerTransport({
+  allowedOrigins: ["https://trusted-domain.com"]
+});
+
+// Extension transport for browser extension
+const extensionTransport = new ExtensionTransport({
+  extensionId: "your-extension-id"
+});
+
+// Connect both transports
+await Promise.all([
+  server.connect(tabTransport),
+  server.connect(extensionTransport)
+]);
+```
+
+## Event Handling
+
+### Tool Execution Events
+
+```javascript
+// Listen for tool execution
+server.on('tool:execute', ({ toolName, params }) => {
+  console.log(`Tool ${toolName} called with:`, params);
+  
+  // Analytics tracking
+  analytics.track('tool_executed', {
+    tool: toolName,
+    timestamp: Date.now()
+  });
+});
+
+// Handle tool errors
+server.on('tool:error', ({ toolName, error }) => {
+  console.error(`Tool ${toolName} failed:`, error);
+  
+  // Error reporting
+  errorReporter.log(error, { tool: toolName });
+});
+```
+
+### Client Connection Events
+
+```javascript
+server.on('client:connected', (client) => {
+  console.log('Client connected:', client.id);
+  
+  // Send welcome message
+  client.send({
+    type: 'welcome',
+    message: 'Connected to MCP server'
+  });
+});
+
+server.on('client:disconnected', (client) => {
+  console.log('Client disconnected:', client.id);
+  
+  // Cleanup client-specific resources
+  cleanupClient(client.id);
+});
+```
+
+## Testing Tools
+
+### Unit Testing
+
+```javascript
+import { describe, it, expect } from 'vitest';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+describe('MCP Tools', () => {
+  let server;
+  
+  beforeEach(() => {
+    server = new McpServer({ name: "test", version: "1.0.0" });
+  });
+  
+  it('should register and execute tool', async () => {
+    const handler = vi.fn().mockResolvedValue({
+      content: [{ type: "text", text: "success" }]
+    });
+    
+    server.tool("testTool", "Test tool", {}, handler);
+    
+    const result = await server.executeTool("testTool", {});
+    
+    expect(handler).toHaveBeenCalled();
+    expect(result.content[0].text).toBe("success");
+  });
+});
+```
+
+### Integration Testing
+
+```javascript
+import { chromium } from 'playwright';
+
+test('MCP tools work with extension', async () => {
+  const browser = await chromium.launch({
+    headless: false,
+    args: [
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`
+    ]
+  });
+  
+  const page = await browser.newPage();
+  await page.goto('http://localhost:3000');
+  
+  // Wait for MCP server to connect
+  await page.waitForFunction(() => window.mcpConnected === true);
+  
+  // Verify tools are registered
+  const tools = await page.evaluate(() => window.mcpServer.tools);
+  expect(tools).toContain('myTool');
+});
+```
+
+## Production Deployment
+
+### Environment-Specific Configuration
+
+```javascript
+const config = {
+  development: {
+    allowedOrigins: ["*"],
+    debug: true,
+    cache: false
+  },
+  production: {
+    allowedOrigins: ["https://yourdomain.com"],
+    debug: false,
+    cache: true
+  }
+};
+
+const env = process.env.NODE_ENV || 'development';
+const transport = new TabServerTransport(config[env]);
+```
+
+### Error Boundaries
+
+```javascript
+// Global error handler for tools
+server.setErrorHandler((error, toolName, params) => {
+  // Log error
+  console.error(`Tool ${toolName} error:`, error);
+  
+  // Send to monitoring service
+  if (process.env.NODE_ENV === 'production') {
+    Sentry.captureException(error, {
+      tags: { tool: toolName },
+      extra: { params }
+    });
+  }
+  
+  // Return user-friendly error
+  return {
+    content: [{
+      type: "text",
+      text: "An error occurred. Please try again."
+    }]
+  };
+});
+```
+
+## Performance Optimization
+
+### Lazy Loading Tools
+
+```javascript
+// Load tool handlers only when needed
+const toolHandlers = {
+  async heavyTool() {
+    const { handler } = await import('./tools/heavyTool');
+    return handler;
+  }
+};
+
+server.tool("heavyTool", "Heavy computation tool",
+  { data: z.string() },
+  async (params) => {
+    const handler = await toolHandlers.heavyTool();
+    return handler(params);
+  }
+);
+```
+
+### Batching Operations
+
+```javascript
+const pendingOps = [];
+let batchTimer = null;
+
+function batchOperation(op) {
+  pendingOps.push(op);
+  
+  if (!batchTimer) {
+    batchTimer = setTimeout(async () => {
+      const ops = [...pendingOps];
+      pendingOps.length = 0;
+      batchTimer = null;
+      
+      // Process batch
+      await processBatch(ops);
+    }, 100); // Batch every 100ms
+  }
+}
+
+server.tool("batchedOp", "Batched operation",
+  { data: z.string() },
+  async ({ data }) => {
+    await new Promise(resolve => {
+      batchOperation({ data, resolve });
+    });
+    
+    return { content: [{ type: "text", text: "Batched" }] };
+  }
+);
+```
+
+## Next Steps
+
+<CardGroup>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference/introduction"
+  >
+    Complete API documentation
+  </Card>
+  
+  <Card
+    title="Contributing"
+    icon="code-branch"
+    href="https://github.com/MiguelsPizza/WebMCP/blob/main/CONTRIBUTING.md"
+  >
+    Contribute to WebMCP
+  </Card>
+</CardGroup>

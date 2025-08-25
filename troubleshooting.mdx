@@ -1,0 +1,337 @@
+---
+title: 'Troubleshooting'
+description: 'Common issues and solutions for WebMCP integration'
+---
+
+## Common Setup Issues
+
+<AccordionGroup>
+  <Accordion title="Git clone times out">
+    If the initial clone fails, complete it manually:
+    
+    ```bash
+    git clone https://github.com/MiguelsPizza/WebMCP.git
+    cd WebMCP
+    git pull origin main
+    ```
+  </Accordion>
+  
+  <Accordion title="Native server postinstall errors">
+    These errors during `pnpm install` are normal and can be ignored:
+    
+    ```
+    Cannot find module '/path/to/apps/native-server/dist/scripts/postinstall.js'
+    ```
+    
+    The packages will still build correctly.
+  </Accordion>
+  
+  <Accordion title="Import resolution errors">
+    For monorepo development:
+    
+    ```bash
+    # Ensure the workspace is properly built:
+    pnpm build:shared  # Build internal shared packages
+    pnpm build:apps    # Build all applications
+    
+    # Or run from the root with workspace support:
+    pnpm dev
+    ```
+  </Accordion>
+  
+  <Accordion title="Port conflicts">
+    Default ports used by WebMCP:
+    - Main dev server: 5173-5174
+    - Extension dev server: 3000
+    - Native host: 12306
+    
+    Change ports if conflicts occur with your existing services.
+  </Accordion>
+</AccordionGroup>
+
+## Extension Issues
+
+<AccordionGroup>
+  <Accordion title="Extension not detecting tools">
+    **Check these common causes:**
+    
+    1. Ensure the extension is installed and enabled
+    2. Refresh the page after starting your MCP server
+    3. Check the extension popup "Tools" tab
+    4. Look for console errors in browser DevTools
+    
+    **Verify your server is running:**
+    ```javascript
+    // Add logging to confirm server startup
+    console.log('MCP Server starting...');
+    await server.connect(transport);
+    console.log('MCP Server connected!');
+    ```
+  </Accordion>
+  
+  <Accordion title="Tools not working">
+    **Verify transport configuration:**
+    
+    ```javascript
+    // Check allowedOrigins includes your domain
+    new TabServerTransport({ 
+      allowedOrigins: ["*"] // Or specific domains
+    })
+    ```
+    
+    **Ensure proper tool registration:**
+    ```javascript
+    // Tools must be registered before connection
+    server.tool("myTool", "Description", {}, handler);
+    await server.connect(transport); // Connect AFTER tools
+    ```
+  </Accordion>
+  
+  <Accordion title="Extension and dev build conflict">
+    If you have both the Chrome Web Store extension and a dev build:
+    
+    1. **Disable one version** to avoid port conflicts
+    2. Go to `chrome://extensions/`
+    3. Toggle off the version you're not using
+    4. Reload your tabs
+  </Accordion>
+</AccordionGroup>
+
+## Development Issues
+
+<AccordionGroup>
+  <Accordion title="Building from source fails">
+    **Step-by-step fix:**
+    
+    ```bash
+    # Clean install
+    rm -rf node_modules
+    rm pnpm-lock.yaml
+    
+    # Reinstall
+    pnpm install
+    
+    # Build shared packages first
+    pnpm build:shared
+    
+    # Then build apps
+    pnpm build:apps
+    ```
+  </Accordion>
+  
+  <Accordion title="Hot reload not working">
+    For extension development with hot reload:
+    
+    ```bash
+    # Run in dev mode
+    pnpm --filter @mcp-b/extension dev
+    ```
+    
+    Make sure you've loaded the unpacked extension from:
+    `./apps/extension/.output/chrome-mv3`
+  </Accordion>
+  
+  <Accordion title="TypeScript errors">
+    **Common TypeScript issues:**
+    
+    ```typescript
+    // Ensure proper imports
+    import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+    
+    // Use .js extensions for MCP SDK imports
+    import { TabServerTransport } from "@mcp-b/transports";
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Native Server Issues
+
+<AccordionGroup>
+  <Accordion title="Native server won't start">
+    **Check installation:**
+    ```bash
+    # Verify global installation
+    npm list -g @mcp-b/native-server
+    
+    # Reinstall if needed
+    npm uninstall -g @mcp-b/native-server
+    npm install -g @mcp-b/native-server
+    ```
+    
+    **Check port availability:**
+    ```bash
+    # Check if port 12306 is in use
+    lsof -i :12306  # Mac/Linux
+    netstat -an | findstr 12306  # Windows
+    ```
+  </Accordion>
+  
+  <Accordion title="Claude/Cursor can't connect">
+    **Verify configuration:**
+    
+    1. Native server is running: `@mcp-b/native-server`
+    2. Extension is active and connected
+    3. Correct config in MCP client:
+    
+    ```json
+    {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:12306/mcp"
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Custom extension ID issues">
+    If using a dev extension with different ID:
+    
+    ```bash
+    # Create .env file
+    cp apps/native-server/.env.example apps/native-server/.env
+    
+    # Edit with your extension ID
+    echo "DEV_EXTENSION_ID=your-extension-id" > apps/native-server/.env
+    
+    # Rebuild and restart
+    pnpm build
+    pnpm dev
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Tool-Specific Issues
+
+<AccordionGroup>
+  <Accordion title="Tools not appearing in extension">
+    **Common causes:**
+    
+    1. **Registration timing**: Tools must be registered before connection
+    2. **Syntax errors**: Check browser console for JavaScript errors
+    3. **Transport not connected**: Verify `server.connect()` was called
+    
+    **Debug with logging:**
+    ```javascript
+    server.on('tool-registered', (tool) => {
+      console.log('Tool registered:', tool.name);
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Tool calls failing">
+    **Check error messages:**
+    
+    ```javascript
+    server.tool("myTool", "Description", schema, async (params) => {
+      try {
+        // Your tool logic
+        return { content: [{ type: "text", text: "Success" }] };
+      } catch (error) {
+        console.error('Tool error:', error);
+        throw error; // Re-throw for MCP error handling
+      }
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Authentication issues">
+    **For authenticated API calls:**
+    
+    ```javascript
+    // Always use same-origin credentials
+    fetch('/api/endpoint', {
+      method: 'POST',
+      credentials: 'same-origin', // Important!
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Performance Issues
+
+<AccordionGroup>
+  <Accordion title="Too many tools slowing down page">
+    **Optimize tool registration:**
+    
+    ```javascript
+    // Register tools lazily
+    const registerToolsForPage = (page) => {
+      // Only register relevant tools
+      if (page === 'dashboard') {
+        registerDashboardTools();
+      }
+    };
+    
+    // Unregister when not needed
+    const cleanup = () => {
+      server.unregisterTool('toolName');
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Memory leaks">
+    **Clean up properly:**
+    
+    ```javascript
+    // In React
+    useEffect(() => {
+      const server = createServer();
+      
+      return () => {
+        server.disconnect();
+      };
+    }, []);
+    
+    // In vanilla JS
+    window.addEventListener('beforeunload', () => {
+      server.disconnect();
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you're still experiencing issues:
+
+<Steps>
+  <Step title="Check the documentation">
+    Review the [official docs](https://mcp-b.ai/docs) for updated information
+  </Step>
+  
+  <Step title="Search existing issues">
+    Look for similar problems in [GitHub Issues](https://github.com/MiguelsPizza/WebMCP/issues)
+  </Step>
+  
+  <Step title="Join the community">
+    Ask questions in our [Discord server](https://discord.gg/your-discord)
+  </Step>
+  
+  <Step title="Create an issue">
+    If it's a bug, [create a detailed issue](https://github.com/MiguelsPizza/WebMCP/issues/new) with:
+    - Steps to reproduce
+    - Expected vs actual behavior
+    - Browser and extension versions
+    - Console errors
+  </Step>
+</Steps>
+
+## Debug Mode
+
+Enable debug logging for more information:
+
+```javascript
+// Enable verbose logging
+const server = new McpServer({
+  name: "my-app",
+  version: "1.0.0",
+  debug: true // Enable debug mode
+});
+
+// Or set via environment variable
+process.env.DEBUG = 'mcp:*';
+```
+
+<Note>
+  Debug mode may expose sensitive information in console logs. Only use in development.
+</Note>
