@@ -84,6 +84,12 @@
       ]
     },
     {
+      "group": "Tools",
+      "pages": [
+        "tools/claude-code"
+      ]
+    },
+    {
       "group": "Documentation Essentials",
       "pages": [
         "essentials/markdown",
