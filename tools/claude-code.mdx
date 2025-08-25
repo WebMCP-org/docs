@@ -1,0 +1,327 @@
+---
+title: Claude Code
+description: Configure Claude Code to help write, review, and update your WebMCP documentation
+icon: robot
+---
+
+# Claude Code
+
+Configure Claude Code to help write, review, and update your docs.
+
+Claude Code is an agentic command line tool that can help you maintain your documentation. It can write new content, review existing pages, and keep docs up to date.
+
+You can train Claude Code to understand your documentation standards and workflows by adding a `CLAUDE.md` file to your project and refining it over time.
+
+## Getting started
+
+<Steps>
+  <Step title="Prerequisites">
+    Ensure you have:
+    - Active Claude subscription (Pro, Max, or API access)
+    - Node.js 16+ installed
+    - Git repository initialized
+  </Step>
+
+  <Step title="Install Claude Code">
+    ```bash
+    npm install -g @anthropic-ai/claude-code
+    ```
+  </Step>
+
+  <Step title="Navigate to docs">
+    ```bash
+    cd your-docs-directory
+    ```
+  </Step>
+
+  <Step title="Add CLAUDE.md (optional)">
+    Add the `CLAUDE.md` file template below to train Claude Code on your documentation standards.
+  </Step>
+
+  <Step title="Start Claude Code">
+    ```bash
+    claude
+    ```
+  </Step>
+</Steps>
+
+## CLAUDE.md template
+
+Save a `CLAUDE.md` file at the root of your docs directory to help Claude Code understand your project. This file trains Claude Code on your documentation standards, preferences, and workflows. See [Manage Claude's memory](https://docs.anthropic.com/en/docs/claude-code/memory) in the Anthropic docs for more information.
+
+<CodeGroup>
+
+```mdx WebMCP Template
+# WebMCP documentation
+
+## Working relationship
+- You can push back on ideas-this can lead to better documentation. Cite sources and explain your reasoning when you do so
+- ALWAYS ask for clarification rather than making assumptions
+- NEVER lie, guess, or make up information
+
+## Project context
+- Format: MDX files with YAML frontmatter
+- Config: mint.json for navigation, theme, settings
+- Components: Mintlify components
+- Organization: WebMCP-org GitHub organization
+- Main repository: https://github.com/WebMCP-org/docs
+
+## Content strategy
+- Document just enough for user success - not too much, not too little
+- Prioritize accuracy and usability of information
+- Make content evergreen when possible
+- Search for existing information before adding new content. Avoid duplication unless it is done for a strategic reason
+- Check existing patterns for consistency
+- Start by making the smallest reasonable changes
+
+## mint.json
+
+- Refer to the [mint.json schema](https://mintlify.com/docs/settings/global) when building the mint.json file and site navigation
+- Navigation structure is defined in the "navigation" array
+- Each group has a "group" name and "pages" array
+
+## Frontmatter requirements for pages
+- title: Clear, descriptive page title
+- description: Concise summary for SEO/navigation
+- sidebarTitle: (optional) Shorter title for sidebar display
+- icon: (optional) Icon name from Font Awesome or Lucide
+
+## Writing standards
+- Second-person voice ("you")
+- Prerequisites at start of procedural content
+- Test all code examples before publishing
+- Match style and formatting of existing pages
+- Include both basic and advanced use cases
+- Language tags on all code blocks
+- Alt text on all images
+- Relative paths for internal links
+
+## Git workflow
+- NEVER use --no-verify when committing
+- Ask how to handle uncommitted changes before starting
+- Create a new branch when no clear branch exists for changes
+- Commit frequently throughout development
+- NEVER skip or disable pre-commit hooks
+- Use descriptive commit messages following conventional commits
+
+## WebMCP-specific guidelines
+- Reference the official WebMCP-org repositories
+- Examples repository: https://github.com/WebMCP-org/examples
+- NPM packages: @mcp-b/transports and related packages
+- Focus on Model Context Protocol (MCP) functionality
+- Include TypeScript examples with proper type definitions
+- Document both browser and Node.js usage patterns
+
+## Do not
+- Skip frontmatter on any MDX file
+- Use absolute URLs for internal links
+- Include untested code examples
+- Make assumptions - always ask for clarification
+- Reference outdated MiguelsPizza organization links
+- Commit node_modules or build artifacts
+```
+
+```mdx Generic Template
+# Mintlify documentation
+
+## Working relationship
+- You can push back on ideas-this can lead to better documentation. Cite sources and explain your reasoning when you do so
+- ALWAYS ask for clarification rather than making assumptions
+- NEVER lie, guess, or make up information
+
+## Project context
+- Format: MDX files with YAML frontmatter
+- Config: mint.json for navigation, theme, settings
+- Components: Mintlify components
+
+## Content strategy
+- Document just enough for user success - not too much, not too little
+- Prioritize accuracy and usability of information
+- Make content evergreen when possible
+- Search for existing information before adding new content. Avoid duplication unless it is done for a strategic reason
+- Check existing patterns for consistency
+- Start by making the smallest reasonable changes
+
+## mint.json
+
+- Refer to the [mint.json schema](https://mintlify.com/docs/settings/global) when building the mint.json file and site navigation
+
+## Frontmatter requirements for pages
+- title: Clear, descriptive page title
+- description: Concise summary for SEO/navigation
+
+## Writing standards
+- Second-person voice ("you")
+- Prerequisites at start of procedural content
+- Test all code examples before publishing
+- Match style and formatting of existing pages
+- Include both basic and advanced use cases
+- Language tags on all code blocks
+- Alt text on all images
+- Relative paths for internal links
+
+## Git workflow
+- NEVER use --no-verify when committing
+- Ask how to handle uncommitted changes before starting
+- Create a new branch when no clear branch exists for changes
+- Commit frequently throughout development
+- NEVER skip or disable pre-commit hooks
+
+## Do not
+- Skip frontmatter on any MDX file
+- Use absolute URLs for internal links
+- Include untested code examples
+- Make assumptions - always ask for clarification
+```
+
+</CodeGroup>
+
+## Sample prompts
+
+Once you have Claude Code set up, try these prompts to see how it can help with common documentation tasks. You can copy and paste these examples directly, or adapt them for your specific needs.
+
+### Convert notes to polished docs
+
+Turn rough drafts into proper Markdown pages with components and frontmatter.
+
+<Accordion title="Example prompt">
+```text
+Convert this text into a properly formatted MDX page: 
+
+WebMCP allows you to connect AI agents to web functionality. It works by:
+1. Installing the browser extension
+2. Configuring your MCP server
+3. Running your AI agent with MCP support
+
+The main benefits are:
+- Direct browser automation
+- Real-time web data access
+- Secure sandboxed execution
+```
+</Accordion>
+
+### Review docs for consistency
+
+Get suggestions to improve style, formatting, and component usage.
+
+<Accordion title="Example prompt">
+```text
+Review the files in docs/ and suggest improvements for:
+- Consistent use of components (Cards, Steps, CodeGroups)
+- Proper frontmatter on all pages
+- Consistent voice and tone
+- Missing documentation areas
+```
+</Accordion>
+
+### Update docs when features change
+
+Keep documentation current when your product evolves.
+
+<Accordion title="Example prompt">
+```text
+Our WebMCP API now requires an apiVersion parameter. Update our docs to:
+1. Include apiVersion: "2024-01" in all code examples
+2. Add a migration guide for users on older versions
+3. Update the API reference with the new parameter
+```
+</Accordion>
+
+### Generate comprehensive code examples
+
+Create multi-language examples with error handling.
+
+<Accordion title="Example prompt">
+```text
+Create code examples for initializing WebMCP in:
+- TypeScript (with type definitions)
+- JavaScript (ES6 modules)
+- React (with hooks)
+- Vue 3 (composition API)
+
+Include error handling and configuration options for each.
+```
+</Accordion>
+
+## Extending Claude Code
+
+Beyond manually prompting Claude Code, you can integrate it with your existing workflows.
+
+### Automation with GitHub Actions
+
+Run Claude Code automatically when code changes to keep docs up to date. You can trigger documentation reviews on pull requests or update examples when API changes are detected.
+
+<Card title="GitHub Actions Integration" icon="github" href="https://docs.anthropic.com/en/docs/claude-code/github-actions">
+  Learn how to set up automated documentation workflows
+</Card>
+
+### Multi-instance workflows
+
+Use separate Claude Code sessions for different tasks:
+
+<CardGroup cols={2}>
+  <Card title="Writing Session" icon="pen">
+    Focus on creating new content and expanding documentation
+  </Card>
+  <Card title="Review Session" icon="magnifying-glass">
+    Dedicated to quality assurance and consistency checks
+  </Card>
+</CardGroup>
+
+### Team collaboration
+
+Share your refined `CLAUDE.md` file with your team to ensure consistent documentation standards across all contributors. Teams often develop project-specific prompts and workflows that become part of their documentation process.
+
+<Info>
+Store commonly used prompts in a `prompts/` directory in your repository for team reuse.
+</Info>
+
+### Custom commands
+
+Create reusable slash commands in `.claude/commands/` for frequently used documentation tasks specific to your project or team.
+
+Example command structure:
+```bash
+.claude/
+└── commands/
+    ├── review-api-docs.txt
+    ├── update-examples.txt
+    └── check-links.txt
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Start with small changes">
+    Begin by using Claude Code for simple tasks like reviewing a single page or updating code examples. As you become comfortable, expand to more complex documentation workflows.
+  </Accordion>
+
+  <Accordion title="Refine your CLAUDE.md regularly">
+    Update your CLAUDE.md file based on patterns you notice. If you find yourself giving the same instructions repeatedly, add them to the file.
+  </Accordion>
+
+  <Accordion title="Use version control">
+    Always work in a git branch when making documentation changes. This allows you to review Claude Code's work before merging.
+  </Accordion>
+
+  <Accordion title="Combine with other tools">
+    Claude Code works well alongside linters, formatters, and other documentation tools. Use it as part of your broader documentation pipeline.
+  </Accordion>
+</AccordionGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Claude Code Documentation" icon="book" href="https://docs.anthropic.com/en/docs/claude-code">
+    Official documentation and reference
+  </Card>
+  <Card title="Memory Management" icon="brain" href="https://docs.anthropic.com/en/docs/claude-code/memory">
+    Learn about CLAUDE.md and context management
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="https://docs.anthropic.com/en/docs/claude-code/cli-reference">
+    Complete command line interface guide
+  </Card>
+  <Card title="Common Workflows" icon="workflow" href="https://docs.anthropic.com/en/docs/claude-code/common-workflows">
+    Patterns and examples for typical tasks
+  </Card>
+</CardGroup>
