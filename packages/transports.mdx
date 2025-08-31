@@ -1,0 +1,245 @@
+---
+title: "@mcp-b/transports"
+description: "Browser-specific MCP transport implementations for client-server communication"
+sidebarTitle: "Transports"
+icon: "arrows-rotate"
+---
+
+## Overview
+
+The `@mcp-b/transports` package provides browser-specific transport implementations for the Model Context Protocol (MCP). It enables communication between MCP servers and clients using browser-native mechanisms.
+
+## Installation
+
+```bash
+npm install @mcp-b/transports
+```
+
+## Key Features
+
+- Browser-native transport mechanisms
+- WebSocket and postMessage support
+- Automatic reconnection handling
+- TypeScript support with full type definitions
+
+## Basic Usage
+
+### Setting up a Transport
+
+```typescript
+import { BrowserTransport } from '@mcp-b/transports';
+
+// Create a new transport instance
+const transport = new BrowserTransport({
+  url: 'ws://localhost:8080',
+  reconnect: true,
+  reconnectInterval: 5000
+});
+
+// Connect to the MCP server
+await transport.connect();
+
+// Send messages
+await transport.send({
+  method: 'tools/call',
+  params: {
+    name: 'myTool',
+    arguments: { /* tool arguments */ }
+  }
+});
+
+// Listen for messages
+transport.on('message', (message) => {
+  console.log('Received:', message);
+});
+```
+
+### Using with Chrome Extensions
+
+```typescript
+import { ExtensionTransport } from '@mcp-b/transports';
+
+// Create transport for Chrome extension context
+const transport = new ExtensionTransport({
+  extensionId: 'your-extension-id'
+});
+
+// Connect to extension
+await transport.connect();
+
+// Use the transport
+const response = await transport.request({
+  method: 'tools/list'
+});
+```
+
+## Advanced Configuration
+
+### Custom Transport Options
+
+```typescript
+const transport = new BrowserTransport({
+  // WebSocket endpoint
+  url: 'ws://localhost:8080',
+  
+  // Reconnection settings
+  reconnect: true,
+  reconnectInterval: 5000,
+  maxReconnectAttempts: 10,
+  
+  // Message timeout
+  requestTimeout: 30000,
+  
+  // Custom headers (for WebSocket)
+  headers: {
+    'Authorization': 'Bearer token'
+  }
+});
+```
+
+### Error Handling
+
+```typescript
+transport.on('error', (error) => {
+  console.error('Transport error:', error);
+});
+
+transport.on('disconnect', () => {
+  console.log('Disconnected from server');
+});
+
+transport.on('reconnect', (attempt) => {
+  console.log(`Reconnecting... attempt ${attempt}`);
+});
+```
+
+## Use Cases
+
+### Todo List Application
+
+From the [vanilla-ts example](https://github.com/WebMCP-org/examples/tree/main/vanilla-ts):
+
+```typescript
+import { BrowserTransport } from '@mcp-b/transports';
+import { McpClient } from '@modelcontextprotocol/sdk/client/index.js';
+
+// Initialize transport
+const transport = new BrowserTransport({
+  url: 'ws://localhost:3000'
+});
+
+// Create MCP client
+const client = new McpClient({
+  name: 'todo-app',
+  version: '1.0.0'
+}, {
+  transport: transport
+});
+
+// Connect and use
+await client.connect(transport);
+
+// List available tools
+const tools = await client.listTools();
+
+// Call a tool
+const result = await client.callTool(
+  'add_todo',
+  { text: 'Complete MCP integration' }
+);
+```
+
+### Real-time Collaboration
+
+```typescript
+// Set up transport for real-time updates
+const transport = new BrowserTransport({
+  url: 'wss://collab.example.com',
+  reconnect: true
+});
+
+// Subscribe to updates
+transport.on('notification', (notification) => {
+  if (notification.method === 'document/update') {
+    updateDocument(notification.params);
+  }
+});
+```
+
+## Integration with React
+
+For React applications, consider using [@mcp-b/mcp-react-hooks](/packages/react-hooks) which provides React-specific abstractions on top of this transport layer.
+
+## API Reference
+
+### BrowserTransport
+
+Main transport class for browser environments.
+
+#### Constructor Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `url` | `string` | Required | WebSocket endpoint URL |
+| `reconnect` | `boolean` | `true` | Enable automatic reconnection |
+| `reconnectInterval` | `number` | `5000` | Milliseconds between reconnection attempts |
+| `maxReconnectAttempts` | `number` | `Infinity` | Maximum number of reconnection attempts |
+| `requestTimeout` | `number` | `30000` | Request timeout in milliseconds |
+
+#### Methods
+
+- `connect(): Promise<void>` - Establish connection to server
+- `disconnect(): void` - Close the connection
+- `send(message: any): Promise<void>` - Send a message
+- `request(message: any): Promise<any>` - Send a request and wait for response
+- `on(event: string, handler: Function): void` - Subscribe to events
+- `off(event: string, handler: Function): void` - Unsubscribe from events
+
+### ExtensionTransport
+
+Transport implementation for Chrome extensions.
+
+#### Constructor Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `extensionId` | `string` | Required | Chrome extension ID |
+| `timeout` | `number` | `30000` | Request timeout |
+
+## Troubleshooting
+
+### Connection Issues
+
+If you're experiencing connection problems:
+
+1. Verify the WebSocket URL is correct and accessible
+2. Check browser console for CORS errors
+3. Ensure the MCP server is running and listening
+4. Verify firewall settings allow WebSocket connections
+
+### Message Format Errors
+
+Ensure messages follow the MCP protocol format:
+
+```typescript
+{
+  jsonrpc: "2.0",
+  method: "tools/call",
+  params: {
+    // method-specific parameters
+  },
+  id: "unique-request-id"
+}
+```
+
+## Related Packages
+
+- [@mcp-b/mcp-react-hooks](/packages/react-hooks) - React hooks for MCP
+- [@mcp-b/extension-tools](/packages/extension-tools) - Chrome Extension API tools
+- [@mcp-b/web-tools](https://www.npmjs.com/package/@mcp-b/web-tools) - Web-specific MCP tools
+
+## Resources
+
+- [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
+- [Examples](https://github.com/WebMCP-org/examples)
+- [MCP Protocol Specification](https://modelcontextprotocol.io)

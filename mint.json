@@ -84,6 +84,15 @@
       ]
     },
     {
+      "group": "NPM Packages",
+      "pages": [
+        "packages/transports",
+        "packages/react-hooks",
+        "packages/extension-tools",
+        "packages/react-hook-form"
+      ]
+    },
+    {
       "group": "Tools",
       "pages": [
         "tools/claude-code"

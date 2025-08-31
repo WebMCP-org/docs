@@ -1,0 +1,603 @@
+---
+title: "@mcp-b/mcp-react-hook-form"
+description: "Seamless integration between React Hook Form and the Model Context Protocol"
+sidebarTitle: "React Hook Form"
+icon: "rectangle-list"
+---
+
+## Overview
+
+The `@mcp-b/mcp-react-hook-form` package provides integration between React Hook Form and the Model Context Protocol, enabling form-driven interactions with MCP servers. It simplifies form validation, submission, and state management when working with MCP tools.
+
+## Installation
+
+```bash
+npm install @mcp-b/mcp-react-hook-form react-hook-form @mcp-b/transports
+```
+
+## Key Features
+
+- Automatic form schema generation from MCP tool definitions
+- Built-in validation based on tool input schemas
+- Seamless form submission to MCP tools
+- TypeScript support with inferred types
+- Error handling and retry logic
+- Optimistic updates support
+
+## Basic Usage
+
+### Setting up the Provider
+
+```tsx
+import { MCPFormProvider } from '@mcp-b/mcp-react-hook-form';
+import { MCPProvider } from '@mcp-b/mcp-react-hooks';
+import { BrowserTransport } from '@mcp-b/transports';
+
+const transport = new BrowserTransport({
+  url: 'ws://localhost:8080'
+});
+
+function App() {
+  return (
+    <MCPProvider transport={transport}>
+      <MCPFormProvider>
+        <YourApp />
+      </MCPFormProvider>
+    </MCPProvider>
+  );
+}
+```
+
+### Creating MCP-Connected Forms
+
+```tsx
+import { useMCPForm } from '@mcp-b/mcp-react-hook-form';
+
+function ContactForm() {
+  const { register, handleSubmit, errors, isSubmitting } = useMCPForm({
+    tool: 'submit_contact',
+    onSuccess: (result) => {
+      console.log('Form submitted:', result);
+    },
+    onError: (error) => {
+      console.error('Submission failed:', error);
+    }
+  });
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input 
+        {...register('name')} 
+        placeholder="Name"
+      />
+      {errors.name && <span>{errors.name.message}</span>}
+      
+      <input 
+        {...register('email')} 
+        placeholder="Email"
+      />
+      {errors.email && <span>{errors.email.message}</span>}
+      
+      <textarea 
+        {...register('message')} 
+        placeholder="Message"
+      />
+      {errors.message && <span>{errors.message.message}</span>}
+      
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Sending...' : 'Send'}
+      </button>
+    </form>
+  );
+}
+```
+
+## Advanced Features
+
+### Auto-Generated Forms
+
+Generate forms automatically from MCP tool schemas:
+
+```tsx
+import { AutoForm } from '@mcp-b/mcp-react-hook-form';
+
+function DynamicForm() {
+  return (
+    <AutoForm
+      tool="create_user"
+      onSubmit={(result) => {
+        console.log('User created:', result);
+      }}
+      fieldConfig={{
+        password: { type: 'password' },
+        bio: { type: 'textarea', rows: 4 }
+      }}
+    />
+  );
+}
+```
+
+### Custom Field Components
+
+```tsx
+import { useController } from '@mcp-b/mcp-react-hook-form';
+
+function CustomInput({ name, control, rules }) {
+  const {
+    field,
+    fieldState: { error, isDirty, isTouched }
+  } = useController({
+    name,
+    control,
+    rules
+  });
+
+  return (
+    <div className={`field ${error ? 'error' : ''}`}>
+      <input {...field} />
+      {error && <span className="error-message">{error.message}</span>}
+      {isDirty && <span className="dirty-indicator">Modified</span>}
+    </div>
+  );
+}
+```
+
+### Schema-Based Validation
+
+```tsx
+const { register, handleSubmit } = useMCPForm({
+  tool: 'create_product',
+  // Validation is automatically derived from tool's input schema
+  validationMode: 'onChange',
+  defaultValues: {
+    name: '',
+    price: 0,
+    category: 'general'
+  }
+});
+```
+
+### Multi-Step Forms
+
+```tsx
+import { useMultiStepMCPForm } from '@mcp-b/mcp-react-hook-form';
+
+function WizardForm() {
+  const {
+    currentStep,
+    steps,
+    next,
+    previous,
+    isFirstStep,
+    isLastStep,
+    register,
+    handleSubmit
+  } = useMultiStepMCPForm({
+    tools: ['validate_email', 'create_profile', 'setup_preferences'],
+    onComplete: (results) => {
+      console.log('All steps completed:', results);
+    }
+  });
+
+  return (
+    <div>
+      <h2>Step {currentStep + 1} of {steps.length}</h2>
+      
+      <form onSubmit={handleSubmit}>
+        {currentStep === 0 && <EmailStep register={register} />}
+        {currentStep === 1 && <ProfileStep register={register} />}
+        {currentStep === 2 && <PreferencesStep register={register} />}
+        
+        <div>
+          {!isFirstStep && (
+            <button type="button" onClick={previous}>
+              Previous
+            </button>
+          )}
+          
+          <button type="submit">
+            {isLastStep ? 'Complete' : 'Next'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+```
+
+## Form Utilities
+
+### Field Arrays
+
+```tsx
+import { useFieldArray } from '@mcp-b/mcp-react-hook-form';
+
+function ItemsList() {
+  const { control, register } = useMCPForm({ tool: 'save_items' });
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'items'
+  });
+
+  return (
+    <div>
+      {fields.map((field, index) => (
+        <div key={field.id}>
+          <input {...register(`items.${index}.name`)} />
+          <input {...register(`items.${index}.quantity`)} type="number" />
+          <button onClick={() => remove(index)}>Remove</button>
+        </div>
+      ))}
+      
+      <button onClick={() => append({ name: '', quantity: 1 })}>
+        Add Item
+      </button>
+    </div>
+  );
+}
+```
+
+### Conditional Fields
+
+```tsx
+function ConditionalForm() {
+  const { register, watch } = useMCPForm({ tool: 'process_order' });
+  const orderType = watch('orderType');
+
+  return (
+    <form>
+      <select {...register('orderType')}>
+        <option value="standard">Standard</option>
+        <option value="express">Express</option>
+        <option value="custom">Custom</option>
+      </select>
+
+      {orderType === 'express' && (
+        <input 
+          {...register('deliveryTime')} 
+          placeholder="Preferred delivery time"
+        />
+      )}
+
+      {orderType === 'custom' && (
+        <textarea 
+          {...register('customRequirements')} 
+          placeholder="Special requirements"
+        />
+      )}
+    </form>
+  );
+}
+```
+
+### Form State Management
+
+```tsx
+function FormWithState() {
+  const {
+    register,
+    handleSubmit,
+    formState: { 
+      errors, 
+      isSubmitting, 
+      isValid, 
+      isDirty,
+      submitCount 
+    },
+    reset,
+    setError,
+    clearErrors
+  } = useMCPForm({ tool: 'update_settings' });
+
+  const onSubmit = async (data) => {
+    try {
+      await submitToMCP(data);
+      reset(); // Reset form after successful submission
+    } catch (error) {
+      setError('root', { 
+        type: 'manual',
+        message: 'Failed to save settings'
+      });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* Form fields */}
+      
+      <div className="form-status">
+        {isDirty && <span>You have unsaved changes</span>}
+        {submitCount > 0 && <span>Attempted {submitCount} times</span>}
+      </div>
+      
+      <button type="submit" disabled={!isValid || isSubmitting}>
+        Save Settings
+      </button>
+    </form>
+  );
+}
+```
+
+## Use Cases
+
+### Login Form
+
+From the [login example](https://github.com/WebMCP-org/examples):
+
+```tsx
+import { useMCPForm } from '@mcp-b/mcp-react-hook-form';
+
+function LoginForm() {
+  const { register, handleSubmit, errors, setError } = useMCPForm({
+    tool: 'authenticate',
+    onSuccess: (result) => {
+      if (result.token) {
+        localStorage.setItem('token', result.token);
+        window.location.href = '/dashboard';
+      }
+    },
+    onError: (error) => {
+      setError('root', { message: 'Invalid credentials' });
+    }
+  });
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        {...register('username', { 
+          required: 'Username is required' 
+        })}
+        placeholder="Username"
+      />
+      
+      <input
+        {...register('password', { 
+          required: 'Password is required',
+          minLength: { value: 8, message: 'Minimum 8 characters' }
+        })}
+        type="password"
+        placeholder="Password"
+      />
+      
+      {errors.root && (
+        <div className="error">{errors.root.message}</div>
+      )}
+      
+      <button type="submit">Login</button>
+    </form>
+  );
+}
+```
+
+### Dynamic Survey Form
+
+```tsx
+function SurveyForm({ surveyId }) {
+  const [schema, setSchema] = useState(null);
+  
+  useEffect(() => {
+    // Fetch survey schema from MCP
+    fetchSurveySchema(surveyId).then(setSchema);
+  }, [surveyId]);
+
+  if (!schema) return <Loading />;
+
+  return (
+    <AutoForm
+      schema={schema}
+      tool="submit_survey"
+      toolParams={{ surveyId }}
+      onSubmit={(result) => {
+        alert('Thank you for your response!');
+      }}
+    />
+  );
+}
+```
+
+### File Upload Form
+
+```tsx
+function FileUploadForm() {
+  const { register, handleSubmit, setValue, watch } = useMCPForm({
+    tool: 'upload_document'
+  });
+  
+  const selectedFile = watch('file');
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Convert to base64 for MCP transport
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setValue('fileData', reader.result);
+        setValue('fileName', file.name);
+        setValue('fileType', file.type);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="file"
+        onChange={handleFileChange}
+        accept=".pdf,.doc,.docx"
+      />
+      
+      {selectedFile && (
+        <div>
+          <p>Selected: {watch('fileName')}</p>
+          <p>Type: {watch('fileType')}</p>
+        </div>
+      )}
+      
+      <input
+        {...register('description')}
+        placeholder="Document description"
+      />
+      
+      <button type="submit">Upload</button>
+    </form>
+  );
+}
+```
+
+## TypeScript Integration
+
+### Typed Forms
+
+```tsx
+import { createTypedMCPForm } from '@mcp-b/mcp-react-hook-form';
+
+interface UserFormData {
+  name: string;
+  email: string;
+  age: number;
+  preferences: {
+    newsletter: boolean;
+    notifications: boolean;
+  };
+}
+
+const useUserForm = createTypedMCPForm<UserFormData>('create_user');
+
+function TypedUserForm() {
+  const { register, handleSubmit } = useUserForm({
+    defaultValues: {
+      preferences: {
+        newsletter: true,
+        notifications: false
+      }
+    }
+  });
+
+  // All form fields are fully typed
+  return (
+    <form onSubmit={handleSubmit}>
+      <input {...register('name')} />
+      <input {...register('email')} />
+      <input {...register('age')} type="number" />
+      <input {...register('preferences.newsletter')} type="checkbox" />
+      <input {...register('preferences.notifications')} type="checkbox" />
+      <button type="submit">Create User</button>
+    </form>
+  );
+}
+```
+
+### Custom Validation Types
+
+```tsx
+import { ValidationRule } from '@mcp-b/mcp-react-hook-form';
+
+interface CustomValidation extends ValidationRule {
+  asyncValidate?: (value: any) => Promise<boolean>;
+  customMessage?: string;
+}
+
+const customValidation: CustomValidation = {
+  validate: async (value) => {
+    const isValid = await checkValueOnServer(value);
+    return isValid || 'This value is already taken';
+  }
+};
+```
+
+## Performance Optimization
+
+### Debounced Validation
+
+```tsx
+import { useDebouncedValidation } from '@mcp-b/mcp-react-hook-form';
+
+function SearchForm() {
+  const { register, errors } = useMCPForm({
+    tool: 'search',
+    mode: 'onChange'
+  });
+
+  const validateSearch = useDebouncedValidation(async (value) => {
+    const suggestions = await callTool('get_suggestions', { query: value });
+    return suggestions.length > 0 || 'No results found';
+  }, 500);
+
+  return (
+    <input
+      {...register('query', { validate: validateSearch })}
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+### Lazy Field Registration
+
+```tsx
+function LargeForm() {
+  const { register, handleSubmit } = useMCPForm({
+    tool: 'submit_application',
+    lazyFields: true // Only register fields when they're rendered
+  });
+
+  const [currentSection, setCurrentSection] = useState(0);
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {currentSection === 0 && <PersonalInfo register={register} />}
+      {currentSection === 1 && <Education register={register} />}
+      {currentSection === 2 && <Experience register={register} />}
+      
+      <button onClick={() => setCurrentSection(s => s + 1)}>
+        Next Section
+      </button>
+    </form>
+  );
+}
+```
+
+## Testing
+
+### Mock MCP Form Provider
+
+```tsx
+import { MockMCPFormProvider } from '@mcp-b/mcp-react-hook-form/testing';
+
+describe('ContactForm', () => {
+  it('submits form data', async () => {
+    const onSubmit = jest.fn();
+    
+    render(
+      <MockMCPFormProvider mockSubmit={onSubmit}>
+        <ContactForm />
+      </MockMCPFormProvider>
+    );
+    
+    fireEvent.change(screen.getByPlaceholderText('Name'), {
+      target: { value: 'John Doe' }
+    });
+    
+    fireEvent.click(screen.getByText('Send'));
+    
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: 'John Doe'
+      });
+    });
+  });
+});
+```
+
+## Related Packages
+
+- [@mcp-b/mcp-react-hooks](/packages/react-hooks) - React hooks for MCP
+- [@mcp-b/transports](/packages/transports) - Transport layer for MCP
+- [React Hook Form Documentation](https://react-hook-form.com)
+
+## Resources
+
+- [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
+- [Examples](https://github.com/WebMCP-org/examples)
+- [React Hook Form Documentation](https://react-hook-form.com)
