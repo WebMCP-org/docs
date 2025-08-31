@@ -1,301 +1,380 @@
 ---
 title: "@mcp-b/mcp-react-hooks"
-description: "React hooks for seamless MCP integration in React applications"
+description: "React hooks and providers for MCP integration in browser applications"
 sidebarTitle: "React Hooks"
 icon: "react"
 ---
 
 ## Overview
 
-The `@mcp-b/mcp-react-hooks` package provides React-friendly APIs and hooks for integrating the Model Context Protocol into React applications. It offers a declarative way to interact with MCP servers and manage connection state.
+The `@mcp-b/mcp-react-hooks` package provides React hooks and context providers for integrating the Model Context Protocol (MCP) into React applications. It supports both client and server functionality with automatic connection management.
 
 ## Installation
 
 ```bash
-npm install @mcp-b/mcp-react-hooks @mcp-b/transports
+npm install @mcp-b/mcp-react-hooks @mcp-b/transports @modelcontextprotocol/sdk
 ```
 
-## Key Features
+## Providers and Hooks
 
-- Ready-to-use React hooks
-- Automatic connection management
-- Built-in error handling and retry logic
-- TypeScript support
-- Server-side rendering compatible
-- Optimized re-renders with proper memoization
+### McpClientProvider & useMcpClient
 
-## Basic Usage
-
-### Setting up the Provider
+Connect to an MCP server and consume its tools and resources.
 
 ```tsx
-import { MCPProvider } from '@mcp-b/mcp-react-hooks';
-import { BrowserTransport } from '@mcp-b/transports';
+import { McpClientProvider, useMcpClient } from '@mcp-b/mcp-react-hooks';
+import { TabClientTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
-const transport = new BrowserTransport({
-  url: 'ws://localhost:8080'
+// Create transport and client
+const transport = new TabClientTransport({
+  targetOrigin: window.location.origin
 });
 
+const client = new Client({
+  name: 'my-app',
+  version: '1.0.0'
+}, {
+  capabilities: {}
+});
+
+// Wrap your app
 function App() {
   return (
-    <MCPProvider transport={transport}>
-      <YourApp />
-    </MCPProvider>
-  );
-}
-```
-
-### Using MCP Hooks
-
-```tsx
-import { useMCP, useTools, useCallTool } from '@mcp-b/mcp-react-hooks';
-
-function TodoList() {
-  const { connected, error } = useMCP();
-  const { tools, loading } = useTools();
-  const callTool = useCallTool();
-
-  const handleAddTodo = async (text: string) => {
-    try {
-      const result = await callTool('add_todo', { text });
-      console.log('Todo added:', result);
-    } catch (error) {
-      console.error('Failed to add todo:', error);
-    }
-  };
-
-  if (!connected) return <div>Connecting...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-  if (loading) return <div>Loading tools...</div>;
-
-  return (
-    <div>
-      {/* Your todo list UI */}
-    </div>
-  );
-}
-```
-
-## Hooks API
-
-### useMCP
-
-Access the MCP connection state and client instance.
-
-```tsx
-const { client, connected, connecting, error } = useMCP();
-```
-
-**Returns:**
-- `client`: MCP client instance
-- `connected`: Boolean indicating connection status
-- `connecting`: Boolean indicating if currently connecting
-- `error`: Error object if connection failed
-
-### useTools
-
-List available MCP tools.
-
-```tsx
-const { tools, loading, error, refetch } = useTools();
-```
-
-**Returns:**
-- `tools`: Array of available tools
-- `loading`: Boolean indicating if tools are being fetched
-- `error`: Error object if fetching failed
-- `refetch`: Function to manually refetch tools
-
-### useCallTool
-
-Get a function to call MCP tools.
-
-```tsx
-const callTool = useCallTool();
-
-// Usage
-const result = await callTool('tool_name', { 
-  param1: 'value1',
-  param2: 'value2'
-});
-```
-
-### useResources
-
-List and manage MCP resources.
-
-```tsx
-const { resources, loading, error, refetch } = useResources();
-```
-
-### usePrompts
-
-Access available prompts from the MCP server.
-
-```tsx
-const { prompts, loading, error } = usePrompts();
-```
-
-### useSubscription
-
-Subscribe to MCP server notifications.
-
-```tsx
-useSubscription('document/update', (params) => {
-  console.log('Document updated:', params);
-});
-```
-
-## Advanced Usage
-
-### Custom Hook Configuration
-
-```tsx
-import { createMCPHooks } from '@mcp-b/mcp-react-hooks';
-
-// Create custom hooks with specific configuration
-const { useMCP, useTools } = createMCPHooks({
-  reconnectOnError: true,
-  retryAttempts: 3,
-  retryDelay: 1000
-});
-```
-
-### Error Boundaries
-
-```tsx
-import { MCPErrorBoundary } from '@mcp-b/mcp-react-hooks';
-
-function App() {
-  return (
-    <MCPErrorBoundary fallback={<ErrorFallback />}>
-      <MCPProvider transport={transport}>
-        <YourApp />
-      </MCPProvider>
-    </MCPErrorBoundary>
+    <McpClientProvider client={client} transport={transport}>
+      <MyComponent />
+    </McpClientProvider>
   );
 }
 
-function ErrorFallback({ error, retry }) {
-  return (
-    <div>
-      <p>MCP connection failed: {error.message}</p>
-      <button onClick={retry}>Retry</button>
-    </div>
-  );
-}
-```
+// Use the hook
+function MyComponent() {
+  const { 
+    client, 
+    tools, 
+    resources, 
+    isConnected, 
+    isLoading, 
+    error,
+    capabilities,
+    reconnect
+  } = useMcpClient();
 
-### Optimistic Updates
-
-```tsx
-function TodoList() {
-  const [todos, setTodos] = useState([]);
-  const callTool = useCallTool();
-
-  const addTodo = async (text: string) => {
-    // Optimistic update
-    const tempId = Date.now();
-    setTodos(prev => [...prev, { id: tempId, text, pending: true }]);
-
-    try {
-      const result = await callTool('add_todo', { text });
-      // Replace temp todo with real one
-      setTodos(prev => 
-        prev.map(todo => 
-          todo.id === tempId ? { ...result, pending: false } : todo
-        )
-      );
-    } catch (error) {
-      // Rollback on error
-      setTodos(prev => prev.filter(todo => todo.id !== tempId));
-      throw error;
-    }
-  };
-
-  return (
-    // Your UI
-  );
-}
-```
-
-## Use Cases
-
-### Voice Agent with React Flow
-
-From the [reactFlowVoiceAgent example](https://github.com/WebMCP-org/examples):
-
-```tsx
-import { useMCP, useCallTool } from '@mcp-b/mcp-react-hooks';
-import ReactFlow from 'reactflow';
-
-function VoiceAgent() {
-  const { connected } = useMCP();
-  const callTool = useCallTool();
-
-  const handleVoiceCommand = async (transcript: string) => {
-    const result = await callTool('process_voice_command', {
-      transcript,
-      context: getCurrentFlowContext()
-    });
+  const handleCallTool = async () => {
+    if (!client) return;
     
-    updateFlowBasedOnResult(result);
+    const result = await client.callTool({
+      name: 'myTool',
+      arguments: { text: 'Hello' }
+    });
+    console.log(result);
   };
+
+  if (!isConnected) return <div>Connecting...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div>
-      <ReactFlow />
-      <VoiceInput onTranscript={handleVoiceCommand} />
+      <h3>Available Tools: {tools.length}</h3>
+      <button onClick={handleCallTool}>Call Tool</button>
+      <button onClick={reconnect}>Reconnect</button>
     </div>
   );
 }
 ```
 
-### Form Integration
+### McpServerProvider & useMcpServer
+
+Create an MCP server that exposes tools to clients.
 
 ```tsx
-import { useForm } from 'react-hook-form';
-import { useCallTool } from '@mcp-b/mcp-react-hooks';
+import { McpServerProvider, useMcpServer } from '@mcp-b/mcp-react-hooks';
+import { TabServerTransport } from '@mcp-b/transports';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 
-function ContactForm() {
-  const { register, handleSubmit } = useForm();
-  const callTool = useCallTool();
+// Create server and transport
+const server = new McpServer({
+  name: 'my-server',
+  version: '1.0.0'
+});
 
-  const onSubmit = async (data) => {
-    await callTool('submit_contact', data);
+const transport = new TabServerTransport({
+  allowedOrigins: ['*']
+});
+
+// Wrap your app
+function App() {
+  return (
+    <McpServerProvider server={server} transport={transport}>
+      <ServerComponent />
+    </McpServerProvider>
+  );
+}
+
+// Use the hook
+function ServerComponent() {
+  const { 
+    server, 
+    isConnected, 
+    isConnecting, 
+    error,
+    registerTool,
+    elicitInput
+  } = useMcpServer();
+
+  useEffect(() => {
+    // Register a tool dynamically
+    const unregister = registerTool('greet', {
+      description: 'Greets a user',
+      inputSchema: z.object({
+        name: z.string().describe('Name to greet')
+      }),
+      handler: async ({ name }) => ({
+        content: [{ 
+          type: 'text', 
+          text: `Hello, ${name}!` 
+        }]
+      })
+    });
+
+    // Cleanup on unmount
+    return unregister;
+  }, [registerTool]);
+
+  const handleElicit = async () => {
+    const result = await elicitInput(
+      'Enter your name',
+      { type: 'string' }
+    );
+    console.log('User entered:', result);
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <input {...register('name')} />
-      <input {...register('email')} />
-      <textarea {...register('message')} />
-      <button type="submit">Send</button>
-    </form>
+    <div>
+      <p>Server status: {isConnected ? 'Connected' : 'Disconnected'}</p>
+      <button onClick={handleElicit}>Request Input</button>
+    </div>
   );
 }
 ```
 
-### Real-time Dashboard
+### McpMemoryProvider
+
+Combines both client and server functionality using an in-memory transport, perfect for self-contained applications.
 
 ```tsx
-function Dashboard() {
-  const [metrics, setMetrics] = useState({});
-  
-  useSubscription('metrics/update', (data) => {
-    setMetrics(prev => ({ ...prev, ...data }));
-  });
+import { McpMemoryProvider } from '@mcp-b/mcp-react-hooks';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-  const { tools } = useTools();
-  const refreshTool = tools?.find(t => t.name === 'refresh_metrics');
+const server = new McpServer({
+  name: 'memory-server',
+  version: '1.0.0'
+});
+
+function App() {
+  return (
+    <McpMemoryProvider server={server}>
+      <CombinedComponent />
+    </McpMemoryProvider>
+  );
+}
+
+function CombinedComponent() {
+  // Can use both hooks
+  const { tools } = useMcpClient();
+  const { registerTool } = useMcpServer();
+
+  useEffect(() => {
+    const unregister = registerTool('echo', {
+      description: 'Echoes input',
+      inputSchema: z.object({ message: z.string() }),
+      handler: async ({ message }) => ({
+        content: [{ type: 'text', text: message }]
+      })
+    });
+    return unregister;
+  }, [registerTool]);
 
   return (
     <div>
-      <MetricsDisplay data={metrics} />
-      {refreshTool && (
-        <button onClick={() => callTool('refresh_metrics')}>
-          Refresh
-        </button>
+      <h3>Self-contained MCP app</h3>
+      <p>Tools available: {tools.length}</p>
+    </div>
+  );
+}
+```
+
+## Hook Return Values
+
+### useMcpClient Returns
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `client` | `Client` | MCP client instance |
+| `tools` | `McpTool[]` | Available tools from server |
+| `resources` | `Resource[]` | Available resources |
+| `isConnected` | `boolean` | Connection status |
+| `isLoading` | `boolean` | Loading state |
+| `error` | `Error \| null` | Connection error if any |
+| `capabilities` | `ServerCapabilities \| null` | Server capabilities |
+| `reconnect` | `() => Promise<void>` | Manual reconnection function |
+
+### useMcpServer Returns
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `server` | `McpServer` | MCP server instance |
+| `isConnected` | `boolean` | Connection status |
+| `isConnecting` | `boolean` | Connection in progress |
+| `error` | `Error \| null` | Connection error if any |
+| `registerTool` | `Function` | Register a tool dynamically |
+| `elicitInput` | `Function` | Request input from client |
+
+## Real-World Patterns
+
+### Dynamic Tool Registration
+
+```tsx
+function DynamicToolsComponent() {
+  const { registerTool } = useMcpServer();
+  const [registeredTools, setRegisteredTools] = useState([]);
+
+  const addCalculatorTool = () => {
+    const unregister = registerTool('calculate', {
+      description: 'Performs basic calculations',
+      inputSchema: z.object({
+        operation: z.enum(['add', 'subtract', 'multiply', 'divide']),
+        a: z.number(),
+        b: z.number()
+      }),
+      handler: async ({ operation, a, b }) => {
+        let result;
+        switch (operation) {
+          case 'add': result = a + b; break;
+          case 'subtract': result = a - b; break;
+          case 'multiply': result = a * b; break;
+          case 'divide': result = a / b; break;
+        }
+        return {
+          content: [{ 
+            type: 'text', 
+            text: `Result: ${result}` 
+          }]
+        };
+      }
+    });
+
+    setRegisteredTools(prev => [...prev, { name: 'calculate', unregister }]);
+  };
+
+  return (
+    <div>
+      <button onClick={addCalculatorTool}>Add Calculator Tool</button>
+      {registeredTools.map(tool => (
+        <div key={tool.name}>
+          {tool.name} 
+          <button onClick={() => tool.unregister()}>Remove</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Error Handling
+
+```tsx
+function RobustMcpComponent() {
+  const { client, error, reconnect, isConnected } = useMcpClient();
+  const [callError, setCallError] = useState(null);
+
+  const safeCallTool = async (toolName, args) => {
+    setCallError(null);
+    try {
+      const result = await client.callTool({
+        name: toolName,
+        arguments: args
+      });
+      return result;
+    } catch (err) {
+      setCallError(err);
+      console.error('Tool call failed:', err);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="error-state">
+        <p>Connection error: {error.message}</p>
+        <button onClick={reconnect}>Try Reconnecting</button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p>Status: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
+      {callError && <p className="error">Last error: {callError.message}</p>}
+      <button onClick={() => safeCallTool('myTool', {})}>
+        Call Tool Safely
+      </button>
+    </div>
+  );
+}
+```
+
+### Tool Discovery UI
+
+```tsx
+function ToolExplorer() {
+  const { tools, client } = useMcpClient();
+  const [selectedTool, setSelectedTool] = useState(null);
+  const [args, setArgs] = useState({});
+  const [result, setResult] = useState(null);
+
+  const executeTool = async () => {
+    if (!selectedTool) return;
+    
+    const response = await client.callTool({
+      name: selectedTool.name,
+      arguments: args
+    });
+    setResult(response);
+  };
+
+  return (
+    <div>
+      <select onChange={(e) => {
+        const tool = tools.find(t => t.name === e.target.value);
+        setSelectedTool(tool);
+        setArgs({});
+      }}>
+        <option>Select a tool</option>
+        {tools.map(tool => (
+          <option key={tool.name} value={tool.name}>
+            {tool.name}
+          </option>
+        ))}
+      </select>
+
+      {selectedTool && (
+        <div>
+          <h4>{selectedTool.description}</h4>
+          <pre>{JSON.stringify(selectedTool.inputSchema, null, 2)}</pre>
+          <textarea 
+            value={JSON.stringify(args, null, 2)}
+            onChange={(e) => setArgs(JSON.parse(e.target.value))}
+          />
+          <button onClick={executeTool}>Execute</button>
+        </div>
+      )}
+
+      {result && (
+        <div>
+          <h4>Result:</h4>
+          <pre>{JSON.stringify(result, null, 2)}</pre>
+        </div>
       )}
     </div>
   );
@@ -304,146 +383,104 @@ function Dashboard() {
 
 ## TypeScript Support
 
-### Custom Types
+The package includes full TypeScript definitions. You can import types for better type safety:
 
 ```tsx
-import { MCPProvider } from '@mcp-b/mcp-react-hooks';
-import type { Tool, Resource } from '@mcp-b/mcp-react-hooks';
+import type { 
+  McpClientProviderProps,
+  McpServerProviderProps,
+  McpMemoryProviderProps
+} from '@mcp-b/mcp-react-hooks';
 
-interface TodoTool extends Tool {
-  name: 'add_todo' | 'remove_todo' | 'update_todo';
-  inputSchema: {
+// Use with your own types
+interface MyTool {
+  name: 'customTool';
+  arguments: {
+    input: string;
+    options?: {
+      format: 'json' | 'text';
+    };
+  };
+}
+
+// Type your responses
+interface ToolResponse {
+  content: Array<{
+    type: 'text' | 'image';
     text?: string;
-    id?: number;
-    completed?: boolean;
-  };
-}
-
-// Use with typed hooks
-const { tools } = useTools<TodoTool>();
-```
-
-### Type-safe Tool Calls
-
-```tsx
-import { createTypedHooks } from '@mcp-b/mcp-react-hooks';
-
-interface MyTools {
-  add_todo: {
-    params: { text: string; priority?: 'low' | 'medium' | 'high' };
-    result: { id: number; text: string; created: Date };
-  };
-  remove_todo: {
-    params: { id: number };
-    result: { success: boolean };
-  };
-}
-
-const { useCallTool } = createTypedHooks<MyTools>();
-
-// Now fully typed
-const result = await useCallTool('add_todo', { 
-  text: 'Hello',
-  priority: 'high' 
-});
-// result is typed as { id: number; text: string; created: Date }
-```
-
-## Performance Optimization
-
-### Memoization
-
-```tsx
-import { useMemo } from 'react';
-import { useTools } from '@mcp-b/mcp-react-hooks';
-
-function ToolsList() {
-  const { tools } = useTools();
-  
-  const categorizedTools = useMemo(() => {
-    return tools?.reduce((acc, tool) => {
-      const category = tool.category || 'general';
-      acc[category] = acc[category] || [];
-      acc[category].push(tool);
-      return acc;
-    }, {});
-  }, [tools]);
-
-  return (
-    // Render categorized tools
-  );
+    data?: string;
+    mimeType?: string;
+  }>;
 }
 ```
 
-### Lazy Loading
+## Integration Examples
+
+### With React Router
 
 ```tsx
-import { lazy, Suspense } from 'react';
-
-const MCPProvider = lazy(() => 
-  import('@mcp-b/mcp-react-hooks').then(m => ({ default: m.MCPProvider }))
-);
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 function App() {
   return (
-    <Suspense fallback={<Loading />}>
-      <MCPProvider transport={transport}>
-        <YourApp />
-      </MCPProvider>
-    </Suspense>
+    <BrowserRouter>
+      <McpClientProvider client={client} transport={transport}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/tools" element={<ToolsPage />} />
+        </Routes>
+      </McpClientProvider>
+    </BrowserRouter>
   );
 }
 ```
 
-## Testing
-
-### Mock Provider
+### With State Management
 
 ```tsx
-import { MockMCPProvider } from '@mcp-b/mcp-react-hooks/testing';
+import { create } from 'zustand';
 
-const mockTools = [
-  { name: 'test_tool', description: 'Test tool' }
-];
+const useMcpStore = create((set) => ({
+  toolResults: [],
+  addToolResult: (result) => set((state) => ({
+    toolResults: [...state.toolResults, result]
+  }))
+}));
 
-describe('MyComponent', () => {
-  it('renders with mocked MCP', () => {
-    render(
-      <MockMCPProvider tools={mockTools}>
-        <MyComponent />
-      </MockMCPProvider>
-    );
-    
-    expect(screen.getByText('test_tool')).toBeInTheDocument();
-  });
-});
-```
+function IntegratedComponent() {
+  const { client } = useMcpClient();
+  const addToolResult = useMcpStore((state) => state.addToolResult);
 
-## Migration Guide
+  const callAndStore = async (toolName, args) => {
+    const result = await client.callTool({
+      name: toolName,
+      arguments: args
+    });
+    addToolResult({ toolName, args, result, timestamp: Date.now() });
+  };
 
-### From Direct Client Usage
-
-```tsx
-// Before
-const client = new McpClient(...);
-await client.connect();
-const tools = await client.listTools();
-
-// After
-function Component() {
-  const { tools } = useTools();
-  // Tools are automatically fetched and updated
+  return <button onClick={() => callAndStore('myTool', {})}>
+    Call and Store
+  </button>;
 }
 ```
 
+## Browser Compatibility
+
+- Chrome/Edge (Chromium): Full support
+- Firefox: Full support for tab transports
+- Safari: Full support for tab transports
+- All browsers require modern JavaScript features (ES2020+)
+
 ## Related Packages
 
-- [@mcp-b/transports](/packages/transports) - Transport layer for MCP
+- [@mcp-b/transports](/packages/transports) - Browser transport implementations
+- [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Core MCP SDK
 - [@mcp-b/mcp-react-hook-form](/packages/react-hook-form) - React Hook Form integration
-- [@mcp-b/extension-tools](/packages/extension-tools) - Chrome Extension tools
 
 ## Resources
 
 - [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
-- [Examples](https://github.com/WebMCP-org/examples)
+- [Working Examples](https://github.com/WebMCP-org/examples)
+- [MCP Protocol Specification](https://modelcontextprotocol.io)
 - [React Documentation](https://react.dev)
