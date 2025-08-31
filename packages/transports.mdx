@@ -7,7 +7,7 @@ icon: "arrows-rotate"
 
 ## Overview
 
-The `@mcp-b/transports` package provides browser-specific transport implementations for the Model Context Protocol (MCP). It enables communication between MCP servers/clients in browser tabs and Chrome extensions.
+The `@mcp-b/transports` package provides comprehensive transport implementations for the Model Context Protocol (MCP), enabling communication between MCP clients and servers across different browser environments including Chrome extensions, browser tabs, WebSockets, and Web Workers. These transports are production-tested and designed to work seamlessly with the official `@modelcontextprotocol/sdk`.
 
 ## Installation
 
@@ -16,6 +16,60 @@ npm install @mcp-b/transports
 ```
 
 ## Transport Types
+
+### ExtensionServerTransport
+
+Used by Chrome extensions to accept MCP connections from other extensions or web pages. This is the primary transport for building MCP-enabled Chrome extensions.
+
+```typescript
+import { ExtensionServerTransport } from '@mcp-b/transports';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+// In your Chrome extension's background script
+chrome.runtime.onConnectExternal.addListener((port) => {
+  const server = new McpServer({
+    name: 'my-extension-server',
+    version: '1.0.0'
+  });
+  
+  // Create transport with keep-alive for persistent connections
+  const transport = new ExtensionServerTransport(port, {
+    keepAlive: true,
+    keepAliveInterval: 25000 // 25 seconds
+  });
+  
+  server.connect(transport);
+  
+  // Handle disconnection
+  port.onDisconnect.addListener(() => {
+    server.close();
+    transport.close();
+  });
+});
+```
+
+### ExtensionClientTransport
+
+Used to connect to Chrome extensions that expose MCP servers. Supports auto-reconnection and is commonly used in sidepanels and popups.
+
+```typescript
+import { ExtensionClientTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+// Create transport with auto-reconnect
+const transport = new ExtensionClientTransport({
+  portName: 'mcp',
+  autoReconnect: true
+});
+
+// Create and connect MCP client
+const client = new Client({
+  name: 'Extension Sidepanel',
+  version: '1.0.0'
+});
+
+await client.connect(transport);
+```
 
 ### TabServerTransport
 
@@ -64,32 +118,49 @@ const client = new Client({
 await client.connect(transport);
 ```
 
-### ExtensionClientTransport
+### WebSocketClientTransport & WebSocketServerTransport
 
-Used to communicate with Chrome extensions that expose MCP servers.
+For real-time bidirectional communication over WebSockets.
 
 ```typescript
-import { ExtensionClientTransport } from '@mcp-b/transports';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { WebSocketClientTransport, WebSocketServerTransport } from '@mcp-b/transports';
 
-// Create transport for extension communication
-const transport = new ExtensionClientTransport({
-  extensionId: 'your-target-extension-id',
-  portName: 'mcp' // Optional, defaults to 'mcp'
+// Client side
+const clientTransport = new WebSocketClientTransport({
+  url: 'ws://localhost:3000',
+  autoReconnect: true
 });
 
-// Connect client
-const client = new Client({
-  name: 'extension-connector',
-  version: '1.0.0'
-}, {
-  capabilities: {}
+// Server side (Node.js or similar)
+const serverTransport = new WebSocketServerTransport({
+  port: 3000
 });
-
-await client.connect(transport);
 ```
 
-## Real-World Examples
+### WebWorkerClientTransport & WebWorkerServerTransport
+
+For running MCP servers in Web Workers for background processing.
+
+```typescript
+// In main thread
+import { WebWorkerClientTransport } from '@mcp-b/transports';
+
+const worker = new Worker('/mcp-worker.js');
+const transport = new WebWorkerClientTransport(worker);
+
+// In worker (mcp-worker.js)
+import { WebWorkerServerTransport } from '@mcp-b/transports';
+
+const transport = new WebWorkerServerTransport();
+const server = new McpServer({ name: 'worker-server', version: '1.0.0' });
+server.connect(transport);
+```
+
+## Production Usage Examples
+
+### Chrome Extension with MCP Server
+
+From the actual WebMCP Chrome extension implementation:
 
 ### Counter Application (Vanilla TypeScript)
 
@@ -161,64 +232,88 @@ async function mcpConnect() {
 }
 ```
 
-### Chrome Extension Connector
+### External Extension Connection Manager
 
-From the [extension-connector example](https://github.com/WebMCP-org/examples/tree/main/extension-connector):
+Handling connections from other extensions:
 
 ```typescript
-import { ExtensionClientTransport } from '@mcp-b/transports';
+import { ExtensionServerTransport } from '@mcp-b/transports';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-const TARGET_EXTENSION_ID = 'your-mcp-extension-id';
-const PORT_NAME = 'mcp';
+interface ExternalConnection {
+  server: McpServer;
+  transport: ExtensionServerTransport;
+}
 
-async function connectToMcpExtension() {
-  // Create transport for extension
-  const transport = new ExtensionClientTransport({
-    extensionId: TARGET_EXTENSION_ID,
-    portName: PORT_NAME,
-  });
-  
-  const client = new Client({
-    name: 'extension-client',
-    version: '1.0.0'
-  }, {
-    capabilities: {}
-  });
-  
-  try {
-    await client.connect(transport);
-    console.log('Connected to MCP extension');
+export function initExternalExtensionPortListener(
+  serverFactory: (extensionId: string) => McpServer
+) {
+  const connectionsByExtensionId = new Map<string, ExternalConnection>();
+
+  chrome.runtime.onConnectExternal.addListener((port) => {
+    const extensionId = port.sender?.id;
+    if (!extensionId) return;
+
+    // Close existing connection if present
+    const existing = connectionsByExtensionId.get(extensionId);
+    if (existing) {
+      existing.server.close();
+      existing.transport.close();
+      connectionsByExtensionId.delete(extensionId);
+    }
+
+    const server = serverFactory(extensionId);
+    const transport = new ExtensionServerTransport(port, {
+      keepAlive: true,
+      keepAliveInterval: 25_000,
+    });
     
-    // List available tools from extension
-    const tools = await client.listTools();
-    return { client, tools };
-  } catch (error) {
-    console.error('Failed to connect:', error);
-    throw error;
-  }
+    server.connect(transport);
+    connectionsByExtensionId.set(extensionId, { server, transport });
+
+    port.onDisconnect.addListener(() => {
+      const tracked = connectionsByExtensionId.get(extensionId);
+      if (tracked) {
+        tracked.server.close();
+        tracked.transport.close();
+        connectionsByExtensionId.delete(extensionId);
+      }
+    });
+  });
 }
 ```
 
 ## Configuration Options
+
+### ExtensionServerTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `port` | `chrome.runtime.Port` | Yes | Chrome runtime port object |
+| `keepAlive` | `boolean` | No | Enable keep-alive ping/pong (default: false) |
+| `keepAliveInterval` | `number` | No | Keep-alive interval in ms (default: 30000) |
+
+### ExtensionClientTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `portName` | `string` | No | Port name for connection (default: 'mcp') |
+| `autoReconnect` | `boolean` | No | Auto-reconnect on disconnect (default: false) |
+| `extensionId` | `string` | No | Target extension ID (for cross-extension) |
 
 ### TabServerTransport Options
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `allowedOrigins` | `string[]` | Yes | Array of allowed origins or `['*']` for all |
+| `handleConnection` | `function` | No | Callback when client connects |
+| `handleDisconnection` | `function` | No | Callback when client disconnects |
 
 ### TabClientTransport Options
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
-| `targetOrigin` | `string` | Yes | Origin of the target window (usually `window.location.origin`) |
-
-### ExtensionClientTransport Options
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `extensionId` | `string` | Yes | Chrome extension ID to connect to |
-| `portName` | `string` | No | Port name for connection (default: 'mcp') |
+| `targetOrigin` | `string` | Yes | Origin of the target window |
 
 ## Usage with MCP SDK
 

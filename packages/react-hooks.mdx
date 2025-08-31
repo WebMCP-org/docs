@@ -7,7 +7,7 @@ icon: "react"
 
 ## Overview
 
-The `@mcp-b/mcp-react-hooks` package provides React hooks and context providers for integrating the Model Context Protocol (MCP) into React applications. It supports both client and server functionality with automatic connection management.
+The `@mcp-b/mcp-react-hooks` package provides React hooks for integrating the Model Context Protocol (MCP) into React applications. The primary hook `useMcpClient` is used extensively in production for connecting to MCP servers, listing tools, and managing connections. The package also provides `useMcpServer` for creating MCP servers within React components.
 
 ## Installation
 
@@ -17,67 +17,69 @@ npm install @mcp-b/mcp-react-hooks @mcp-b/transports @modelcontextprotocol/sdk
 
 ## Providers and Hooks
 
-### McpClientProvider & useMcpClient
+### useMcpClient Hook
 
-Connect to an MCP server and consume its tools and resources.
+The primary hook for connecting to MCP servers. Used in production Chrome extensions and web applications.
 
 ```tsx
-import { McpClientProvider, useMcpClient } from '@mcp-b/mcp-react-hooks';
-import { TabClientTransport } from '@mcp-b/transports';
+import { useMcpClient } from '@mcp-b/mcp-react-hooks';
+import { ExtensionClientTransport } from '@mcp-b/transports';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
-// Create transport and client
-const transport = new TabClientTransport({
-  targetOrigin: window.location.origin
+// Real-world example from Chrome extension sidepanel
+export const transport = new ExtensionClientTransport({
+  portName: 'mcp',
+  autoReconnect: true,
 });
 
-const client = new Client({
-  name: 'my-app',
-  version: '1.0.0'
-}, {
-  capabilities: {}
+export const client = new Client({
+  name: 'Extension Sidepanel',
+  version: '1.0.0',
 });
 
-// Wrap your app
-function App() {
-  return (
-    <McpClientProvider client={client} transport={transport}>
-      <MyComponent />
-    </McpClientProvider>
-  );
-}
-
-// Use the hook
-function MyComponent() {
-  const { 
-    client, 
-    tools, 
-    resources, 
-    isConnected, 
-    isLoading, 
-    error,
+// In your component
+function McpServer() {
+  const {
+    client,
     capabilities,
-    reconnect
+    isLoading,
+    error,
+    resources,
+    tools: mcpTools,
+    isConnected,
   } = useMcpClient();
 
-  const handleCallTool = async () => {
+  // Call a tool with proper error handling
+  const callTool = async (toolName: string, data: any) => {
     if (!client) return;
     
-    const result = await client.callTool({
-      name: 'myTool',
-      arguments: { text: 'Hello' }
-    });
-    console.log(result);
+    try {
+      const result = await client.callTool({
+        name: toolName,
+        arguments: data,
+      });
+      
+      // Handle MCP tool result format
+      if (result?.content?.[0]?.text) {
+        return JSON.parse(result.content[0].text);
+      }
+      return result;
+    } catch (error) {
+      console.error(`Tool ${toolName} failed:`, error);
+      throw error;
+    }
   };
 
-  if (!isConnected) return <div>Connecting...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (isLoading) return <Skeleton />;
+  if (error) return <Alert variant="destructive">{error.message}</Alert>;
+  if (!isConnected) return <div>Disconnected</div>;
 
   return (
     <div>
-      <h3>Available Tools: {tools.length}</h3>
-      <button onClick={handleCallTool}>Call Tool</button>
-      <button onClick={reconnect}>Reconnect</button>
+      <h3>Connected - {mcpTools.length} tools available</h3>
+      {mcpTools.map(tool => (
+        <ToolCard key={tool.name} tool={tool} onCall={callTool} />
+      ))}
     </div>
   );
 }

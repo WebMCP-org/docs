@@ -1,0 +1,481 @@
+---
+title: '@mcp-b/cli'
+description: 'Global CLI tool for MCP development and server management'
+sidebarTitle: 'Global CLI'
+icon: 'terminal'
+---
+
+## Overview
+
+The `@mcp-b/cli` package is a global command-line tool that simplifies MCP development, testing, and server management. It provides utilities for scaffolding new MCP projects, running MCP servers, and testing MCP tools interactively.
+
+## Installation
+
+Install the CLI globally using npm:
+
+```bash
+npm install -g @mcp-b/cli
+```
+
+Or using yarn:
+
+```bash
+yarn global add @mcp-b/cli
+```
+
+Or using pnpm:
+
+```bash
+pnpm add -g @mcp-b/cli
+```
+
+## Key Features
+
+- **Project Scaffolding**: Quickly create new MCP projects with templates
+- **Server Management**: Start, stop, and manage MCP servers
+- **Interactive Testing**: Test MCP tools in a REPL environment
+- **Transport Configuration**: Easy setup for different transport types
+- **Tool Discovery**: List and explore available MCP tools
+- **Debug Mode**: Built-in debugging support for development
+
+## Quick Start
+
+### Create a New Project
+
+```bash
+# Create a new MCP server project
+mcp-b init my-mcp-server
+
+# Create with a specific template
+mcp-b init my-extension --template chrome-extension
+
+# Create a React app with MCP integration
+mcp-b init my-react-app --template react
+```
+
+### Start an MCP Server
+
+```bash
+# Start a server from the current directory
+mcp-b serve
+
+# Start with a specific config file
+mcp-b serve --config mcp.config.js
+
+# Start in debug mode
+mcp-b serve --debug
+
+# Start with a specific transport
+mcp-b serve --transport websocket --port 3000
+```
+
+### Interactive Tool Testing
+
+```bash
+# Start interactive REPL
+mcp-b repl
+
+# Connect to a running server
+mcp-b repl --connect ws://localhost:3000
+
+# Test a specific tool
+mcp-b test my-tool --input '{"param": "value"}'
+```
+
+## Project Templates
+
+### Chrome Extension Template
+
+```bash
+mcp-b init my-extension --template chrome-extension
+cd my-extension
+npm install
+```
+
+This creates a Chrome extension with:
+- Background script with MCP server
+- Content script with MCP client
+- Popup UI for tool interaction
+- Pre-configured manifest.json
+
+### React Application Template
+
+```bash
+mcp-b init my-app --template react
+cd my-app
+npm install
+npm run dev
+```
+
+This creates a React app with:
+- MCP server integration
+- React hooks for MCP
+- Example tools and forms
+- TypeScript configuration
+
+### Node.js Server Template
+
+```bash
+mcp-b init my-server --template node
+cd my-server
+npm install
+npm start
+```
+
+This creates a Node.js MCP server with:
+- Express integration (optional)
+- WebSocket transport setup
+- Example tool implementations
+- Environment configuration
+
+## Configuration
+
+### mcp.config.js
+
+Create an `mcp.config.js` file in your project root:
+
+```javascript
+module.exports = {
+  name: 'my-mcp-server',
+  version: '1.0.0',
+  transport: {
+    type: 'websocket',
+    port: 3000,
+    host: 'localhost'
+  },
+  tools: {
+    directory: './tools',
+    autoRegister: true
+  },
+  security: {
+    allowedOrigins: ['http://localhost:3000'],
+    requireAuth: false
+  },
+  debug: {
+    enabled: true,
+    logLevel: 'info'
+  }
+};
+```
+
+### Environment Variables
+
+The CLI respects the following environment variables:
+
+```bash
+# Server configuration
+MCP_SERVER_NAME=my-server
+MCP_SERVER_PORT=3000
+MCP_TRANSPORT_TYPE=websocket
+
+# Debug settings
+MCP_DEBUG=true
+MCP_LOG_LEVEL=debug
+
+# Security
+MCP_ALLOWED_ORIGINS=http://localhost:3000,https://myapp.com
+```
+
+## Command Reference
+
+### init
+
+Create a new MCP project:
+
+```bash
+mcp-b init <project-name> [options]
+
+Options:
+  --template, -t    Project template [chrome-extension|react|node|vanilla]
+  --typescript      Use TypeScript (default: true)
+  --git             Initialize git repository (default: true)
+  --install         Install dependencies (default: false)
+```
+
+### serve
+
+Start an MCP server:
+
+```bash
+mcp-b serve [options]
+
+Options:
+  --config, -c      Config file path (default: mcp.config.js)
+  --port, -p        Server port (default: 3000)
+  --transport, -t   Transport type [websocket|worker|tab]
+  --debug, -d       Enable debug mode
+  --watch, -w       Watch for file changes
+```
+
+### repl
+
+Start interactive REPL:
+
+```bash
+mcp-b repl [options]
+
+Options:
+  --connect, -c     Connect to server URL
+  --transport, -t   Transport type for connection
+  --history         Save command history
+```
+
+### list
+
+List available tools:
+
+```bash
+mcp-b list [options]
+
+Options:
+  --server, -s      Server URL to query
+  --json            Output as JSON
+  --details         Show detailed tool information
+```
+
+### test
+
+Test an MCP tool:
+
+```bash
+mcp-b test <tool-name> [options]
+
+Options:
+  --input, -i       Input JSON for the tool
+  --server, -s      Server URL
+  --validate        Validate input against schema
+```
+
+### validate
+
+Validate MCP configuration or tools:
+
+```bash
+mcp-b validate [options]
+
+Options:
+  --config          Validate config file
+  --tools           Validate tool implementations
+  --schema          Validate against MCP schema
+```
+
+## Development Workflow
+
+### 1. Initialize Project
+
+```bash
+# Create new project
+mcp-b init my-mcp-project --template node
+
+# Navigate to project
+cd my-mcp-project
+
+# Install dependencies
+npm install
+```
+
+### 2. Develop Tools
+
+Create tools in the `tools` directory:
+
+```javascript
+// tools/calculator.js
+export const calculator = {
+  name: 'calculator',
+  description: 'Perform calculations',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      operation: { type: 'string', enum: ['add', 'subtract', 'multiply', 'divide'] },
+      a: { type: 'number' },
+      b: { type: 'number' }
+    },
+    required: ['operation', 'a', 'b']
+  },
+  handler: async ({ operation, a, b }) => {
+    switch (operation) {
+      case 'add': return a + b;
+      case 'subtract': return a - b;
+      case 'multiply': return a * b;
+      case 'divide': return b !== 0 ? a / b : 'Cannot divide by zero';
+    }
+  }
+};
+```
+
+### 3. Test Tools
+
+```bash
+# Start server in debug mode
+mcp-b serve --debug --watch
+
+# In another terminal, test the tool
+mcp-b test calculator --input '{"operation": "add", "a": 5, "b": 3}'
+
+# Or use the REPL
+mcp-b repl
+> call calculator {"operation": "multiply", "a": 4, "b": 7}
+```
+
+### 4. Deploy
+
+```bash
+# Build for production
+npm run build
+
+# Start production server
+NODE_ENV=production mcp-b serve
+```
+
+## Advanced Usage
+
+### Custom Transport Implementation
+
+```javascript
+// mcp.config.js
+const { CustomTransport } = require('./custom-transport');
+
+module.exports = {
+  transport: {
+    custom: new CustomTransport({
+      // Custom transport options
+    })
+  }
+};
+```
+
+### Plugin System
+
+```javascript
+// mcp.config.js
+module.exports = {
+  plugins: [
+    '@mcp-b/plugin-auth',
+    '@mcp-b/plugin-logging',
+    {
+      name: 'custom-plugin',
+      setup: (server) => {
+        // Plugin initialization
+      }
+    }
+  ]
+};
+```
+
+### Middleware Support
+
+```javascript
+// mcp.config.js
+module.exports = {
+  middleware: [
+    async (context, next) => {
+      console.log('Before tool execution');
+      const result = await next();
+      console.log('After tool execution');
+      return result;
+    }
+  ]
+};
+```
+
+## Debugging
+
+### Enable Debug Output
+
+```bash
+# Set debug environment variable
+export MCP_DEBUG=true
+
+# Or use debug flag
+mcp-b serve --debug
+
+# Verbose output
+mcp-b serve --debug --log-level verbose
+```
+
+### Chrome DevTools Integration
+
+```bash
+# Start with inspector
+mcp-b serve --inspect
+
+# Start with inspector and break
+mcp-b serve --inspect-brk
+```
+
+### Logging
+
+```javascript
+// mcp.config.js
+module.exports = {
+  logging: {
+    level: 'debug',
+    format: 'json',
+    file: './logs/mcp.log',
+    console: true
+  }
+};
+```
+
+## Best Practices
+
+1. **Version Control**: Always specify versions in mcp.config.js
+2. **Security**: Configure allowed origins for production
+3. **Error Handling**: Implement proper error handling in tools
+4. **Testing**: Write tests for your MCP tools
+5. **Documentation**: Document your tools with clear descriptions
+6. **Type Safety**: Use TypeScript for better type checking
+
+## Common Issues
+
+### Port Already in Use
+
+```bash
+# Find process using port
+lsof -i :3000
+
+# Use different port
+mcp-b serve --port 3001
+```
+
+### Module Not Found
+
+```bash
+# Clear cache and reinstall
+npm cache clean --force
+npm install
+```
+
+### Transport Connection Failed
+
+```bash
+# Check transport configuration
+mcp-b validate --config
+
+# Test with different transport
+mcp-b serve --transport worker
+```
+
+## Migration Guide
+
+### From Manual Setup
+
+If you have an existing MCP implementation:
+
+1. Install the CLI globally
+2. Run `mcp-b init --from-existing` in your project
+3. Follow the migration wizard
+4. Update configuration as needed
+
+### Version Updates
+
+```bash
+# Check for updates
+npm outdated -g @mcp-b/cli
+
+# Update to latest
+npm update -g @mcp-b/cli
+
+# Update project dependencies
+mcp-b update
+```
