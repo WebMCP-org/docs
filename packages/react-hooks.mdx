@@ -1,0 +1,449 @@
+---
+title: "@mcp-b/mcp-react-hooks"
+description: "React hooks for seamless MCP integration in React applications"
+sidebarTitle: "React Hooks"
+icon: "react"
+---
+
+## Overview
+
+The `@mcp-b/mcp-react-hooks` package provides React-friendly APIs and hooks for integrating the Model Context Protocol into React applications. It offers a declarative way to interact with MCP servers and manage connection state.
+
+## Installation
+
+```bash
+npm install @mcp-b/mcp-react-hooks @mcp-b/transports
+```
+
+## Key Features
+
+- Ready-to-use React hooks
+- Automatic connection management
+- Built-in error handling and retry logic
+- TypeScript support
+- Server-side rendering compatible
+- Optimized re-renders with proper memoization
+
+## Basic Usage
+
+### Setting up the Provider
+
+```tsx
+import { MCPProvider } from '@mcp-b/mcp-react-hooks';
+import { BrowserTransport } from '@mcp-b/transports';
+
+const transport = new BrowserTransport({
+  url: 'ws://localhost:8080'
+});
+
+function App() {
+  return (
+    <MCPProvider transport={transport}>
+      <YourApp />
+    </MCPProvider>
+  );
+}
+```
+
+### Using MCP Hooks
+
+```tsx
+import { useMCP, useTools, useCallTool } from '@mcp-b/mcp-react-hooks';
+
+function TodoList() {
+  const { connected, error } = useMCP();
+  const { tools, loading } = useTools();
+  const callTool = useCallTool();
+
+  const handleAddTodo = async (text: string) => {
+    try {
+      const result = await callTool('add_todo', { text });
+      console.log('Todo added:', result);
+    } catch (error) {
+      console.error('Failed to add todo:', error);
+    }
+  };
+
+  if (!connected) return <div>Connecting...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (loading) return <div>Loading tools...</div>;
+
+  return (
+    <div>
+      {/* Your todo list UI */}
+    </div>
+  );
+}
+```
+
+## Hooks API
+
+### useMCP
+
+Access the MCP connection state and client instance.
+
+```tsx
+const { client, connected, connecting, error } = useMCP();
+```
+
+**Returns:**
+- `client`: MCP client instance
+- `connected`: Boolean indicating connection status
+- `connecting`: Boolean indicating if currently connecting
+- `error`: Error object if connection failed
+
+### useTools
+
+List available MCP tools.
+
+```tsx
+const { tools, loading, error, refetch } = useTools();
+```
+
+**Returns:**
+- `tools`: Array of available tools
+- `loading`: Boolean indicating if tools are being fetched
+- `error`: Error object if fetching failed
+- `refetch`: Function to manually refetch tools
+
+### useCallTool
+
+Get a function to call MCP tools.
+
+```tsx
+const callTool = useCallTool();
+
+// Usage
+const result = await callTool('tool_name', { 
+  param1: 'value1',
+  param2: 'value2'
+});
+```
+
+### useResources
+
+List and manage MCP resources.
+
+```tsx
+const { resources, loading, error, refetch } = useResources();
+```
+
+### usePrompts
+
+Access available prompts from the MCP server.
+
+```tsx
+const { prompts, loading, error } = usePrompts();
+```
+
+### useSubscription
+
+Subscribe to MCP server notifications.
+
+```tsx
+useSubscription('document/update', (params) => {
+  console.log('Document updated:', params);
+});
+```
+
+## Advanced Usage
+
+### Custom Hook Configuration
+
+```tsx
+import { createMCPHooks } from '@mcp-b/mcp-react-hooks';
+
+// Create custom hooks with specific configuration
+const { useMCP, useTools } = createMCPHooks({
+  reconnectOnError: true,
+  retryAttempts: 3,
+  retryDelay: 1000
+});
+```
+
+### Error Boundaries
+
+```tsx
+import { MCPErrorBoundary } from '@mcp-b/mcp-react-hooks';
+
+function App() {
+  return (
+    <MCPErrorBoundary fallback={<ErrorFallback />}>
+      <MCPProvider transport={transport}>
+        <YourApp />
+      </MCPProvider>
+    </MCPErrorBoundary>
+  );
+}
+
+function ErrorFallback({ error, retry }) {
+  return (
+    <div>
+      <p>MCP connection failed: {error.message}</p>
+      <button onClick={retry}>Retry</button>
+    </div>
+  );
+}
+```
+
+### Optimistic Updates
+
+```tsx
+function TodoList() {
+  const [todos, setTodos] = useState([]);
+  const callTool = useCallTool();
+
+  const addTodo = async (text: string) => {
+    // Optimistic update
+    const tempId = Date.now();
+    setTodos(prev => [...prev, { id: tempId, text, pending: true }]);
+
+    try {
+      const result = await callTool('add_todo', { text });
+      // Replace temp todo with real one
+      setTodos(prev => 
+        prev.map(todo => 
+          todo.id === tempId ? { ...result, pending: false } : todo
+        )
+      );
+    } catch (error) {
+      // Rollback on error
+      setTodos(prev => prev.filter(todo => todo.id !== tempId));
+      throw error;
+    }
+  };
+
+  return (
+    // Your UI
+  );
+}
+```
+
+## Use Cases
+
+### Voice Agent with React Flow
+
+From the [reactFlowVoiceAgent example](https://github.com/WebMCP-org/examples):
+
+```tsx
+import { useMCP, useCallTool } from '@mcp-b/mcp-react-hooks';
+import ReactFlow from 'reactflow';
+
+function VoiceAgent() {
+  const { connected } = useMCP();
+  const callTool = useCallTool();
+
+  const handleVoiceCommand = async (transcript: string) => {
+    const result = await callTool('process_voice_command', {
+      transcript,
+      context: getCurrentFlowContext()
+    });
+    
+    updateFlowBasedOnResult(result);
+  };
+
+  return (
+    <div>
+      <ReactFlow />
+      <VoiceInput onTranscript={handleVoiceCommand} />
+    </div>
+  );
+}
+```
+
+### Form Integration
+
+```tsx
+import { useForm } from 'react-hook-form';
+import { useCallTool } from '@mcp-b/mcp-react-hooks';
+
+function ContactForm() {
+  const { register, handleSubmit } = useForm();
+  const callTool = useCallTool();
+
+  const onSubmit = async (data) => {
+    await callTool('submit_contact', data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register('name')} />
+      <input {...register('email')} />
+      <textarea {...register('message')} />
+      <button type="submit">Send</button>
+    </form>
+  );
+}
+```
+
+### Real-time Dashboard
+
+```tsx
+function Dashboard() {
+  const [metrics, setMetrics] = useState({});
+  
+  useSubscription('metrics/update', (data) => {
+    setMetrics(prev => ({ ...prev, ...data }));
+  });
+
+  const { tools } = useTools();
+  const refreshTool = tools?.find(t => t.name === 'refresh_metrics');
+
+  return (
+    <div>
+      <MetricsDisplay data={metrics} />
+      {refreshTool && (
+        <button onClick={() => callTool('refresh_metrics')}>
+          Refresh
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+## TypeScript Support
+
+### Custom Types
+
+```tsx
+import { MCPProvider } from '@mcp-b/mcp-react-hooks';
+import type { Tool, Resource } from '@mcp-b/mcp-react-hooks';
+
+interface TodoTool extends Tool {
+  name: 'add_todo' | 'remove_todo' | 'update_todo';
+  inputSchema: {
+    text?: string;
+    id?: number;
+    completed?: boolean;
+  };
+}
+
+// Use with typed hooks
+const { tools } = useTools<TodoTool>();
+```
+
+### Type-safe Tool Calls
+
+```tsx
+import { createTypedHooks } from '@mcp-b/mcp-react-hooks';
+
+interface MyTools {
+  add_todo: {
+    params: { text: string; priority?: 'low' | 'medium' | 'high' };
+    result: { id: number; text: string; created: Date };
+  };
+  remove_todo: {
+    params: { id: number };
+    result: { success: boolean };
+  };
+}
+
+const { useCallTool } = createTypedHooks<MyTools>();
+
+// Now fully typed
+const result = await useCallTool('add_todo', { 
+  text: 'Hello',
+  priority: 'high' 
+});
+// result is typed as { id: number; text: string; created: Date }
+```
+
+## Performance Optimization
+
+### Memoization
+
+```tsx
+import { useMemo } from 'react';
+import { useTools } from '@mcp-b/mcp-react-hooks';
+
+function ToolsList() {
+  const { tools } = useTools();
+  
+  const categorizedTools = useMemo(() => {
+    return tools?.reduce((acc, tool) => {
+      const category = tool.category || 'general';
+      acc[category] = acc[category] || [];
+      acc[category].push(tool);
+      return acc;
+    }, {});
+  }, [tools]);
+
+  return (
+    // Render categorized tools
+  );
+}
+```
+
+### Lazy Loading
+
+```tsx
+import { lazy, Suspense } from 'react';
+
+const MCPProvider = lazy(() => 
+  import('@mcp-b/mcp-react-hooks').then(m => ({ default: m.MCPProvider }))
+);
+
+function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <MCPProvider transport={transport}>
+        <YourApp />
+      </MCPProvider>
+    </Suspense>
+  );
+}
+```
+
+## Testing
+
+### Mock Provider
+
+```tsx
+import { MockMCPProvider } from '@mcp-b/mcp-react-hooks/testing';
+
+const mockTools = [
+  { name: 'test_tool', description: 'Test tool' }
+];
+
+describe('MyComponent', () => {
+  it('renders with mocked MCP', () => {
+    render(
+      <MockMCPProvider tools={mockTools}>
+        <MyComponent />
+      </MockMCPProvider>
+    );
+    
+    expect(screen.getByText('test_tool')).toBeInTheDocument();
+  });
+});
+```
+
+## Migration Guide
+
+### From Direct Client Usage
+
+```tsx
+// Before
+const client = new McpClient(...);
+await client.connect();
+const tools = await client.listTools();
+
+// After
+function Component() {
+  const { tools } = useTools();
+  // Tools are automatically fetched and updated
+}
+```
+
+## Related Packages
+
+- [@mcp-b/transports](/packages/transports) - Transport layer for MCP
+- [@mcp-b/mcp-react-hook-form](/packages/react-hook-form) - React Hook Form integration
+- [@mcp-b/extension-tools](/packages/extension-tools) - Chrome Extension tools
+
+## Resources
+
+- [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
+- [Examples](https://github.com/WebMCP-org/examples)
+- [React Documentation](https://react.dev)
