@@ -1,13 +1,13 @@
 ---
 title: "@mcp-b/transports"
-description: "Browser-specific MCP transport implementations for client-server communication"
+description: "Browser-specific MCP transport implementations for tab and extension communication"
 sidebarTitle: "Transports"
 icon: "arrows-rotate"
 ---
 
 ## Overview
 
-The `@mcp-b/transports` package provides browser-specific transport implementations for the Model Context Protocol (MCP). It enables communication between MCP servers and clients using browser-native mechanisms.
+The `@mcp-b/transports` package provides browser-specific transport implementations for the Model Context Protocol (MCP). It enables communication between MCP servers/clients in browser tabs and Chrome extensions.
 
 ## Installation
 
@@ -15,231 +15,288 @@ The `@mcp-b/transports` package provides browser-specific transport implementati
 npm install @mcp-b/transports
 ```
 
-## Key Features
+## Transport Types
 
-- Browser-native transport mechanisms
-- WebSocket and postMessage support
-- Automatic reconnection handling
-- TypeScript support with full type definitions
+### TabServerTransport
 
-## Basic Usage
-
-### Setting up a Transport
+Used by MCP servers running in browser tabs to accept connections.
 
 ```typescript
-import { BrowserTransport } from '@mcp-b/transports';
+import { TabServerTransport } from '@mcp-b/transports';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-// Create a new transport instance
-const transport = new BrowserTransport({
-  url: 'ws://localhost:8080',
-  reconnect: true,
-  reconnectInterval: 5000
+// Create MCP server
+const server = new McpServer({
+  name: 'PersonalAIWebsite',
+  version: '1.0.0',
 });
 
-// Connect to the MCP server
-await transport.connect();
-
-// Send messages
-await transport.send({
-  method: 'tools/call',
-  params: {
-    name: 'myTool',
-    arguments: { /* tool arguments */ }
-  }
+// Create transport with allowed origins
+const transport = new TabServerTransport({
+  allowedOrigins: ['*'] // Or specify specific origins for security
 });
 
-// Listen for messages
-transport.on('message', (message) => {
-  console.log('Received:', message);
-});
+// Connect server to transport
+await server.connect(transport);
 ```
 
-### Using with Chrome Extensions
+### TabClientTransport
+
+Used by MCP clients to connect to servers in the same browser context.
 
 ```typescript
-import { ExtensionTransport } from '@mcp-b/transports';
+import { TabClientTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
-// Create transport for Chrome extension context
-const transport = new ExtensionTransport({
-  extensionId: 'your-extension-id'
+// Create transport targeting current origin
+const transport = new TabClientTransport({
+  targetOrigin: window.location.origin
 });
 
-// Connect to extension
-await transport.connect();
-
-// Use the transport
-const response = await transport.request({
-  method: 'tools/list'
+// Create and connect MCP client
+const client = new Client({
+  name: 'web-client',
+  version: '1.0.0'
+}, {
+  capabilities: {}
 });
+
+await client.connect(transport);
 ```
 
-## Advanced Configuration
+### ExtensionClientTransport
 
-### Custom Transport Options
+Used to communicate with Chrome extensions that expose MCP servers.
 
 ```typescript
-const transport = new BrowserTransport({
-  // WebSocket endpoint
-  url: 'ws://localhost:8080',
-  
-  // Reconnection settings
-  reconnect: true,
-  reconnectInterval: 5000,
-  maxReconnectAttempts: 10,
-  
-  // Message timeout
-  requestTimeout: 30000,
-  
-  // Custom headers (for WebSocket)
-  headers: {
-    'Authorization': 'Bearer token'
-  }
+import { ExtensionClientTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+// Create transport for extension communication
+const transport = new ExtensionClientTransport({
+  extensionId: 'your-target-extension-id',
+  portName: 'mcp' // Optional, defaults to 'mcp'
 });
+
+// Connect client
+const client = new Client({
+  name: 'extension-connector',
+  version: '1.0.0'
+}, {
+  capabilities: {}
+});
+
+await client.connect(transport);
 ```
 
-### Error Handling
+## Real-World Examples
 
-```typescript
-transport.on('error', (error) => {
-  console.error('Transport error:', error);
-});
-
-transport.on('disconnect', () => {
-  console.log('Disconnected from server');
-});
-
-transport.on('reconnect', (attempt) => {
-  console.log(`Reconnecting... attempt ${attempt}`);
-});
-```
-
-## Use Cases
-
-### Todo List Application
+### Counter Application (Vanilla TypeScript)
 
 From the [vanilla-ts example](https://github.com/WebMCP-org/examples/tree/main/vanilla-ts):
 
 ```typescript
-import { BrowserTransport } from '@mcp-b/transports';
-import { McpClient } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabServerTransport } from '@mcp-b/transports';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import z from 'zod';
 
-// Initialize transport
-const transport = new BrowserTransport({
-  url: 'ws://localhost:3000'
+const server = new McpServer({
+  name: 'PersonalAIWebsite',
+  version: '1.0.0',
 });
 
-// Create MCP client
-const client = new McpClient({
-  name: 'todo-app',
-  version: '1.0.0'
-}, {
-  transport: transport
-});
-
-// Connect and use
-await client.connect(transport);
-
-// List available tools
-const tools = await client.listTools();
-
-// Call a tool
-const result = await client.callTool(
-  'add_todo',
-  { text: 'Complete MCP integration' }
-);
-```
-
-### Real-time Collaboration
-
-```typescript
-// Set up transport for real-time updates
-const transport = new BrowserTransport({
-  url: 'wss://collab.example.com',
-  reconnect: true
-});
-
-// Subscribe to updates
-transport.on('notification', (notification) => {
-  if (notification.method === 'document/update') {
-    updateDocument(notification.params);
+// Register tools with the server
+server.addTool({
+  name: 'incrementCounter',
+  description: 'Increment the counter',
+  inputSchema: z.object({}),
+  handler: async () => {
+    counter++;
+    updateDisplay();
+    return {
+      content: [{ 
+        type: 'text', 
+        text: `Counter incremented to ${counter}` 
+      }]
+    };
   }
 });
+
+// Set up transport
+const transport = new TabServerTransport({
+  allowedOrigins: ['*']
+});
+
+// Connect and start serving
+await server.connect(transport);
+console.log('MCP Server running in browser tab');
 ```
 
-## Integration with React
+### React Flow Voice Agent
 
-For React applications, consider using [@mcp-b/mcp-react-hooks](/packages/react-hooks) which provides React-specific abstractions on top of this transport layer.
-
-## API Reference
-
-### BrowserTransport
-
-Main transport class for browser environments.
-
-#### Constructor Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `url` | `string` | Required | WebSocket endpoint URL |
-| `reconnect` | `boolean` | `true` | Enable automatic reconnection |
-| `reconnectInterval` | `number` | `5000` | Milliseconds between reconnection attempts |
-| `maxReconnectAttempts` | `number` | `Infinity` | Maximum number of reconnection attempts |
-| `requestTimeout` | `number` | `30000` | Request timeout in milliseconds |
-
-#### Methods
-
-- `connect(): Promise<void>` - Establish connection to server
-- `disconnect(): void` - Close the connection
-- `send(message: any): Promise<void>` - Send a message
-- `request(message: any): Promise<any>` - Send a request and wait for response
-- `on(event: string, handler: Function): void` - Subscribe to events
-- `off(event: string, handler: Function): void` - Unsubscribe from events
-
-### ExtensionTransport
-
-Transport implementation for Chrome extensions.
-
-#### Constructor Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `extensionId` | `string` | Required | Chrome extension ID |
-| `timeout` | `number` | `30000` | Request timeout |
-
-## Troubleshooting
-
-### Connection Issues
-
-If you're experiencing connection problems:
-
-1. Verify the WebSocket URL is correct and accessible
-2. Check browser console for CORS errors
-3. Ensure the MCP server is running and listening
-4. Verify firewall settings allow WebSocket connections
-
-### Message Format Errors
-
-Ensure messages follow the MCP protocol format:
+From the [ReactFlowVoiceAgent example](https://github.com/WebMCP-org/examples/tree/main/ReactFlowVoiceAgent):
 
 ```typescript
+import { TabClientTransport } from '@mcp-b/transports';
+
+async function mcpConnect() {
+  // Create transport for same-origin communication
+  const transport = new TabClientTransport({
+    targetOrigin: window.location.origin
+  });
+  
+  // Use with MCP client
+  const client = new Client({
+    name: 'voice-agent',
+    version: '1.0.0'
+  }, {
+    capabilities: {}
+  });
+  
+  await client.connect(transport);
+  
+  // Now you can list and call tools
+  const tools = await client.listTools();
+  console.log('Available tools:', tools);
+}
+```
+
+### Chrome Extension Connector
+
+From the [extension-connector example](https://github.com/WebMCP-org/examples/tree/main/extension-connector):
+
+```typescript
+import { ExtensionClientTransport } from '@mcp-b/transports';
+
+const TARGET_EXTENSION_ID = 'your-mcp-extension-id';
+const PORT_NAME = 'mcp';
+
+async function connectToMcpExtension() {
+  // Create transport for extension
+  const transport = new ExtensionClientTransport({
+    extensionId: TARGET_EXTENSION_ID,
+    portName: PORT_NAME,
+  });
+  
+  const client = new Client({
+    name: 'extension-client',
+    version: '1.0.0'
+  }, {
+    capabilities: {}
+  });
+  
+  try {
+    await client.connect(transport);
+    console.log('Connected to MCP extension');
+    
+    // List available tools from extension
+    const tools = await client.listTools();
+    return { client, tools };
+  } catch (error) {
+    console.error('Failed to connect:', error);
+    throw error;
+  }
+}
+```
+
+## Configuration Options
+
+### TabServerTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `allowedOrigins` | `string[]` | Yes | Array of allowed origins or `['*']` for all |
+
+### TabClientTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `targetOrigin` | `string` | Yes | Origin of the target window (usually `window.location.origin`) |
+
+### ExtensionClientTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `extensionId` | `string` | Yes | Chrome extension ID to connect to |
+| `portName` | `string` | No | Port name for connection (default: 'mcp') |
+
+## Usage with MCP SDK
+
+This package is designed to work with the official MCP SDK:
+
+```typescript
+import { TabServerTransport } from '@mcp-b/transports';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+// Or for clients:
+import { TabClientTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+```
+
+## TypeScript Support
+
+Full TypeScript definitions are included. The transports implement the standard MCP transport interfaces:
+
+```typescript
+interface Transport {
+  // Implementation details handled by the transport
+  start(): Promise<void>;
+  send(message: JSONRPCMessage): Promise<void>;
+  close(): Promise<void>;
+}
+```
+
+## Browser Compatibility
+
+- Chrome/Chromium: Full support
+- Firefox: Tab transports supported, extension transport requires adaptation
+- Safari: Tab transports supported, no extension support
+- Edge: Full support (Chromium-based)
+
+## Security Considerations
+
+### CORS and Origins
+
+When using `TabServerTransport`, always specify explicit allowed origins in production:
+
+```typescript
+// ❌ Don't use wildcards in production
+const transport = new TabServerTransport({
+  allowedOrigins: ['*']
+});
+
+// ✅ Specify exact origins
+const transport = new TabServerTransport({
+  allowedOrigins: [
+    'https://myapp.com',
+    'https://app.myapp.com'
+  ]
+});
+```
+
+### Extension Permissions
+
+When using `ExtensionClientTransport`, ensure your extension manifest includes appropriate permissions:
+
+```json
 {
-  jsonrpc: "2.0",
-  method: "tools/call",
-  params: {
-    // method-specific parameters
-  },
-  id: "unique-request-id"
+  "permissions": ["tabs", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "externally_connectable": {
+    "matches": ["*://*.yourdomain.com/*"]
+  }
 }
 ```
 
 ## Related Packages
 
-- [@mcp-b/mcp-react-hooks](/packages/react-hooks) - React hooks for MCP
-- [@mcp-b/extension-tools](/packages/extension-tools) - Chrome Extension API tools
-- [@mcp-b/web-tools](https://www.npmjs.com/package/@mcp-b/web-tools) - Web-specific MCP tools
+- [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Official MCP SDK
+- [@mcp-b/web-tools](https://www.npmjs.com/package/@mcp-b/web-tools) - MCP tools for web APIs
+- [@mcp-b/mcp-react-hooks](/packages/react-hooks) - React hooks for MCP integration
 
 ## Resources
 
 - [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
-- [Examples](https://github.com/WebMCP-org/examples)
+- [Working Examples](https://github.com/WebMCP-org/examples)
 - [MCP Protocol Specification](https://modelcontextprotocol.io)
+- [Chrome Extension Development](https://developer.chrome.com/docs/extensions)

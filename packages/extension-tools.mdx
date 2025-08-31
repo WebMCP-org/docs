@@ -1,13 +1,13 @@
 ---
 title: "@mcp-b/extension-tools"
-description: "MCP tools for Chrome Extension APIs with auto-generated bindings"
+description: "MCP wrappers for Chrome Extension APIs enabling protocol-based browser control"
 sidebarTitle: "Extension Tools"
 icon: "puzzle-piece"
 ---
 
 ## Overview
 
-The `@mcp-b/extension-tools` package provides auto-generated MCP tools for interacting with Chrome Extension APIs. It enables AI agents to control browser functionality through the Model Context Protocol.
+The `@mcp-b/extension-tools` package provides Model Context Protocol (MCP) wrappers for Chrome Extension APIs. It enables standardized, protocol-based access to browser extension functionalities, allowing MCP clients to interact with Chrome's extensive API surface.
 
 ## Installation
 
@@ -17,477 +17,403 @@ npm install @mcp-b/extension-tools
 
 ## Key Features
 
-- Auto-generated bindings for Chrome Extension APIs
-- Full TypeScript support
-- Permission-aware tool exposure
-- Secure sandboxed execution
-- Compatible with Manifest V3
+- MCP wrappers for 62+ Chrome Extension APIs
+- Full TypeScript support with comprehensive type definitions
+- Zod-based input validation and schema generation
+- Structured error handling and response formatting
+- Compatible with Manifest V3 extensions
+
+## Architecture
+
+The package wraps Chrome Extension APIs into MCP-compatible tools, enabling remote procedure calls through the MCP protocol. Each Chrome API is wrapped in its own tools class that extends `BaseApiTools`.
 
 ## Basic Usage
 
-### Setting up Extension Tools
+### Setting Up in Background Script
 
 ```typescript
-import { ExtensionTools } from '@mcp-b/extension-tools';
-import { McpServer } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { TabServerTransport } from '@mcp-b/transports';
+import { 
+  TabsApiTools,
+  StorageApiTools,
+  BookmarksApiTools 
+} from '@mcp-b/extension-tools';
 
-// Initialize extension tools
-const extensionTools = new ExtensionTools({
-  permissions: ['tabs', 'storage', 'bookmarks']
-});
-
-// Register with MCP server
+// Create MCP server
 const server = new McpServer({
   name: 'chrome-extension-server',
   version: '1.0.0'
 });
 
-// Add tools to server
-extensionTools.registerTools(server);
+// Register Chrome API tools
+const tabsTools = new TabsApiTools(server, {
+  createTab: true,
+  updateTab: true,
+  removeTabs: true,
+  queryTabs: true
+});
+tabsTools.register();
+
+const storageTools = new StorageApiTools(server, {
+  getStorageData: true,
+  setStorageData: true,
+  removeStorageData: true
+});
+storageTools.register();
+
+// Set up transport
+const transport = new TabServerTransport({
+  allowedOrigins: ['*']
+});
+
+// Connect server to transport
+await server.connect(transport);
 ```
 
-### Using in Content Scripts
+### Client-Side Usage
 
 ```typescript
-// content-script.ts
-import { createExtensionBridge } from '@mcp-b/extension-tools';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
 
-const bridge = createExtensionBridge();
-
-// Expose tools to the page
-bridge.exposeTools([
-  'tabs.query',
-  'tabs.create',
-  'storage.local.get',
-  'storage.local.set'
-]);
-
-// Listen for tool calls from the page
-bridge.onToolCall(async (tool, params) => {
-  console.log(`Tool called: ${tool}`, params);
-  // Tool execution is handled automatically
-});
-```
-
-## Available Tools
-
-### Tabs API
-
-```typescript
-// Query tabs
-const tabs = await callTool('tabs.query', {
-  active: true,
-  currentWindow: true
+const transport = new TabClientTransport({
+  targetOrigin: window.location.origin
 });
 
-// Create new tab
-const newTab = await callTool('tabs.create', {
-  url: 'https://example.com',
-  active: true
+const client = new Client({
+  name: 'web-client',
+  version: '1.0.0'
+}, {
+  capabilities: {}
 });
 
-// Update tab
-await callTool('tabs.update', {
-  tabId: tabs[0].id,
-  url: 'https://newurl.com'
-});
+await client.connect(transport);
 
-// Close tabs
-await callTool('tabs.remove', {
-  tabIds: [tab.id]
-});
-```
-
-### Storage API
-
-```typescript
-// Store data
-await callTool('storage.local.set', {
-  key: 'user_preferences',
-  value: { theme: 'dark', language: 'en' }
-});
-
-// Retrieve data
-const data = await callTool('storage.local.get', {
-  keys: ['user_preferences']
-});
-
-// Clear storage
-await callTool('storage.local.clear');
-```
-
-### Bookmarks API
-
-```typescript
-// Create bookmark
-const bookmark = await callTool('bookmarks.create', {
-  title: 'My Site',
-  url: 'https://example.com',
-  parentId: '1' // Bookmarks bar
-});
-
-// Search bookmarks
-const results = await callTool('bookmarks.search', {
-  query: 'example'
-});
-
-// Get bookmark tree
-const tree = await callTool('bookmarks.getTree');
-```
-
-### History API
-
-```typescript
-// Search history
-const historyItems = await callTool('history.search', {
-  text: 'example',
-  maxResults: 100
-});
-
-// Add URL to history
-await callTool('history.addUrl', {
-  url: 'https://example.com'
-});
-
-// Delete URL from history
-await callTool('history.deleteUrl', {
-  url: 'https://example.com'
-});
-```
-
-### Runtime API
-
-```typescript
-// Send message
-await callTool('runtime.sendMessage', {
-  message: { action: 'getData' }
-});
-
-// Get extension info
-const info = await callTool('runtime.getManifest');
-
-// Open options page
-await callTool('runtime.openOptionsPage');
-```
-
-## Advanced Configuration
-
-### Permission-based Tool Filtering
-
-```typescript
-const extensionTools = new ExtensionTools({
-  // Only expose tools for granted permissions
-  autoDetectPermissions: true,
-  
-  // Or manually specify
-  permissions: ['tabs', 'storage'],
-  
-  // Exclude specific tools
-  excludeTools: ['tabs.remove', 'storage.local.clear'],
-  
-  // Custom tool filter
-  toolFilter: (toolName) => {
-    return !toolName.includes('delete') && !toolName.includes('remove');
-  }
-});
-```
-
-### Custom Tool Wrappers
-
-```typescript
-import { wrapExtensionTool } from '@mcp-b/extension-tools';
-
-// Wrap a Chrome API with custom logic
-const customTabsQuery = wrapExtensionTool('tabs.query', {
-  // Pre-process parameters
-  beforeCall: (params) => {
-    console.log('Querying tabs:', params);
-    return params;
-  },
-  
-  // Post-process results
-  afterCall: (result, params) => {
-    console.log(`Found ${result.length} tabs`);
-    return result;
-  },
-  
-  // Handle errors
-  onError: (error, params) => {
-    console.error('Tab query failed:', error);
-    throw new Error('Failed to query tabs');
-  }
-});
-```
-
-## Use Cases
-
-### Browser Automation
-
-```typescript
-// Automated testing scenario
-async function runTest() {
-  // Open test page
-  const tab = await callTool('tabs.create', {
-    url: 'https://test.example.com'
-  });
-  
-  // Wait for page load
-  await callTool('tabs.onUpdated.addListener', {
-    tabId: tab.id,
-    changeInfo: { status: 'complete' }
-  });
-  
-  // Inject test script
-  await callTool('tabs.executeScript', {
-    tabId: tab.id,
-    code: 'document.querySelector("button").click()'
-  });
-  
-  // Check results
-  const results = await callTool('tabs.sendMessage', {
-    tabId: tab.id,
-    message: { action: 'getTestResults' }
-  });
-  
-  // Clean up
-  await callTool('tabs.remove', { tabIds: [tab.id] });
-  
-  return results;
-}
-```
-
-### Data Extraction
-
-```typescript
-// Extract data from multiple tabs
-async function extractData() {
-  const tabs = await callTool('tabs.query', {
-    url: '*://*.example.com/*'
-  });
-  
-  const results = await Promise.all(
-    tabs.map(tab => 
-      callTool('tabs.sendMessage', {
-        tabId: tab.id,
-        message: { action: 'extractData' }
-      })
-    )
-  );
-  
-  // Store extracted data
-  await callTool('storage.local.set', {
-    key: 'extracted_data',
-    value: results
-  });
-  
-  return results;
-}
-```
-
-### Session Management
-
-```typescript
-// Save browsing session
-async function saveSession() {
-  const tabs = await callTool('tabs.query', {
+// Call Chrome API through MCP
+const tabs = await client.callTool({
+  name: 'query_tabs',
+  arguments: {
+    active: true,
     currentWindow: true
-  });
-  
-  const session = {
-    timestamp: Date.now(),
-    tabs: tabs.map(tab => ({
-      url: tab.url,
-      title: tab.title,
-      index: tab.index
-    }))
-  };
-  
-  await callTool('storage.local.set', {
-    key: 'saved_session',
-    value: session
-  });
-  
-  return session;
-}
-
-// Restore session
-async function restoreSession() {
-  const { saved_session } = await callTool('storage.local.get', {
-    keys: ['saved_session']
-  });
-  
-  if (!saved_session) return;
-  
-  for (const tabInfo of saved_session.tabs) {
-    await callTool('tabs.create', {
-      url: tabInfo.url,
-      index: tabInfo.index
-    });
   }
+});
+
+const newTab = await client.callTool({
+  name: 'create_tab',
+  arguments: {
+    url: 'https://example.com',
+    active: true
+  }
+});
+```
+
+## Available API Wrappers
+
+### Core Browser APIs
+
+#### TabsApiTools
+```typescript
+const tabsTools = new TabsApiTools(server, {
+  createTab: true,        // chrome.tabs.create
+  updateTab: true,        // chrome.tabs.update
+  removeTabs: true,       // chrome.tabs.remove
+  queryTabs: true,        // chrome.tabs.query
+  getTab: true,           // chrome.tabs.get
+  duplicateTab: true,     // chrome.tabs.duplicate
+  highlightTabs: true,    // chrome.tabs.highlight
+  moveTabs: true          // chrome.tabs.move
+});
+```
+
+#### WindowsApiTools
+```typescript
+const windowsTools = new WindowsApiTools(server, {
+  createWindow: true,     // chrome.windows.create
+  updateWindow: true,     // chrome.windows.update
+  removeWindow: true,     // chrome.windows.remove
+  getWindow: true,        // chrome.windows.get
+  getAllWindows: true,    // chrome.windows.getAll
+  getCurrentWindow: true  // chrome.windows.getCurrent
+});
+```
+
+#### StorageApiTools
+```typescript
+const storageTools = new StorageApiTools(server, {
+  getStorageData: true,    // chrome.storage.local.get
+  setStorageData: true,    // chrome.storage.local.set
+  removeStorageData: true, // chrome.storage.local.remove
+  clearStorage: true,      // chrome.storage.local.clear
+  getBytesInUse: true      // chrome.storage.local.getBytesInUse
+});
+```
+
+### Content & Scripting APIs
+
+#### ScriptingApiTools
+```typescript
+const scriptingTools = new ScriptingApiTools(server, {
+  executeScript: true,     // chrome.scripting.executeScript
+  insertCSS: true,         // chrome.scripting.insertCSS
+  removeCSS: true,         // chrome.scripting.removeCSS
+  registerContentScripts: true,
+  unregisterContentScripts: true
+});
+```
+
+### Data Management APIs
+
+#### BookmarksApiTools
+```typescript
+const bookmarksTools = new BookmarksApiTools(server, {
+  createBookmark: true,    // chrome.bookmarks.create
+  removeBookmark: true,    // chrome.bookmarks.remove
+  updateBookmark: true,    // chrome.bookmarks.update
+  searchBookmarks: true,   // chrome.bookmarks.search
+  getBookmarkTree: true    // chrome.bookmarks.getTree
+});
+```
+
+#### HistoryApiTools
+```typescript
+const historyTools = new HistoryApiTools(server, {
+  searchHistory: true,     // chrome.history.search
+  addUrl: true,            // chrome.history.addUrl
+  deleteUrl: true,         // chrome.history.deleteUrl
+  deleteRange: true,       // chrome.history.deleteRange
+  deleteAll: true          // chrome.history.deleteAll
+});
+```
+
+#### DownloadsApiTools
+```typescript
+const downloadsTools = new DownloadsApiTools(server, {
+  download: true,          // chrome.downloads.download
+  pauseDownload: true,     // chrome.downloads.pause
+  resumeDownload: true,    // chrome.downloads.resume
+  cancelDownload: true,    // chrome.downloads.cancel
+  searchDownloads: true    // chrome.downloads.search
+});
+```
+
+### System APIs
+
+#### SystemApiTools
+```typescript
+// CPU information
+const cpuTools = new SystemCpuApiTools(server, {
+  getCpuInfo: true         // chrome.system.cpu.getInfo
+});
+
+// Memory information
+const memoryTools = new SystemMemoryApiTools(server, {
+  getMemoryInfo: true      // chrome.system.memory.getInfo
+});
+
+// Display information
+const displayTools = new SystemDisplayApiTools(server, {
+  getDisplayInfo: true,    // chrome.system.display.getInfo
+  getDisplayLayout: true   // chrome.system.display.getDisplayLayout
+});
+```
+
+## Real-World Example: Extension Connector
+
+From the [extension-connector example](https://github.com/WebMCP-org/examples/tree/main/extension-connector):
+
+```typescript
+// background.ts
+import { ExtensionClientTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+const TARGET_EXTENSION_ID = 'your-mcp-extension-id';
+const PORT_NAME = 'mcp';
+
+async function connectToMcpExtension() {
+  const transport = new ExtensionClientTransport({
+    extensionId: TARGET_EXTENSION_ID,
+    portName: PORT_NAME,
+  });
+  
+  const client = new Client({
+    name: 'extension-client',
+    version: '1.0.0'
+  }, {
+    capabilities: {}
+  });
+  
+  await client.connect(transport);
+  
+  // Now you can call tools exposed by the MCP extension
+  const tools = await client.listTools();
+  console.log('Available tools:', tools);
+  
+  // Call a specific tool
+  const tabs = await client.callTool({
+    name: 'query_tabs',
+    arguments: { active: true }
+  });
+  
+  return { client, tools, tabs };
+}
+```
+
+## Tool Registration Options
+
+Each API tools class accepts configuration options to control which tools are registered:
+
+```typescript
+interface TabsApiToolsOptions {
+  createTab?: boolean;
+  updateTab?: boolean;
+  removeTabs?: boolean;
+  queryTabs?: boolean;
+  getTab?: boolean;
+  duplicateTab?: boolean;
+  highlightTabs?: boolean;
+  moveTabs?: boolean;
+  reloadTab?: boolean;
+  captureVisibleTab?: boolean;
+  executeScript?: boolean;
+  insertCSS?: boolean;
+  removeCSS?: boolean;
+  detectLanguage?: boolean;
+  setZoom?: boolean;
+  getZoom?: boolean;
+  setZoomSettings?: boolean;
+  getZoomSettings?: boolean;
+}
+```
+
+## Input Validation
+
+All tools use Zod schemas for input validation:
+
+```typescript
+// Example: TabsApiTools validation schema
+const createTabSchema = z.object({
+  windowId: z.number().optional(),
+  index: z.number().optional(),
+  url: z.string().optional(),
+  active: z.boolean().optional(),
+  pinned: z.boolean().optional(),
+  openerTabId: z.number().optional()
+});
+
+// The tool automatically validates inputs before execution
+```
+
+## Error Handling
+
+The package provides structured error responses:
+
+```typescript
+try {
+  const result = await client.callTool({
+    name: 'create_tab',
+    arguments: { url: 'invalid-url' }
+  });
+} catch (error) {
+  // Error includes structured information
+  console.error({
+    tool: error.tool,
+    message: error.message,
+    validationErrors: error.validationErrors
+  });
 }
 ```
 
 ## Security Considerations
 
-### Content Security Policy
+### Manifest Permissions
 
-```javascript
-// manifest.json
+Ensure your extension manifest includes required permissions:
+
+```json
 {
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'"
-  },
+  "manifest_version": 3,
   "permissions": [
     "tabs",
     "storage",
-    "activeTab"
+    "bookmarks",
+    "history",
+    "downloads"
   ],
   "host_permissions": [
-    "*://*.example.com/*"
-  ]
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
 }
 ```
 
-### Message Validation
+### Tool Access Control
+
+Control which tools are exposed:
 
 ```typescript
-import { validateToolCall } from '@mcp-b/extension-tools';
-
-// Validate tool calls before execution
-bridge.onToolCall(async (tool, params) => {
-  // Validate the tool call
-  const validation = validateToolCall(tool, params);
-  
-  if (!validation.valid) {
-    throw new Error(`Invalid tool call: ${validation.error}`);
-  }
-  
-  // Check permissions
-  if (!hasPermission(tool)) {
-    throw new Error(`No permission for tool: ${tool}`);
-  }
-  
-  // Execute tool
-  return await executeToolCall(tool, params);
-});
-```
-
-## Integration Examples
-
-### With Background Service Worker
-
-```typescript
-// background.js
-import { ExtensionTools } from '@mcp-b/extension-tools';
-import { BrowserTransport } from '@mcp-b/transports';
-
-const tools = new ExtensionTools();
-const transport = new BrowserTransport({
-  url: 'ws://localhost:8080'
-});
-
-// Handle incoming MCP requests
-transport.on('request', async (request) => {
-  if (request.method === 'tools/call') {
-    const result = await tools.executeTool(
-      request.params.name,
-      request.params.arguments
-    );
-    return result;
-  }
-});
-```
-
-### With React Extension
-
-```tsx
-// popup.tsx
-import { ExtensionToolsProvider, useExtensionTool } from '@mcp-b/extension-tools/react';
-
-function Popup() {
-  return (
-    <ExtensionToolsProvider>
-      <TabManager />
-    </ExtensionToolsProvider>
-  );
-}
-
-function TabManager() {
-  const callTool = useExtensionTool();
-  const [tabs, setTabs] = useState([]);
-  
-  useEffect(() => {
-    loadTabs();
-  }, []);
-  
-  const loadTabs = async () => {
-    const result = await callTool('tabs.query', {});
-    setTabs(result);
-  };
-  
-  return (
-    <div>
-      {tabs.map(tab => (
-        <TabItem key={tab.id} tab={tab} />
-      ))}
-    </div>
-  );
-}
-```
-
-## Testing
-
-### Mock Extension Environment
-
-```typescript
-import { mockChromeAPI } from '@mcp-b/extension-tools/testing';
-
-describe('Extension Tools', () => {
-  beforeEach(() => {
-    mockChromeAPI({
-      tabs: {
-        query: jest.fn(() => Promise.resolve([
-          { id: 1, url: 'https://example.com' }
-        ]))
-      }
+// Only register specific tools based on permissions
+chrome.permissions.contains({
+  permissions: ['tabs']
+}, (hasPermission) => {
+  if (hasPermission) {
+    const tabsTools = new TabsApiTools(server, {
+      queryTabs: true,  // Read-only operations
+      createTab: false, // Disable creation
+      removeTabs: false // Disable deletion
     });
-  });
-  
-  it('should query tabs', async () => {
-    const tools = new ExtensionTools();
-    const result = await tools.executeTool('tabs.query', {});
-    expect(result).toHaveLength(1);
-  });
+    tabsTools.register();
+  }
 });
 ```
 
-## Troubleshooting
+## Complete API List
 
-### Common Issues
+The package provides wrappers for 62+ Chrome APIs including:
 
-1. **Permission Denied**: Ensure the required permissions are declared in manifest.json
-2. **Tool Not Found**: Check that the Chrome API is available in the current context
-3. **Invalid Parameters**: Verify parameter types match Chrome API documentation
+- **Browser Control**: tabs, windows, browserAction, pageAction
+- **Storage**: storage, cookies, sessions
+- **Content**: bookmarks, history, downloads, topSites
+- **Communication**: runtime, messaging, notifications
+- **DevTools**: debugger, devtools
+- **System**: system.cpu, system.memory, system.storage, system.display
+- **Identity**: identity, oauth2
+- **Enterprise**: enterprise.platformKeys, enterprise.deviceAttributes
+- **Privacy**: privacy, contentSettings
+- **Network**: proxy, vpnProvider, webRequest
+- **Management**: management, permissions, commands
 
-### Debug Mode
+## TypeScript Support
+
+Full TypeScript definitions are provided:
 
 ```typescript
-const tools = new ExtensionTools({
-  debug: true,
-  logger: (level, message, data) => {
-    console.log(`[${level}] ${message}`, data);
-  }
-});
+import type { 
+  TabsApiToolsOptions,
+  StorageApiToolsOptions,
+  BookmarksApiToolsOptions 
+} from '@mcp-b/extension-tools';
+
+// Type-safe tool configuration
+const options: TabsApiToolsOptions = {
+  createTab: true,
+  updateTab: true,
+  removeTabs: false // Explicitly disable dangerous operations
+};
 ```
 
 ## Related Packages
 
-- [@mcp-b/transports](/packages/transports) - Transport layer for MCP
+- [@mcp-b/transports](/packages/transports) - Transport implementations for MCP
+- [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Core MCP SDK
 - [@mcp-b/mcp-react-hooks](/packages/react-hooks) - React hooks for MCP
-- [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
 
 ## Resources
 
 - [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
-- [Extension Examples](https://github.com/WebMCP-org/examples/tree/main/extension-connector)
+- [Extension Connector Example](https://github.com/WebMCP-org/examples/tree/main/extension-connector)
 - [Chrome Extension API Reference](https://developer.chrome.com/docs/extensions/reference/)
+- [MCP Protocol Specification](https://modelcontextprotocol.io)
