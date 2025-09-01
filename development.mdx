@@ -1,79 +1,130 @@
 ---
 title: 'Development'
-description: 'Learn how to preview changes locally'
+description: 'Learn how to set up and develop with WebMCP locally'
 ---
 
 <Info>
-  **Prerequisite** You should have installed Node.js (version 18.10.0 or
-  higher).
+  **Prerequisites** You should have installed Node.js (version 18.0.0 or higher) and pnpm package manager.
 </Info>
 
-Step 1. Install Mintlify on your OS:
+## Getting Started
 
-<CodeGroup>
-
-```bash npm
-npm i -g mintlify
-```
-
-```bash yarn
-yarn global add mintlify
-```
-
-```bash pnpm
-pnpm add -g mintlify
-```
-
-</CodeGroup>
-
-Step 2. Go to the docs are located (where you can find `mint.json`) and run the following command:
+Step 1. Clone the WebMCP repository:
 
 ```bash
-mintlify dev
+git clone https://github.com/MiguelsPizza/WebMCP.git
+cd WebMCP
 ```
 
-The documentation website is now available at `http://localhost:3000`.
-
-### Custom Ports
-
-Mintlify uses port 3000 by default. You can use the `--port` flag to customize the port Mintlify runs on. For example, use this command to run in port 3333:
+Step 2. Install dependencies:
 
 ```bash
-mintlify dev --port 3333
+pnpm install
 ```
 
-You will see an error like this if you try to run Mintlify in a port that's already taken:
+Step 3. Build shared packages first:
 
-```md
-Error: listen EADDRINUSE: address already in use :::3000
+```bash
+pnpm build:shared
 ```
 
-## Mintlify Versions
+Step 4. Start development mode:
 
-Please note that each CLI release is independent of the API versioning which is used in the mint.json file.
+```bash
+pnpm dev
+```
 
-<Warning>
-  Mintlify CLI version 4.0.0+ requires Node v18.0.0+. We recommend [updating
-  your node version](https://stackoverflow.com/questions/10075990/upgrading-node-js-to-latest-version) 
-  if you haven't already.
-</Warning>
+This runs all applications in development mode with hot reloading.
+
+## Development Ports
+
+The WebMCP development environment uses the following ports:
+
+- **Main dev server**: 5173-5174
+- **Extension dev server**: 3000  
+- **Native host**: 12306
+
+Make sure these ports are available before starting development.
+
+## Repository Structure
+
+```
+WebMCP/
+├── apps/                    # Application packages
+│   ├── extension/          # Browser extension
+│   ├── backend/            # Backend server (Cloudflare Workers)
+│   └── native-server/      # Native messaging host
+├── shared/                 # Internal shared packages
+│   └── utils/             # Shared utility functions
+└── e2e-tests/             # End-to-end tests
+```
+
+## Building Specific Components
+
+### Extension Development
+
+For extension-specific development with hot reloading:
+
+```bash
+pnpm --filter @mcp-b/extension dev
+```
+
+### Building Extension for Production
+
+```bash
+pnpm --filter @mcp-b/extension build
+```
+
+The built extension will be available in `./apps/extension/.output/chrome-mv3` for loading as an unpacked extension.
 
 ## Troubleshooting
 
-Here's how to solve some common problems when working with the CLI.
-
 <AccordionGroup>
-  <Accordion title="Mintlify is not loading">
-    Update to Node v18. Run `mintlify install` and try again.
+  <Accordion title="Git clone times out">
+    If the initial clone fails, complete it manually:
+    ```bash
+    git clone https://github.com/MiguelsPizza/WebMCP.git
+    cd WebMCP
+    git pull origin main
+    ```
   </Accordion>
-  <Accordion title="No such file or directory on Windows">
-    Go to the `C:/Users/Username/.mintlify/` directory and remove the `mint`
-    folder. Then run `mintlify dev` again.
+  
+  <Accordion title="Native server postinstall errors">
+    These errors during `pnpm install` are normal and can be ignored:
+    ```
+    Cannot find module '/path/to/apps/native-server/dist/scripts/postinstall.js'
+    ```
+    The packages will still build correctly.
   </Accordion>
-  <Accordion title="Getting an unknown error">
-    Try navigating to the root of your device and delete the ~/.mintlify
-    folder. Afterwards, run `mintlify dev` again.
+  
+  <Accordion title="Import resolution errors">
+    For monorepo development, ensure the workspace is properly built:
+    ```bash
+    pnpm build:shared  # Build internal shared packages
+    pnpm build:apps     # Build all applications
+    ```
+  </Accordion>
+  
+  <Accordion title="Port conflicts">
+    If you encounter port conflicts, check that the following ports are available:
+    - Main dev server: 5173-5174
+    - Extension dev server: 3000
+    - Native host: 12306
+  </Accordion>
+  
+  <Accordion title="Extension not detecting tools">
+    1. Ensure the extension is installed and enabled
+    2. Refresh the page after starting your MCP server
+    3. Check the extension popup "Tools" tab
+    4. Look for console errors in browser DevTools
   </Accordion>
 </AccordionGroup>
 
-Curious about what changed in a CLI version? [Check out the CLI changelog.](https://www.npmjs.com/package/mintlify?activeTab=versions)
+## Additional Resources
+
+- **NPM Packages**: Core packages (@mcp-b/transports, @mcp-b/mcp-react-hooks, etc.)
+- **Examples Repository**: Starter projects and demos
+- **Web Demo**: Full-stack demo site with documentation
+- **Userscripts**: Tampermonkey scripts for popular websites
+
+For more examples and detailed integration guides, check out the [MCP-B Examples Repository](https://github.com/MiguelsPizza/WebMCP).
