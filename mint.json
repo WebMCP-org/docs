@@ -2,8 +2,8 @@
   "$schema": "https://mintlify.com/schema.json",
   "name": "WebMCP Documentation",
   "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
+    "dark": "/logo/mcp-b-logo.png",
+    "light": "/logo/mcp-b-logo.png"
   },
   "favicon": "/favicon.svg",
   "colors": {
