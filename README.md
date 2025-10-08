@@ -50,12 +50,6 @@ mintlify build
 │   ├── settings.mdx
 │   ├── navigation.mdx
 │   └── reusable-snippets.mdx
-├── api-reference/      # API documentation
-│   ├── introduction.mdx
-│   └── endpoint/
-│       ├── get.mdx
-│       ├── create.mdx
-│       └── delete.mdx
 ├── logo/              # Logo assets
 │   ├── light.svg
 │   └── dark.svg
