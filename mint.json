@@ -5,7 +5,7 @@
     "dark": "/logo/mcp-b-logo.png",
     "light": "/logo/mcp-b-logo.png"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.ico",
   "colors": {
     "primary": "#1F5EFF",
     "light": "#4B7BFF",
