@@ -118,44 +118,6 @@ const client = new Client({
 await client.connect(transport);
 ```
 
-### WebSocketClientTransport & WebSocketServerTransport
-
-For real-time bidirectional communication over WebSockets.
-
-```typescript
-import { WebSocketClientTransport, WebSocketServerTransport } from '@mcp-b/transports';
-
-// Client side
-const clientTransport = new WebSocketClientTransport({
-  url: 'ws://localhost:3000',
-  autoReconnect: true
-});
-
-// Server side (Node.js or similar)
-const serverTransport = new WebSocketServerTransport({
-  port: 3000
-});
-```
-
-### WebWorkerClientTransport & WebWorkerServerTransport
-
-For running MCP servers in Web Workers for background processing.
-
-```typescript
-// In main thread
-import { WebWorkerClientTransport } from '@mcp-b/transports';
-
-const worker = new Worker('/mcp-worker.js');
-const transport = new WebWorkerClientTransport(worker);
-
-// In worker (mcp-worker.js)
-import { WebWorkerServerTransport } from '@mcp-b/transports';
-
-const transport = new WebWorkerServerTransport();
-const server = new McpServer({ name: 'worker-server', version: '1.0.0' });
-server.connect(transport);
-```
-
 ## Production Usage Examples
 
 ### Chrome Extension with MCP Server
