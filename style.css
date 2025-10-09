@@ -1,0 +1,53 @@
+/* Make the anchor horizontal and place the label to the right of the image */
+a:has(> img.nav-logo) {
+  display: inline-flex;
+  align-items: center; /* vertically center image + label */
+  gap: 0.5rem; /* space between image and label */
+}
+
+/* The label is now inserted by JS as a real element: .nav-logo-label
+   Keep anchor layout above; the JS will insert a span.nav-logo-label after the visible img.nav-logo. */
+
+.nav-logo-label {
+  display: inline-block;
+  font-size: 1rem;
+  pointer-events: none;
+  color: var(--nav-logo-label-color, currentColor);
+  line-height: 1;
+}
+
+/* Set theme-aware label color variable so the JS-inserted .nav-logo-label looks correct.
+   Cover data-attribute/class-based theme markers and prefers-color-scheme as fallbacks. */
+:root[data-theme="light"],
+html[data-theme="light"],
+body.theme-light,
+.theme--light,
+.light-mode,
+.mint-light,
+html:not(.dark),
+:not(.dark) {
+  --nav-logo-label-color: #0b0b0b;
+  --nav-logo-label-weight: 600;
+}
+
+:root[data-theme="dark"],
+html[data-theme="dark"],
+body.theme-dark,
+.theme--dark,
+.dark-mode,
+.mint-dark,
+html.dark,
+.dark {
+  --nav-logo-label-color: #e6e6e6;
+  --nav-logo-label-weight: 400;
+}
+
+@media (prefers-color-scheme: light) {
+  :root { --nav-logo-label-color: #0b0b0b; --nav-logo-label-weight: 600; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { --nav-logo-label-color: #e6e6e6; --nav-logo-label-weight: 400; }
+}
+
+.nav-logo-label { font-weight: var(--nav-logo-label-weight, 600); }
