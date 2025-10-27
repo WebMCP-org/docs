@@ -1,48 +1,18 @@
 ---
 title: 'Quick Start'
-description: 'Get WebMCP running in minutes'
+description: 'Add AI agent support to your website in minutes'
 ---
 
+WebMCP is a **polyfill for the W3C Web Model Context API** that lets you expose JavaScript functions to AI agents through the `navigator.modelContext` standard.
+
 <Info>
-  **Prerequisites**: Node.js 18+, [MCP-B Chrome Extension](https://chrome.google.com/webstore/detail/mcp-b)
+  **Prerequisites**: [MCP-B Chrome Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
 </Info>
 
 ## Installation
 
 <Tabs>
-  <Tab title="Script Tag">
-    ```html
-    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-    <script>
-      navigator.modelContext.provideContext({
-        tools: [{
-          name: "get_page_title",
-          description: "Get current page title",
-          inputSchema: { type: "object", properties: {} },
-          async execute() {
-            return { content: [{ type: "text", text: document.title }] };
-          }
-        }]
-      });
-    </script>
-    ```
-  </Tab>
-
-  <Tab title="NPM">
-    ```bash
-    pnpm add @mcp-b/global
-    ```
-
-    ```javascript
-    import '@mcp-b/global';
-
-    navigator.modelContext.provideContext({
-      tools: [/* your tools */]
-    });
-    ```
-  </Tab>
-
-  <Tab title="React">
+  <Tab title="React (Recommended)">
     ```bash
     pnpm add @mcp-b/react-webmcp @mcp-b/global zod
     ```
@@ -54,11 +24,16 @@ description: 'Get WebMCP running in minutes'
 
     function MyComponent() {
       useWebMCP({
-        name: 'my_tool',
-        description: 'Tool description',
-        inputSchema: { param: z.string() },
-        handler: async ({ param }) => {
-          return { result: 'success' };
+        name: 'get_page_info',
+        description: 'Get current page information',
+        inputSchema: {
+          includeUrl: z.boolean().optional()
+        },
+        handler: async ({ includeUrl }) => {
+          return {
+            title: document.title,
+            ...(includeUrl && { url: window.location.href })
+          };
         }
       });
 
@@ -66,38 +41,110 @@ description: 'Get WebMCP running in minutes'
     }
     ```
   </Tab>
+
+  <Tab title="Vanilla JS">
+    ```bash
+    pnpm add @mcp-b/global
+    ```
+
+    ```javascript
+    import '@mcp-b/global';
+
+    // Register individual tools (recommended)
+    const registration = navigator.modelContext.registerTool({
+      name: "get_page_title",
+      description: "Get current page title",
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        return {
+          content: [{ type: "text", text: document.title }]
+        };
+      }
+    });
+
+    // Later, unregister if needed
+    // registration.unregister();
+    ```
+  </Tab>
+
+  <Tab title="Script Tag">
+    ```html
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    <script>
+      // Register tools using the standard API
+      navigator.modelContext.registerTool({
+        name: "get_page_title",
+        description: "Get current page title",
+        inputSchema: { type: "object", properties: {} },
+        async execute() {
+          return { content: [{ type: "text", text: document.title }] };
+        }
+      });
+    </script>
+    ```
+  </Tab>
 </Tabs>
 
 ## Real-World Example
 
-Wrap existing application logic as tools:
+Wrap your existing application logic as tools:
 
-```javascript
-navigator.modelContext.provideContext({
-  tools: [{
-    name: "add_to_cart",
-    description: "Add item to shopping cart",
-    inputSchema: {
-      type: "object",
-      properties: {
-        productId: { type: "string" },
-        quantity: { type: "number", minimum: 1 }
-      },
-      required: ["productId", "quantity"]
-    },
-    async execute({ productId, quantity }) {
-      await fetch('/api/cart/add', {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: JSON.stringify({ productId, quantity })
+<Tabs>
+  <Tab title="React">
+    ```tsx
+    import { useWebMCP } from '@mcp-b/react-webmcp';
+    import { z } from 'zod';
+
+    function ProductPage() {
+      useWebMCP({
+        name: "add_to_cart",
+        description: "Add item to shopping cart",
+        inputSchema: {
+          productId: z.string(),
+          quantity: z.number().min(1)
+        },
+        handler: async ({ productId, quantity }) => {
+          await fetch('/api/cart/add', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: JSON.stringify({ productId, quantity })
+          });
+          return { success: true, quantity };
+        }
       });
-      return {
-        content: [{ type: "text", text: `Added ${quantity} items` }]
-      };
+
+      return <div>Product Page</div>;
     }
-  }]
-});
-```
+    ```
+  </Tab>
+
+  <Tab title="Vanilla JS">
+    ```javascript
+    navigator.modelContext.registerTool({
+      name: "add_to_cart",
+      description: "Add item to shopping cart",
+      inputSchema: {
+        type: "object",
+        properties: {
+          productId: { type: "string" },
+          quantity: { type: "number", minimum: 1 }
+        },
+        required: ["productId", "quantity"]
+      },
+      async execute({ productId, quantity }) {
+        await fetch('/api/cart/add', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: JSON.stringify({ productId, quantity })
+        });
+        return {
+          content: [{ type: "text", text: `Added ${quantity} items` }]
+        };
+      }
+    });
+    ```
+  </Tab>
+</Tabs>
 
 ## Testing
 
@@ -144,13 +191,17 @@ navigator.modelContext.provideContext({
 
 ## Best Practices
 
-**Security**: Only expose tools allowed via UI. Validate inputs. Tools run with same permissions as your page.
+**Use `registerTool()` for most cases**: Register individual tools with `navigator.modelContext.registerTool()`. This gives you control over tool lifecycle and works great with component-scoped tools.
 
-**Tool Design**: Wrap existing logic, don't duplicate. Use descriptive names. Add visual feedback.
+**Use `provideContext()` sparingly**: Only use `navigator.modelContext.provideContext()` for top-level base tools. It replaces all base tools each time it's called.
 
-**Authentication**: Use `credentials: 'same-origin'`. Tools respect session cookies.
+**React users**: Use the `useWebMCP()` hook - it handles registration, cleanup, and Zod validation automatically.
 
-**Performance**: In React, tools auto-register/cleanup. Register dynamically based on page state.
+**Security**: Only expose tools that users can already perform via your UI. Validate all inputs. Tools run with the same permissions as your page.
+
+**Tool Design**: Wrap existing logic, don't duplicate it. Use descriptive names. Provide visual feedback when tools execute.
+
+**Authentication**: Use `credentials: 'same-origin'` in fetch calls. Tools automatically respect session cookies and user authentication.
 
 ## Next Steps
 

@@ -1,422 +1,539 @@
 ---
-title: 'Advanced Usage'
-description: 'Advanced WebMCP features and patterns for production applications'
+title: 'Advanced Patterns'
+description: 'Advanced WebMCP patterns for complex websites and applications'
 ---
 
-## Dynamic Tool Management
+## Dynamic Tool Registration
 
-### Registering and Unregistering Tools
+### Conditional Tools Based on User State
 
-Tools can be dynamically registered and unregistered based on application state:
+Register tools based on authentication, permissions, or user roles:
 
-```javascript
-// Register tools based on user role
-if (user.isAdmin) {
-  server.tool("deleteUser", "Delete a user", 
-    { userId: z.string() },
-    async ({ userId }) => {
-      await deleteUser(userId);
-      return { content: [{ type: "text", text: "User deleted" }] };
-    }
-  );
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useAuth } from './auth';
+import { z } from 'zod';
+
+function AdminPanel() {
+  const { user } = useAuth();
+
+  // Only register admin tools if user is admin
+  useWebMCP({
+    name: 'delete_user',
+    description: 'Delete a user account (admin only)',
+    inputSchema: {
+      userId: z.string().uuid()
+    },
+    handler: async ({ userId }) => {
+      if (!user?.isAdmin) {
+        throw new Error('Unauthorized');
+      }
+      await api.users.delete(userId);
+      return { success: true };
+    },
+    // Only register if user is admin
+    enabled: user?.isAdmin
+  });
+
+  return <div>Admin Panel</div>;
 }
-
-// Unregister when no longer needed
-server.unregisterTool("deleteUser");
 ```
 
 ### Page-Specific Tools
 
-Register different tools for different pages:
+Register different tools based on the current route:
 
-```javascript
-// Router-based tool registration
-router.on('route:change', (route) => {
-  // Clear previous page tools
-  clearPageTools();
-  
-  switch(route.name) {
-    case 'dashboard':
-      registerDashboardTools();
-      break;
-    case 'settings':
-      registerSettingsTools();
-      break;
-    case 'admin':
-      if (user.isAdmin) {
-        registerAdminTools();
-      }
-      break;
-  }
-});
-```
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useLocation } from 'react-router-dom';
+import { z } from 'zod';
 
-## Tool Caching
-
-Optimize performance with tool result caching:
-
-```javascript
-server.tool(
-  "expensiveQuery",
-  "Run an expensive database query",
-  { query: z.string() },
-  async ({ query }) => {
-    const result = await runExpensiveQuery(query);
-    return { content: [{ type: "text", text: JSON.stringify(result) }] };
-  },
-  {
-    annotations: {
-      cache: true,  // Enable caching
-      cacheTTL: 300 // Cache for 5 minutes
+function ProductPage({ productId }) {
+  // Product-specific tools only available on this page
+  useWebMCP({
+    name: 'add_to_cart',
+    description: 'Add this product to cart',
+    inputSchema: {
+      quantity: z.number().min(1).default(1)
+    },
+    handler: async ({ quantity }) => {
+      await addToCart(productId, quantity);
+      return { success: true, productId, quantity };
     }
-  }
-);
+  });
+
+  useWebMCP({
+    name: 'get_product_details',
+    description: 'Get current product information',
+    handler: async () => {
+      const product = await fetchProduct(productId);
+      return product;
+    }
+  });
+
+  return <div>Product Page</div>;
+}
 ```
 
 ## State Synchronization
 
-### React State Sync
+### React State Integration
 
-```typescript
-import { useMcpServer } from '@mcp-b/mcp-react-hooks';
-import { useEffect, useState } from 'react';
+Sync tools with React state for real-time updates:
 
-function SyncedComponent() {
-  const { server } = useMcpServer("app", "1.0.0");
-  const [state, setState] = useState({ count: 0 });
-  
-  useEffect(() => {
-    // Sync tool with React state
-    server.tool("increment", "Increment counter", {}, async () => {
-      setState(prev => ({ ...prev, count: prev.count + 1 }));
-      return { 
-        content: [{ 
-          type: "text", 
-          text: `Count is now ${state.count + 1}` 
-        }] 
-      };
-    });
-    
-    return () => server.unregisterTool("increment");
-  }, [state.count]);
-}
-```
-
-### Vuex/Pinia Integration
-
-```javascript
-// Vuex store integration
-const store = useStore();
-
-server.tool("updateStore", "Update Vuex store",
-  { key: z.string(), value: z.any() },
-  async ({ key, value }) => {
-    store.commit('updateValue', { key, value });
-    return { 
-      content: [{ 
-        type: "text", 
-        text: `Updated ${key} in store` 
-      }] 
-    };
-  }
-);
-```
-
-## Security Patterns
-
-### Input Validation
-
-Always validate tool inputs with Zod:
-
-```javascript
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useState } from 'react';
 import { z } from 'zod';
 
-const EmailSchema = z.string().email();
-const PhoneSchema = z.string().regex(/^\+?[\d\s-()]+$/);
+function ShoppingCart() {
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
 
-server.tool("contactUser", "Contact a user",
-  {
-    email: EmailSchema,
-    phone: PhoneSchema.optional(),
-    message: z.string().max(1000)
-  },
-  async ({ email, phone, message }) => {
-    // Inputs are validated before reaching here
-    await sendContact({ email, phone, message });
-    return { content: [{ type: "text", text: "Message sent" }] };
-  }
-);
-```
+  useWebMCP({
+    name: 'view_cart',
+    description: 'View shopping cart contents',
+    handler: async () => {
+      return {
+        items,
+        total,
+        itemCount: items.length
+      };
+    }
+  });
 
-### Rate Limiting
+  useWebMCP({
+    name: 'update_quantity',
+    description: 'Update item quantity in cart',
+    inputSchema: {
+      itemId: z.string(),
+      quantity: z.number().min(0)
+    },
+    handler: async ({ itemId, quantity }) => {
+      setItems(prev => {
+        if (quantity === 0) {
+          return prev.filter(item => item.id !== itemId);
+        }
+        return prev.map(item =>
+          item.id === itemId ? { ...item, quantity } : item
+        );
+      });
+      recalculateTotal();
+      return { success: true };
+    }
+  });
 
-Implement rate limiting for sensitive operations:
-
-```javascript
-const rateLimiter = new Map();
-
-function rateLimit(key, maxCalls = 10, window = 60000) {
-  const now = Date.now();
-  const calls = rateLimiter.get(key) || [];
-  const recentCalls = calls.filter(time => now - time < window);
-  
-  if (recentCalls.length >= maxCalls) {
-    throw new Error('Rate limit exceeded');
-  }
-  
-  recentCalls.push(now);
-  rateLimiter.set(key, recentCalls);
+  return <div>Cart UI</div>;
 }
-
-server.tool("sensitiveOperation", "Perform sensitive operation",
-  { data: z.string() },
-  async ({ data }) => {
-    rateLimit('sensitiveOperation', 5, 60000); // 5 calls per minute
-    
-    // Perform operation
-    const result = await performSensitiveOp(data);
-    return { content: [{ type: "text", text: result }] };
-  }
-);
 ```
 
-## Multi-Transport Setup
+### Context API Integration
 
-Use multiple transports for different contexts:
+Share tools across component tree:
 
-```javascript
-import { TabServerTransport, ExtensionTransport } from "@mcp-b/transports";
+```tsx
+import { createContext, useContext } from 'react';
+import { useWebMCP } from '@mcp-b/react-webmcp';
 
-// Tab transport for same-tab clients
-const tabTransport = new TabServerTransport({
-  allowedOrigins: ["https://trusted-domain.com"]
-});
+const AppContext = createContext(null);
 
-// Extension transport for browser extension
-const extensionTransport = new ExtensionTransport({
-  extensionId: "your-extension-id"
-});
+function AppProvider({ children }) {
+  const [state, setState] = useState({});
 
-// Connect both transports
-await Promise.all([
-  server.connect(tabTransport),
-  server.connect(extensionTransport)
-]);
-```
-
-## Event Handling
-
-### Tool Execution Events
-
-```javascript
-// Listen for tool execution
-server.on('tool:execute', ({ toolName, params }) => {
-  console.log(`Tool ${toolName} called with:`, params);
-  
-  // Analytics tracking
-  analytics.track('tool_executed', {
-    tool: toolName,
-    timestamp: Date.now()
+  useWebMCP({
+    name: 'get_app_state',
+    description: 'Get current application state',
+    handler: async () => {
+      return state;
+    }
   });
-});
 
-// Handle tool errors
-server.on('tool:error', ({ toolName, error }) => {
-  console.error(`Tool ${toolName} failed:`, error);
-  
-  // Error reporting
-  errorReporter.log(error, { tool: toolName });
-});
+  useWebMCP({
+    name: 'update_settings',
+    description: 'Update application settings',
+    inputSchema: {
+      theme: z.enum(['light', 'dark']).optional(),
+      language: z.string().optional()
+    },
+    handler: async (settings) => {
+      setState(prev => ({ ...prev, ...settings }));
+      return { success: true, settings };
+    }
+  });
+
+  return (
+    <AppContext.Provider value={{ state, setState }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
 ```
 
-### Client Connection Events
+## Advanced Validation
 
-```javascript
-server.on('client:connected', (client) => {
-  console.log('Client connected:', client.id);
-  
-  // Send welcome message
-  client.send({
-    type: 'welcome',
-    message: 'Connected to MCP server'
-  });
-});
+### Complex Input Validation
 
-server.on('client:disconnected', (client) => {
-  console.log('Client disconnected:', client.id);
-  
-  // Cleanup client-specific resources
-  cleanupClient(client.id);
-});
-```
+Use Zod for sophisticated validation:
 
-## Testing Tools
+```tsx
+import { z } from 'zod';
 
-### Unit Testing
-
-```javascript
-import { describe, it, expect } from 'vitest';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-
-describe('MCP Tools', () => {
-  let server;
-  
-  beforeEach(() => {
-    server = new McpServer({ name: "test", version: "1.0.0" });
-  });
-  
-  it('should register and execute tool', async () => {
-    const handler = vi.fn().mockResolvedValue({
-      content: [{ type: "text", text: "success" }]
-    });
-    
-    server.tool("testTool", "Test tool", {}, handler);
-    
-    const result = await server.executeTool("testTool", {});
-    
-    expect(handler).toHaveBeenCalled();
-    expect(result.content[0].text).toBe("success");
-  });
-});
-```
-
-### Integration Testing
-
-```javascript
-import { chromium } from 'playwright';
-
-test('MCP tools work with extension', async () => {
-  const browser = await chromium.launch({
-    headless: false,
-    args: [
-      `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`
-    ]
-  });
-  
-  const page = await browser.newPage();
-  await page.goto('http://localhost:3000');
-  
-  // Wait for MCP server to connect
-  await page.waitForFunction(() => window.mcpConnected === true);
-  
-  // Verify tools are registered
-  const tools = await page.evaluate(() => window.mcpServer.tools);
-  expect(tools).toContain('myTool');
-});
-```
-
-## Production Deployment
-
-### Environment-Specific Configuration
-
-```javascript
-const config = {
-  development: {
-    allowedOrigins: ["*"],
-    debug: true,
-    cache: false
+useWebMCP({
+  name: 'create_event',
+  description: 'Create a new calendar event',
+  inputSchema: {
+    title: z.string().min(1).max(100),
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+    attendees: z.array(z.string().email()).min(1).max(50),
+    location: z.string().optional(),
+    recurrence: z.object({
+      frequency: z.enum(['daily', 'weekly', 'monthly']),
+      interval: z.number().min(1).max(365),
+      endDate: z.string().datetime().optional()
+    }).optional()
   },
-  production: {
-    allowedOrigins: ["https://yourdomain.com"],
-    debug: false,
-    cache: true
+  handler: async (event) => {
+    // Input is fully validated and typed
+    const created = await api.events.create(event);
+    return created;
   }
-};
-
-const env = process.env.NODE_ENV || 'development';
-const transport = new TabServerTransport(config[env]);
+});
 ```
 
-### Error Boundaries
+### Custom Validation Logic
 
-```javascript
-// Global error handler for tools
-server.setErrorHandler((error, toolName, params) => {
-  // Log error
-  console.error(`Tool ${toolName} error:`, error);
-  
-  // Send to monitoring service
-  if (process.env.NODE_ENV === 'production') {
-    Sentry.captureException(error, {
-      tags: { tool: toolName },
-      extra: { params }
+Add business logic validation:
+
+```tsx
+useWebMCP({
+  name: 'transfer_funds',
+  description: 'Transfer funds between accounts',
+  inputSchema: {
+    fromAccount: z.string(),
+    toAccount: z.string(),
+    amount: z.number().positive()
+  },
+  handler: async ({ fromAccount, toAccount, amount }) => {
+    // Additional validation beyond schema
+    const balance = await getAccountBalance(fromAccount);
+    if (balance < amount) {
+      throw new Error(`Insufficient funds. Balance: $${balance}`);
+    }
+
+    if (fromAccount === toAccount) {
+      throw new Error('Cannot transfer to the same account');
+    }
+
+    await api.transfer({ fromAccount, toAccount, amount });
+    return {
+      success: true,
+      newBalance: balance - amount
+    };
+  }
+});
+```
+
+## Error Handling
+
+### Custom Error Responses
+
+```tsx
+useWebMCP({
+  name: 'process_order',
+  description: 'Process a customer order',
+  inputSchema: {
+    orderId: z.string()
+  },
+  handler: async ({ orderId }) => {
+    try {
+      const order = await api.orders.process(orderId);
+      return { success: true, order };
+    } catch (error) {
+      if (error.code === 'PAYMENT_FAILED') {
+        return {
+          success: false,
+          error: 'Payment failed. Please check your payment method.'
+        };
+      }
+      if (error.code === 'OUT_OF_STOCK') {
+        return {
+          success: false,
+          error: 'Some items are out of stock.'
+        };
+      }
+      throw error; // Re-throw unexpected errors
+    }
+  },
+  onError: (error, input) => {
+    // Log errors for monitoring
+    analytics.trackError('process_order_failed', {
+      error: error.message,
+      orderId: input.orderId
     });
   }
-  
-  // Return user-friendly error
-  return {
-    content: [{
-      type: "text",
-      text: "An error occurred. Please try again."
-    }]
-  };
 });
 ```
 
 ## Performance Optimization
 
-### Lazy Loading Tools
+### Debouncing and Throttling
 
-```javascript
-// Load tool handlers only when needed
-const toolHandlers = {
-  async heavyTool() {
-    const { handler } = await import('./tools/heavyTool');
-    return handler;
-  }
-};
+```tsx
+import { useMemo } from 'react';
+import { debounce } from 'lodash-es';
+import { z } from 'zod';
 
-server.tool("heavyTool", "Heavy computation tool",
-  { data: z.string() },
-  async (params) => {
-    const handler = await toolHandlers.heavyTool();
-    return handler(params);
-  }
-);
+function SearchComponent() {
+  const debouncedSearch = useMemo(
+    () => debounce(async (query) => {
+      return await api.search(query);
+    }, 300),
+    []
+  );
+
+  useWebMCP({
+    name: 'search',
+    description: 'Search the database',
+    inputSchema: {
+      query: z.string().min(2)
+    },
+    handler: async ({ query }) => {
+      return await debouncedSearch(query);
+    }
+  });
+
+  return <div>Search UI</div>;
+}
 ```
 
-### Batching Operations
+### Caching Results
 
-```javascript
-const pendingOps = [];
-let batchTimer = null;
+```tsx
+import { useRef } from 'react';
 
-function batchOperation(op) {
-  pendingOps.push(op);
-  
-  if (!batchTimer) {
-    batchTimer = setTimeout(async () => {
-      const ops = [...pendingOps];
-      pendingOps.length = 0;
-      batchTimer = null;
-      
-      // Process batch
-      await processBatch(ops);
-    }, 100); // Batch every 100ms
-  }
+function DataComponent() {
+  const cache = useRef(new Map());
+
+  useWebMCP({
+    name: 'get_user_data',
+    description: 'Get user data with caching',
+    inputSchema: {
+      userId: z.string(),
+      skipCache: z.boolean().optional()
+    },
+    handler: async ({ userId, skipCache }) => {
+      if (!skipCache && cache.current.has(userId)) {
+        return {
+          ...cache.current.get(userId),
+          cached: true
+        };
+      }
+
+      const data = await api.users.get(userId);
+      cache.current.set(userId, data);
+
+      // Clear cache after 5 minutes
+      setTimeout(() => {
+        cache.current.delete(userId);
+      }, 5 * 60 * 1000);
+
+      return { ...data, cached: false };
+    }
+  });
+
+  return <div>User Data</div>;
 }
+```
 
-server.tool("batchedOp", "Batched operation",
-  { data: z.string() },
-  async ({ data }) => {
-    await new Promise(resolve => {
-      batchOperation({ data, resolve });
+## Multi-Step Workflows
+
+### Stateful Multi-Step Operations
+
+```tsx
+function CheckoutFlow() {
+  const [checkoutState, setCheckoutState] = useState({
+    step: 'cart',
+    cart: [],
+    shipping: null,
+    payment: null
+  });
+
+  useWebMCP({
+    name: 'checkout_next_step',
+    description: 'Proceed to next checkout step',
+    inputSchema: {
+      data: z.record(z.any())
+    },
+    handler: async ({ data }) => {
+      const { step } = checkoutState;
+
+      if (step === 'cart') {
+        setCheckoutState(prev => ({
+          ...prev,
+          step: 'shipping',
+          shipping: data
+        }));
+        return { nextStep: 'shipping' };
+      }
+
+      if (step === 'shipping') {
+        setCheckoutState(prev => ({
+          ...prev,
+          step: 'payment',
+          payment: data
+        }));
+        return { nextStep: 'payment' };
+      }
+
+      if (step === 'payment') {
+        const order = await processOrder(checkoutState);
+        setCheckoutState({ step: 'complete', orderId: order.id });
+        return { complete: true, orderId: order.id };
+      }
+    }
+  });
+
+  useWebMCP({
+    name: 'get_checkout_state',
+    description: 'Get current checkout progress',
+    handler: async () => checkoutState
+  });
+
+  return <div>Checkout Flow</div>;
+}
+```
+
+## Read-Only Context Tools
+
+### Exposing Application State
+
+```tsx
+import { useWebMCPContext } from '@mcp-b/react-webmcp';
+
+function AppLayout() {
+  const { pathname } = useLocation();
+  const { user } = useAuth();
+
+  // Lightweight read-only context
+  useWebMCPContext(
+    'context_current_route',
+    'Get the current page route and user info',
+    () => ({
+      path: pathname,
+      user: user ? {
+        id: user.id,
+        name: user.name,
+        role: user.role
+      } : null,
+      timestamp: new Date().toISOString()
+    })
+  );
+
+  return <div>App Layout</div>;
+}
+```
+
+## Security Best Practices
+
+### Input Sanitization
+
+```tsx
+import DOMPurify from 'dompurify';
+
+useWebMCP({
+  name: 'post_comment',
+  description: 'Post a comment',
+  inputSchema: {
+    text: z.string().max(1000),
+    postId: z.string().uuid()
+  },
+  handler: async ({ text, postId }) => {
+    // Sanitize HTML content
+    const sanitized = DOMPurify.sanitize(text);
+
+    await api.comments.create({
+      text: sanitized,
+      postId
     });
-    
-    return { content: [{ type: "text", text: "Batched" }] };
+
+    return { success: true };
   }
-);
+});
+```
+
+### Rate Limiting
+
+```tsx
+import { useRef } from 'react';
+
+function RateLimitedComponent() {
+  const callCount = useRef(new Map());
+
+  const checkRateLimit = (key: string, maxCalls = 10, windowMs = 60000) => {
+    const now = Date.now();
+    const calls = callCount.current.get(key) || [];
+    const recentCalls = calls.filter(time => now - time < windowMs);
+
+    if (recentCalls.length >= maxCalls) {
+      throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((windowMs - (now - recentCalls[0])) / 1000)}s`);
+    }
+
+    recentCalls.push(now);
+    callCount.current.set(key, recentCalls);
+  };
+
+  useWebMCP({
+    name: 'send_message',
+    description: 'Send a message',
+    inputSchema: {
+      to: z.string(),
+      message: z.string()
+    },
+    handler: async ({ to, message }) => {
+      checkRateLimit('send_message', 5, 60000); // 5 per minute
+
+      await api.messages.send({ to, message });
+      return { success: true };
+    }
+  });
+
+  return <div>Messaging</div>;
+}
 ```
 
 ## Next Steps
 
-<CardGroup>
+<CardGroup cols={2}>
   <Card
-    title="Contributing"
-    icon="code-branch"
-    href="https://github.com/MiguelsPizza/WebMCP/blob/main/CONTRIBUTING.md"
+    title="Package Documentation"
+    icon="npm"
+    href="/packages/global"
   >
-    Contribute to WebMCP
+    Deep dive into package APIs
+  </Card>
+
+  <Card
+    title="Examples"
+    icon="code"
+    href="/examples"
+  >
+    See complete working examples
+  </Card>
+
+  <Card
+    title="Troubleshooting"
+    icon="wrench"
+    href="/troubleshooting"
+  >
+    Common issues and solutions
+  </Card>
+
+  <Card
+    title="Discord Community"
+    icon="discord"
+    href="https://discord.gg/ZnHG4csJRB"
+  >
+    Get help from the community
   </Card>
 </CardGroup>
