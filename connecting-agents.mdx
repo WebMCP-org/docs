@@ -259,22 +259,22 @@ graph LR
 - Accessing tools from multiple tabs simultaneously
 - Most streamlined setup
 
-#### Method 2: WebMCP Library (by Jason McGuire)
+#### Method 2: Jason's WebMCP Library
 
-An alternative local server implementation that creates a direct bridge between MCP clients and websites.
+An alternative local server implementation by Jason McGhee that creates a direct bridge between MCP clients and websites. This is a separate implementation from the MCP-B packages.
 
 <Card
-  title="WebMCP by Jason McGuire"
+  title="Jason's WebMCP Library"
   icon="github"
   href="https://github.com/jasonjmcghee/WebMCP"
 >
-  View the WebMCP library on GitHub
+  View Jason's WebMCP library on GitHub (separate from MCP-B)
 </Card>
 
 **How it works:**
 ```mermaid
 graph LR
-    A[MCP Client] -->|WebSocket| B[WebMCP Server :3000]
+    A[MCP Client] -->|WebSocket| B[Jason's WebMCP Server :3000]
     B -->|Token Auth| C[Website Widget]
     C -->|Registered Tools| B
 ```
@@ -292,13 +292,13 @@ graph LR
   </Step>
 
   <Step title="Add widget to your website">
-    Include the WebMCP script on your site:
+    Include Jason's WebMCP script on your site:
     ```html
     <script src="webmcp.js"></script>
     ```
 
     A widget will appear in the bottom-right corner
-  </Step>
+  </Step></invoke>
 
   <Step title="Connect to your site">
     Ask your MCP client to generate a connection token, then paste it into the widget on your website
@@ -311,6 +311,10 @@ graph LR
 - Supports multiple websites simultaneously
 - Tools scoped by domain
 - Built-in MCP tool definer
+
+<Note>
+Jason's WebMCP is an independent implementation, separate from the MCP-B project. Both provide WebMCP functionality but with different architectures and use cases.
+</Note>
 
 **Best for:**
 - Direct website-to-MCP-client connections
@@ -360,7 +364,7 @@ Use this guide to select the best connection method for your use case:
     - Full control over user experience
 
     **Enabling MCP client access:**
-    - Add the [WebMCP widget](https://github.com/jasonjmcghee/WebMCP) to your site
+    - Add [Jason's WebMCP widget](https://github.com/jasonjmcghee/WebMCP) to your site
     - Users can connect their local MCP clients
     - Provide structured tool access to visitors
   </Tab>
@@ -385,13 +389,13 @@ Use this guide to select the best connection method for your use case:
 
     **Building desktop AI:**
     - Use MCP SDK to connect via [Native Server](/native-host-setup)
-    - Or use [WebMCP library](https://github.com/jasonjmcghee/WebMCP)
+    - Or use [Jason's WebMCP library](https://github.com/jasonjmcghee/WebMCP)
     - Support user's browser tools in your AI app
   </Tab>
 
   <Tab title="For End Users">
     **Using existing websites:**
-    - If site has WebMCP widget: Use [WebMCP library](https://github.com/jasonjmcghee/WebMCP)
+    - If site has Jason's WebMCP widget: Use [Jason's WebMCP library](https://github.com/jasonjmcghee/WebMCP)
     - If you want to add tools: Install [MCP-B Extension](/extension)
 
     **Connecting to Claude Desktop:**
@@ -410,7 +414,7 @@ Use this guide to select the best connection method for your use case:
 | **Frontend Frameworks** | Medium | Site-integrated AI | No | Yes (code integration) |
 | **MCP-B Extension** | Low | Any website + built-in agents | Yes | No |
 | **Native Server (MCP-B)** | Low | Multiple tabs + extension agents | Yes (MCP-B) | No |
-| **WebMCP Library** | Medium | Direct site-to-client | No | Yes (widget script) |
+| **Jason's WebMCP** | Medium | Direct site-to-client | No | Yes (widget script) |
 | **CDP Transport** | TBD | Advanced automation | TBD | No |
 
 ## Security Considerations
@@ -440,12 +444,12 @@ All connection methods execute tools with the same permissions as your browser s
     - Review [extension security](/extension#security)
   </Accordion>
 
-  <Accordion title="WebMCP Library">
+  <Accordion title="Jason's WebMCP">
     - Token-based authentication
     - Localhost-only WebSocket server
     - Single-use registration tokens
     - Website receives session token after registration
-    - Review the [WebMCP security documentation](https://github.com/jasonjmcghee/WebMCP#security)
+    - Review [Jason's WebMCP security documentation](https://github.com/jasonjmcghee/WebMCP#security)
   </Accordion>
 </AccordionGroup>
 
@@ -523,13 +527,13 @@ Ready to connect your agent? Follow these quick start guides:
     5. Review [troubleshooting guide](/troubleshooting)
   </Accordion>
 
-  <Accordion title="WebMCP widget not connecting">
-    **For WebMCP library users:**
+  <Accordion title="Jason's WebMCP widget not connecting">
+    **For Jason's WebMCP library users:**
     1. Ensure WebSocket server is running
     2. Check token was entered correctly
     3. Verify no firewall blocking localhost
     4. Review browser console for errors
-    5. See [WebMCP issues](https://github.com/jasonjmcghee/WebMCP/issues)
+    5. See [Jason's WebMCP issues](https://github.com/jasonjmcghee/WebMCP/issues)
   </Accordion>
 
   <Accordion title="Frontend tools not being called">
