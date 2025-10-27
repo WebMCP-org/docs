@@ -277,21 +277,21 @@ The following diagram shows the complete request-response cycle when an AI agent
 
 ```mermaid
 flowchart TD
-    A[AI Agent] -->|1. Discover tools| B{MCP-B Extension}
-    B -->|2. List tools request| C[Tab Transport]
-    C -->|3. Query| D[MCP Bridge]
-    D -->|4. Return tools| C
-    C -->|5. Tool list| B
-    B -->|6. Display| A
+    A[AI Agent] -->|1 - Discover tools| B{MCP-B Extension}
+    B -->|2 - List tools request| C[Tab Transport]
+    C -->|3 - Query| D[MCP Bridge]
+    D -->|4 - Return tools| C
+    C -->|5 - Tool list| B
+    B -->|6 - Display| A
 
-    A -->|7. Call tool| B
-    B -->|8. Execute| C
-    C -->|9. Route| D
-    D -->|10. Run handler| E[Your Code]
-    E -->|11. Return data| D
-    D -->|12. Format MCP response| C
-    C -->|13. Response| B
-    B -->|14. Show result| A
+    A -->|7 - Call tool| B
+    B -->|8 - Execute| C
+    C -->|9 - Route| D
+    D -->|10 - Run handler| E[Your Code]
+    E -->|11 - Return data| D
+    D -->|12 - Format MCP response| C
+    C -->|13 - Response| B
+    B -->|14 - Show result| A
 
     style A fill:#9B59B6
     style B fill:#FFB84D
