@@ -71,6 +71,7 @@
             "pages": [
               "introduction",
               "quickstart",
+              "connecting-agents",
               "examples"
             ]
           },
