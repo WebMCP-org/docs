@@ -116,10 +116,16 @@ An open standard protocol developed by Anthropic for connecting AI systems with 
 **GitHub:** https://github.com/modelcontextprotocol
 
 ### MCP-B
-The reference implementation and tooling ecosystem for the WebMCP standard, originally created as the first browser port of MCP. MCP-B packages serve two key purposes:
+The reference implementation and tooling ecosystem for the WebMCP standard, originally created as the first browser port of MCP concepts. MCP-B packages serve two key purposes:
 
-1. **Polyfill** the W3C WebMCP API for current browsers
-2. **Translation layer** between WebMCP and official MCP protocols
+1. **Polyfill** the W3C WebMCP API (`navigator.modelContext`) for current browsers
+2. **Translation layer** between WebMCP's web-native API and the MCP protocol
+
+This dual architecture allows:
+- Tools declared in WebMCP format to work with MCP clients
+- Tools declared in MCP format to work with WebMCP browsers
+- Version independence as both standards evolve
+- Web-specific security features (same-origin policy, CSP)
 
 The name "MCP-B" refers to both the package ecosystem (`@mcp-b/*`) and the browser extension.
 
@@ -314,13 +320,25 @@ International standards organization for the web. The Web Model Context API is a
 See [WebMCP](#webmcp)
 
 ### WebMCP (Web Model Context Protocol)
-A **W3C web standard** (currently being incubated) that defines how websites expose structured tools to AI agents through the browser's `navigator.modelContext` API.
+A **W3C web standard** (currently being incubated by the [Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/)) that defines how websites expose structured tools to AI agents through the browser's `navigator.modelContext` API.
 
-While inspired by Anthropic's Model Context Protocol, WebMCP is evolving as an independent web-native standard. The MCP-B packages provide the reference implementation, polyfill, and translation layer.
+**Design Philosophy**: Human-in-the-loop workflows where agents augment (not replace) user interaction. The human web interface remains primary.
 
-**Relationship to MCP:** WebMCP shares similar concepts (tools, resources, structured communication) but is diverging as a web-specific standard with its own evolution path.
+**Not Designed For**:
+- ❌ Headless browsing or fully autonomous agents
+- ❌ Backend service integration (use [MCP](https://modelcontextprotocol.io) for that)
+- ❌ Replacing human-facing interfaces
+- ❌ Workflows without user oversight
 
-**Specification:** https://github.com/webmachinelearning/webmcp (W3C incubation)
+**Architectural Approach**: WebMCP is implemented as an SDK/abstraction layer (not just a transport), allowing browsers to maintain backwards compatibility as protocols evolve and enforce web-specific security models.
+
+While inspired by Anthropic's Model Context Protocol, WebMCP is evolving as an independent web-native standard with its own specification path and design decisions.
+
+**Relationship to MCP:** WebMCP shares similar concepts (tools, resources, structured communication) but is diverging as a web-specific standard. Both protocols are complementary and can work together.
+
+**W3C Specification**: https://github.com/webmachinelearning/webmcp
+**Technical Proposal**: https://github.com/webmachinelearning/webmcp/blob/main/docs/proposal.md
+**Community Group**: https://www.w3.org/community/webmachinelearning/
 
 ## Z
 
