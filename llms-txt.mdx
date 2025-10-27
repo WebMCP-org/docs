@@ -1,0 +1,24 @@
+---
+title: 'llms.txt'
+description: 'View auto-generated llms.txt and llms-full.txt files for AI assistant indexing - optimized for Claude, ChatGPT, Gemini, and other LLMs'
+icon: 'file-lines'
+---
+
+export const PreviewButton = ({children, href}) => {
+  return <a href={href} className="text-sm font-medium text-white dark:!text-zinc-950 bg-zinc-900 hover:bg-zinc-700 dark:bg-zinc-100 hover:dark:bg-zinc-300 rounded-full px-3.5 py-1.5 not-prose">
+        {children}
+      </a>;
+};
+
+Mintlify automatically hosts `llms.txt` and `llms-full.txt` files at the root of your project. These files help AI assistants like Claude, ChatGPT, and Gemini index and search your documentation.
+
+<div className="flex gap-3 flex-wrap mt-4">
+  <PreviewButton href="https://docs.mcp-b.ai/llms.txt">
+    View llms.txt
+  </PreviewButton>
+  <PreviewButton href="https://docs.mcp-b.ai/llms-full.txt">
+    View llms-full.txt
+  </PreviewButton>
+</div>
+
+Learn more at [llmstxt.org](https://llmstxt.org).
