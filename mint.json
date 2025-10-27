@@ -130,5 +130,14 @@
     "github": "https://github.com/WebMCP-org",
     "discord": "https://discord.gg/ZnHG4csJRB",
     "linkedin": "https://www.linkedin.com/company/mcp-b"
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity"
+    ]
   }
 }

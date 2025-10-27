@@ -3,13 +3,36 @@ title: 'Examples'
 description: 'Explore various WebMCP implementations and use cases'
 ---
 
+## Featured Example: WebMCP.sh
+
+**[webmcp.sh](https://webmcp.sh)** is a production-ready MCP playground showcasing best practices for WebMCP integration.
+
+<Card
+  title="webmcp.sh - MCP Playground"
+  icon="play"
+  href="https://github.com/WebMCP-org/webmcp-sh"
+>
+  Modern React app with comprehensive WebMCP integration, database tools, 3D graph visualization, and real-time MCP server connections
+</Card>
+
+**Why this example stands out:**
+- Production-grade React architecture with TypeScript
+- Real-world tool patterns: navigation, database operations, graph manipulation
+- Clean hook abstractions using `@mcp-b/react-webmcp`
+- Modern stack: React 19, TanStack Router, Drizzle ORM, Tailwind CSS
+- Demonstrates multiple tool types: read-only context, mutations, complex workflows
+
+**Key implementations to study:**
+- `useMCPNavigationTool.ts` - App navigation with route context
+- `useMCPDatabaseTools.ts` - Database CRUD operations
+- `useMCPGraphTools.ts` - Complex graph manipulation
+- `useMCPTool.ts` - Base tool pattern with validation and error handling
+
 <Info>
-  All examples are available in the [WebMCP Examples Repository](https://github.com/WebMCP-org/examples)
+  Additional examples available in the [WebMCP Examples Repository](https://github.com/WebMCP-org/examples)
 </Info>
 
-## Official Examples
-
-Our examples demonstrate WebMCP integration across different frameworks and use cases.
+## Additional Examples
 
 <CardGroup cols={2}>
   <Card
@@ -17,15 +40,7 @@ Our examples demonstrate WebMCP integration across different frameworks and use 
     icon="js"
     href="https://github.com/WebMCP-org/examples/tree/main/vanilla-ts"
   >
-    A simple todo app demonstrating core WebMCP concepts with navigator.modelContext
-  </Card>
-
-  <Card
-    title="React Flow Voice Agent"
-    icon="microphone"
-    href="https://github.com/WebMCP-org/examples/tree/main/reactFlowVoiceAgent"
-  >
-    Advanced React app with voice input, visual flow, and Gemini AI
+    Simple todo app demonstrating core concepts with navigator.modelContext
   </Card>
 
   <Card
@@ -37,6 +52,14 @@ Our examples demonstrate WebMCP integration across different frameworks and use 
   </Card>
 
   <Card
+    title="React Flow Voice Agent"
+    icon="microphone"
+    href="https://github.com/WebMCP-org/examples/tree/main/reactFlowVoiceAgent"
+  >
+    Advanced React app with voice input and visual flow
+  </Card>
+
+  <Card
     title="Login Flow"
     icon="lock"
     href="https://github.com/WebMCP-org/examples/tree/main/login"
@@ -45,122 +68,16 @@ Our examples demonstrate WebMCP integration across different frameworks and use 
   </Card>
 </CardGroup>
 
-## Vanilla TypeScript Example
+## Quick Reference
 
-The vanilla TypeScript example demonstrates:
-- Using `navigator.modelContext.provideContext()` for tool registration
-- Todo CRUD operations exposed as tools
-- Visual feedback for AI actions
-- State management without frameworks
+### Vanilla TypeScript
+Use `navigator.modelContext.provideContext()` to register tools. Perfect for adding WebMCP to existing sites without frameworks.
 
-### Key Features
+### React Hooks
+Use `useWebMCP()` from `@mcp-b/react-webmcp` for automatic lifecycle management, Zod validation, and execution state tracking.
 
-```typescript
-// Use the W3C Web Model Context API
-window.navigator.modelContext.provideContext({
-  tools: [
-    {
-      name: "add-todo",
-      description: "Add a new todo item",
-      inputSchema: {
-        type: "object",
-        properties: {
-          text: { type: "string", description: "Todo text" }
-        },
-        required: ["text"]
-      },
-      async execute({ text }) {
-        const todo = { id: Date.now(), text, done: false };
-        todos.push(todo);
-        render();
-        return {
-          content: [{
-            type: "text",
-            text: `Added todo: "${text}"`
-          }]
-        };
-      }
-    }
-  ]
-});
-```
-
-## React Example
-
-The React example showcases:
-- Integration with `@mcp-b/react-webmcp` hooks
-- Component-based tool organization
-- Modern React patterns with TypeScript
-- Real-time UI updates from tool calls
-
-### React Hook Integration
-
-```tsx
-import '@mcp-b/global';
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { z } from 'zod';
-
-function TodoApp() {
-  const [todos, setTodos] = useState([]);
-
-  // Register tool with React hook
-  useWebMCP({
-    name: 'add_todo',
-    description: 'Add a new todo',
-    inputSchema: {
-      text: z.string().describe('The todo text')
-    },
-    handler: async ({ text }) => {
-      setTodos([...todos, { id: Date.now(), text, done: false }]);
-      return { success: true };
-    },
-    formatOutput: (result) => `Todo added successfully!`
-  });
-
-  return <div>{/* Your UI */}</div>;
-}
-```
-
-## Script Tag Example
-
-Perfect for adding WebMCP to existing websites without build tools:
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <!-- IIFE version - bundles all dependencies, auto-initializes -->
-  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-</head>
-<body>
-  <div id="app">Hello World</div>
-
-  <script>
-    // window.navigator.modelContext is already available!
-    window.navigator.modelContext.provideContext({
-      tools: [
-        {
-          name: "get-message",
-          description: "Get the page message",
-          inputSchema: {
-            type: "object",
-            properties: {}
-          },
-          async execute() {
-            return {
-              content: [{
-                type: "text",
-                text: document.getElementById('app').innerText
-              }]
-            };
-          }
-        }
-      ]
-    });
-  </script>
-</body>
-</html>
-```
+### Script Tag Integration
+Add `@mcp-b/global` via unpkg for zero-config setup - no build tools required.
 
 ## Community Examples
 
@@ -184,151 +101,40 @@ Perfect for adding WebMCP to existing websites without build tools:
 
 ## Common Patterns
 
-### Dynamic Tool Registration (React)
+**Dynamic Tool Registration**: Tools in React components auto-register on mount and cleanup on unmount using `useWebMCP()`.
 
-```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
+**Authentication-Aware Tools**: Conditionally expose tools based on user role or session state. Tools respect existing authentication via `credentials: 'same-origin'`.
 
-function MyComponent() {
-  const [isActive, setIsActive] = useState(false);
+**Visual Feedback**: Update UI state in tool handlers to provide real-time feedback for AI actions.
 
-  // Tool auto-registers when component mounts
-  // and auto-unregisters when it unmounts
-  useWebMCP({
-    name: 'component_action',
-    description: 'Component-specific action',
-    inputSchema: {},
-    handler: async () => {
-      // Your logic
-      return { success: true };
-    }
-  });
+## Running Examples
 
-  return <div>My Component</div>;
-}
-```
-
-### Authentication-Aware Tools
-
-```javascript
-// Only expose admin tools for admin users
-if (user.role === 'admin') {
-  window.navigator.modelContext.provideContext({
-    tools: [
-      {
-        name: "delete-all",
-        description: "Delete all items",
-        inputSchema: {
-          type: "object",
-          properties: {}
-        },
-        async execute() {
-          await fetch('/api/admin/delete-all', {
-            method: 'POST',
-            credentials: 'same-origin'
-          });
-          return {
-            content: [{ type: "text", text: "All items deleted" }]
-          };
-        }
-      }
-    ]
-  });
-}
-```
-
-### Visual Feedback
-
-```javascript
-window.navigator.modelContext.registerTool({
-  name: "highlight-element",
-  description: "Highlight an element on the page",
-  inputSchema: {
-    type: "object",
-    properties: {
-      selector: {
-        type: "string",
-        description: "CSS selector for the element"
-      }
-    },
-    required: ["selector"]
-  },
-  async execute({ selector }) {
-    const element = document.querySelector(selector);
-    if (element) {
-      element.style.backgroundColor = 'yellow';
-      setTimeout(() => {
-        element.style.backgroundColor = '';
-      }, 2000);
-      return {
-        content: [{ type: "text", text: `Highlighted ${selector}` }]
-      };
-    }
-    return {
-      content: [{ type: "text", text: "Element not found" }],
-      isError: true
-    };
-  }
-});
-```
-
-## Running the Examples
-
-### Quick Start
-
-1. Clone the examples repository:
 ```bash
 git clone https://github.com/WebMCP-org/examples.git
-cd examples
-```
-
-2. Choose an example:
-```bash
-cd vanilla-ts  # or react, script-tag
-```
-
-3. Install and run:
-```bash
+cd examples/vanilla-ts  # or any example
 pnpm install --ignore-workspace
 pnpm dev
 ```
 
-4. Open in Chrome with MCP-B extension installed
-
-### Testing Tools
-
-1. Open the MCP-B extension popup
-2. Navigate to the "Tools" tab
-3. See all available tools from the page
-4. Use the chat interface or inspector to call tools
+Open in Chrome with the MCP-B extension to test tools via the extension popup.
 
 ## Building Your Own
 
-When creating your own WebMCP integration:
-
 <Steps>
   <Step title="Choose your approach">
-    Use `@mcp-b/global` for simple sites or `@mcp-b/react-webmcp` for React apps
+    `@mcp-b/global` for vanilla sites, `@mcp-b/react-webmcp` for React
   </Step>
 
-  <Step title="Identify existing functionality">
-    List the actions users can take in your app
-  </Step>
-
-  <Step title="Wrap as tools">
-    Use `navigator.modelContext.provideContext()` or `useWebMCP()` hook
+  <Step title="Wrap existing functionality">
+    Expose your app's existing actions as tools - don't duplicate logic
   </Step>
 
   <Step title="Add validation">
-    Use JSON Schema or Zod schemas to validate tool inputs
+    Use Zod schemas (React) or JSON Schema (vanilla)
   </Step>
 
   <Step title="Test with extension">
-    Use the MCP-B extension to test your tools
-  </Step>
-
-  <Step title="Add feedback">
-    Provide visual feedback when tools are called
+    Use MCP-B extension to validate tools work correctly
   </Step>
 </Steps>
 
