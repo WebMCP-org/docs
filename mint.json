@@ -129,8 +129,8 @@
       "googlebot": "index, follow",
       "og:title": "WebMCP Documentation - AI-Powered Web Tools",
       "og:type": "website",
-      "og:url": "https://docs.webmcp.dev",
-      "og:image": "https://docs.webmcp.dev/logo/social-card.png",
+      "og:url": "https://docs.mcp-b.ai",
+      "og:image": "https://docs.mcp-b.ai/logo/social-card.png",
       "og:description": "WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server. Enable AI agents to interact with your site deterministically.",
       "og:site_name": "WebMCP Documentation",
       "og:locale": "en_US",
@@ -139,7 +139,7 @@
       "twitter:creator": "@webmcp",
       "twitter:title": "WebMCP Documentation - AI-Powered Web Tools",
       "twitter:description": "WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server.",
-      "twitter:image": "https://docs.webmcp.dev/logo/social-card.png",
+      "twitter:image": "https://docs.mcp-b.ai/logo/social-card.png",
       "twitter:image:alt": "WebMCP Documentation - Model Context Protocol for the Web"
     }
   },
