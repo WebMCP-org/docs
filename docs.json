@@ -7,7 +7,7 @@
     "light": "/logo/mcp-b-logo.png"
   },
   "favicon": "/favicon.ico",
-  "description": "WebMCP - Turn your website's JavaScript functions into AI-accessible tools. Make your web app work with Claude, ChatGPT, and custom AI agents.",
+  "description": "WebMCP - W3C standard for making websites AI-accessible. Turn your JavaScript functions into tools that work with Claude, ChatGPT, and custom AI agents via navigator.modelContext.",
   "colors": {
     "primary": "#1F5EFF",
     "light": "#4B7BFF",
@@ -155,7 +155,7 @@
   "seo": {
     "indexing": "all",
     "metatags": {
-      "description": "WebMCP - Turn your website's JavaScript functions into AI-accessible tools. Make your web app work with Claude, ChatGPT, and custom AI agents.",
+      "description": "WebMCP - W3C standard for making websites AI-accessible. Turn your JavaScript functions into tools that work with Claude, ChatGPT, and custom AI agents via navigator.modelContext.",
       "keywords": "MCP, Model Context Protocol, WebMCP, AI agents, web tools, browser extension, tab transport, JavaScript SDK",
       "author": "WebMCP Team",
       "robots": "index, follow",
@@ -164,14 +164,14 @@
       "og:type": "website",
       "og:url": "https://docs.mcp-b.ai",
       "og:image": "https://docs.mcp-b.ai/logo/social-card.png",
-      "og:description": "Turn your website's JavaScript functions into AI-accessible tools. WebMCP implements the W3C Web Model Context API, making your web app compatible with Claude, ChatGPT, and custom AI agents.",
+      "og:description": "W3C standard for making websites AI-accessible. WebMCP defines the Web Model Context API (navigator.modelContext), enabling your site to work with Claude, ChatGPT, and custom AI agents.",
       "og:site_name": "WebMCP Documentation",
       "og:locale": "en_US",
       "twitter:card": "summary_large_image",
       "twitter:site": "@webmcp",
       "twitter:creator": "@webmcp",
       "twitter:title": "WebMCP Documentation - AI-Powered Web Tools",
-      "twitter:description": "Turn your website's JavaScript functions into AI-accessible tools. WebMCP implements the W3C Web Model Context API for Claude, ChatGPT, and custom AI agents.",
+      "twitter:description": "W3C standard for making websites AI-accessible. WebMCP defines the Web Model Context API for Claude, ChatGPT, and custom AI agents.",
       "twitter:image": "https://docs.mcp-b.ai/logo/social-card.png",
       "twitter:image:alt": "WebMCP Documentation - Model Context Protocol for the Web",
       "article:published_time": "2024-01-01T00:00:00+00:00",

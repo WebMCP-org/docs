@@ -109,17 +109,33 @@ JSON Schema or Zod schema defining the parameters a tool accepts. Used for valid
 ## M
 
 ### MCP (Model Context Protocol)
-An open standard protocol for connecting AI systems with data sources and tools. Developed by Anthropic, it standardizes how AI agents discover and interact with external capabilities.
+An open standard protocol developed by Anthropic for connecting AI systems with data sources and tools. MCP standardizes how AI agents discover and interact with external capabilities. WebMCP is inspired by MCP but adapted specifically for web browsers as a W3C standard.
 
 **Specification:** https://modelcontextprotocol.io
+**Documentation:** https://modelcontextprotocol.io/docs
+**GitHub:** https://github.com/modelcontextprotocol
+
+### MCP-B
+The reference implementation and tooling ecosystem for the WebMCP standard, originally created as the first browser port of MCP. MCP-B packages serve two key purposes:
+
+1. **Polyfill** the W3C WebMCP API for current browsers
+2. **Translation layer** between WebMCP and official MCP protocols
+
+The name "MCP-B" refers to both the package ecosystem (`@mcp-b/*`) and the browser extension.
 
 ### MCP-B Extension
-The official browser extension that connects AI agents to website tools. Includes specialized agents for userscript creation, browsing, and chat. Part of the WebMCP ecosystem.
+Browser extension for building, testing, and using WebMCP servers. Key features:
+- Collects WebMCP servers from all open tabs
+- Userscript injection for custom tool development
+- Specialized agents (browsing, userscript, chat)
 
 **Download:** [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
 
 ### MCP Bridge
-The internal component in `@mcp-b/global` that automatically converts between the Web Model Context API and the Model Context Protocol.
+The internal component in `@mcp-b/global` that serves as both a polyfill and translation layer:
+- Implements the WebMCP `navigator.modelContext` API
+- Translates between WebMCP and MCP protocols
+- Allows tools declared in either format to work with both standards
 
 **Location:** Created automatically when importing `@mcp-b/global`
 
@@ -295,12 +311,16 @@ Custom JavaScript code that modifies web page behavior or appearance. The MCP-B 
 International standards organization for the web. The Web Model Context API is a proposed W3C standard.
 
 ### Web Model Context API
-Proposed web standard (currently polyfilled) for exposing website functionality to AI agents via `navigator.modelContext`.
+See [WebMCP](#webmcp)
 
-**Specification:** https://github.com/webmachinelearning/webmcp
+### WebMCP (Web Model Context Protocol)
+A **W3C web standard** (currently being incubated) that defines how websites expose structured tools to AI agents through the browser's `navigator.modelContext` API.
 
-### WebMCP
-The ecosystem of packages and tools that bring MCP to web browsers, including the polyfill, transports, React hooks, and browser extension.
+While inspired by Anthropic's Model Context Protocol, WebMCP is evolving as an independent web-native standard. The MCP-B packages provide the reference implementation, polyfill, and translation layer.
+
+**Relationship to MCP:** WebMCP shares similar concepts (tools, resources, structured communication) but is diverging as a web-specific standard with its own evolution path.
+
+**Specification:** https://github.com/webmachinelearning/webmcp (W3C incubation)
 
 ## Z
 
