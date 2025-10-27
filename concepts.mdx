@@ -276,28 +276,30 @@ Understanding how data flows through WebMCP when AI agents interact with your we
 The following diagram shows the complete request-response cycle when an AI agent discovers and calls a tool:
 
 ```mermaid
-flowchart TD
-    A[AI Agent] -->|1 - Discover tools| B{MCP-B Extension}
-    B -->|2 - List tools request| C[Tab Transport]
-    C -->|3 - Query| D[MCP Bridge]
-    D -->|4 - Return tools| C
-    C -->|5 - Tool list| B
-    B -->|6 - Display| A
+sequenceDiagram
+    participant A as AI Agent
+    participant X as MCP-B Extension
+    participant T as Tab Transport
+    participant B as MCP Bridge
+    participant W as Your Code
 
-    A -->|7 - Call tool| B
-    B -->|8 - Execute| C
-    C -->|9 - Route| D
-    D -->|10 - Run handler| E[Your Code]
-    E -->|11 - Return data| D
-    D -->|12 - Format MCP response| C
-    C -->|13 - Response| B
-    B -->|14 - Show result| A
+    Note over A,W: Tool Discovery Phase
+    A->>X: Request available tools
+    X->>T: List tools request
+    T->>B: Query registered tools
+    B-->>T: Return tool definitions
+    T-->>X: Tool list
+    X-->>A: Display available tools
 
-    style A fill:#9B59B6
-    style B fill:#FFB84D
-    style C fill:#50C878
-    style D fill:#1F5EFF
-    style E fill:#4B7BFF
+    Note over A,W: Tool Execution Phase
+    A->>X: Call tool(name, args)
+    X->>T: Execute tool request
+    T->>B: Route to tool handler
+    B->>W: Run handler function
+    W-->>B: Return result data
+    B-->>T: Format MCP response
+    T-->>X: Tool execution result
+    X-->>A: Show result to user
 ```
 
 ## Security Model
