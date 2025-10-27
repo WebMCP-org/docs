@@ -13,13 +13,35 @@ AI assistants are great at conversation, but they can't reliably interact with y
 
 ### The Solution
 
-**WebMCP** is a W3C web standard (currently being incubated) that lets websites expose structured tools to AI agents through the `navigator.modelContext` API.
+**WebMCP** is a W3C web standard (currently being incubated by the [Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/)) that lets websites expose structured tools to AI agents through the `navigator.modelContext` API.
 
 With WebMCP, your existing JavaScript functions become discoverable tools. AI assistants can then help users by directly calling your website's functionality - all while respecting authentication and permissions.
 
+### Design Philosophy
+
+WebMCP is built on a **human-in-the-loop** philosophy:
+
+- **The human web interface remains primary** - WebMCP doesn't replace your UI
+- **AI agents augment, not replace** - Tools assist users, they don't work autonomously
+- **Users maintain control** - Visibility and oversight over all agent actions
+- **Collaborative workflows** - Humans and AI work together, not separately
+
+### What WebMCP Is NOT
+
+WebMCP is specifically designed for human-in-the-loop workflows. It is **not** intended for:
+
+<Warning>
+These use cases are explicitly out of scope for WebMCP and should use other solutions.
+</Warning>
+
+- **Headless browsing** - WebMCP requires an active browsing context with the user present
+- **Fully autonomous agents** - Tools are designed to augment, not replace, human interaction
+- **Backend service integration** - For server-to-agent communication without a UI, use the [Model Context Protocol](https://modelcontextprotocol.io)
+- **UI replacement** - The human web interface remains the primary interaction method
+
 ### Key Terms
 
-- **WebMCP**: The W3C Web Model Context API standard - defines how websites expose tools to AI agents in browsers. While related to MCP, WebMCP will diverge as a web-native standard with its own evolution path.
+- **WebMCP**: The W3C Web Model Context API standard - defines how websites expose tools to AI agents in browsers. While related to MCP, WebMCP will diverge as a web-native standard with its own evolution path. [View the W3C specification](https://github.com/webmachinelearning/webmcp).
 - **MCP (Model Context Protocol)**: Anthropic's [open standard](https://modelcontextprotocol.io) for connecting AI systems to external tools and data sources. The original protocol that inspired WebMCP.
 - **MCP-B**: The reference implementation and tooling ecosystem for WebMCP. These packages serve dual purposes:
   1. **Polyfill** the W3C WebMCP API (`navigator.modelContext`) for current browsers
@@ -237,6 +259,12 @@ That's it! Your tools are now discoverable by AI agents.
 WebMCP builds on the Model Context Protocol (MCP), adapting it for the web platform:
 
 <CardGroup cols={2}>
+  <Card title="WebMCP Specification" icon="w3c" href="https://github.com/webmachinelearning/webmcp">
+    W3C Web Model Context API proposal and technical specification
+  </Card>
+  <Card title="WebMCP Proposal" icon="file-lines" href="https://github.com/webmachinelearning/webmcp/blob/main/docs/proposal.md">
+    Detailed proposal with API design and examples
+  </Card>
   <Card title="MCP Documentation" icon="book" href="https://modelcontextprotocol.io">
     Learn about the original Model Context Protocol specification
   </Card>
