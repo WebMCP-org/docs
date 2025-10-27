@@ -10,17 +10,27 @@ icon: 'diagram-project'
 
 ## What is WebMCP?
 
-WebMCP is an ecosystem that implements the **W3C Web Model Context API**, bringing the Model Context Protocol (MCP) to web browsers. It allows websites to expose their functionality as structured tools that AI agents can discover and use.
+**WebMCP** (Web Model Context Protocol) is a **W3C web standard** currently being incubated that defines how websites expose structured tools to AI agents through the browser's `navigator.modelContext` API.
+
+### Relationship to MCP
+
+WebMCP is inspired by Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io) but adapted specifically for web browsers. While WebMCP shares similar concepts with MCP (tools, resources, structured communication), it is evolving as an independent web standard with its own specification path.
+
+**MCP-B packages** provide:
+1. **W3C API polyfill** - Implements `navigator.modelContext` for browsers that don't yet support it natively
+2. **Translation layer** - Bridges between WebMCP and official MCP, allowing tools declared in either format to work with both protocols
+
+This means you can build with WebMCP's web-native API while maintaining compatibility with the broader MCP ecosystem.
 
 ## Key Components
 
 <CardGroup cols={2}>
   <Card title="W3C Web Model Context API" icon="globe">
-    Standard browser API (`navigator.modelContext`) for registering tools
+    Standard browser API (`navigator.modelContext`) for registering tools - the WebMCP specification
   </Card>
 
-  <Card title="MCP Bridge" icon="arrows-left-right">
-    Automatic bridging between Web API and MCP protocol
+  <Card title="MCP-B Polyfill & Bridge" icon="arrows-left-right">
+    Implements navigator.modelContext for current browsers and translates between WebMCP and MCP protocols
   </Card>
 
   <Card title="Transport Layer" icon="tower-broadcast">
@@ -28,7 +38,7 @@ WebMCP is an ecosystem that implements the **W3C Web Model Context API**, bringi
   </Card>
 
   <Card title="MCP-B Extension" icon="puzzle-piece">
-    Browser extension that connects AI agents to website tools
+    Development and testing tool that collects WebMCP servers from tabs and supports userscript injection
   </Card>
 </CardGroup>
 
@@ -500,6 +510,20 @@ const schema = {
 - ✅ Show loading states in UI
 - ❌ Don't block the main thread
 - ❌ Avoid heavy computations in handlers
+
+## External Standards & Specifications
+
+Learn more about the underlying protocols:
+
+<CardGroup cols={2}>
+  <Card title="MCP Specification" icon="book" href="https://modelcontextprotocol.io">
+    Official Model Context Protocol documentation from Anthropic
+  </Card>
+
+  <Card title="MCP SDK" icon="code" href="https://github.com/modelcontextprotocol/typescript-sdk">
+    TypeScript SDK for building MCP servers and clients
+  </Card>
+</CardGroup>
 
 ## Related Resources
 
