@@ -4,7 +4,7 @@ description: 'Add AI agent support to your website in minutes'
 icon: 'rocket'
 ---
 
-WebMCP is a **polyfill for the W3C Web Model Context API** that lets you expose JavaScript functions to AI agents through the `navigator.modelContext` standard.
+Turn your website's JavaScript functions into AI-accessible tools in minutes. This guide will have you up and running with WebMCP quickly.
 
 ## Prerequisites
 
@@ -197,17 +197,53 @@ Wrap your existing application logic as tools:
 
 ## Best Practices
 
-**Use `registerTool()` for most cases**: Register individual tools with `navigator.modelContext.registerTool()`. This gives you control over tool lifecycle and works great with component-scoped tools.
+<AccordionGroup>
+  <Accordion title="✅ Use registerTool() - it just works!">
+    For 99% of use cases, use `navigator.modelContext.registerTool()`. It's simple, automatic, and handles cleanup for you.
 
-**Use `provideContext()` sparingly**: Only use `navigator.modelContext.provideContext()` for top-level base tools. It replaces all base tools each time it's called.
+    ```javascript
+    const registration = navigator.modelContext.registerTool({
+      name: 'my_tool',
+      description: 'What my tool does',
+      inputSchema: { /* ... */ },
+      async execute(args) { /* ... */ }
+    });
+    ```
+  </Accordion>
 
-**React users**: Use the `useWebMCP()` hook - it handles registration, cleanup, and Zod validation automatically.
+  <Accordion title="⚛️ React: Use the useWebMCP() hook">
+    React users should use the `useWebMCP()` hook - it handles registration, cleanup, and Zod validation automatically:
 
-**Security**: Only expose tools that users can already perform via your UI. Validate all inputs. Tools run with the same permissions as your page.
+    ```tsx
+    useWebMCP({
+      name: 'my_tool',
+      description: 'What it does',
+      inputSchema: { amount: z.number() },
+      handler: async ({ amount }) => { /* ... */ }
+    });
+    ```
+  </Accordion>
 
-**Tool Design**: Wrap existing logic, don't duplicate it. Use descriptive names. Provide visual feedback when tools execute.
+  <Accordion title="🔒 Security first">
+    - Only expose tools users can already access via your UI
+    - Validate all inputs with schemas
+    - Use `credentials: 'same-origin'` for API calls
+    - Tools inherit the user's authentication and permissions
+  </Accordion>
 
-**Authentication**: Use `credentials: 'same-origin'` in fetch calls. Tools automatically respect session cookies and user authentication.
+  <Accordion title="🎨 Tool design tips">
+    - Use descriptive names: `add_to_cart`, `search_products`, `update_profile`
+    - Wrap existing functions - don't duplicate logic
+    - Provide visual feedback when tools execute
+    - Return clear success/error messages
+  </Accordion>
+
+  <Accordion title="⚠️ When to use provideContext()">
+    Only use `provideContext()` for defining base application-level tools. Most developers should stick with `registerTool()`.
+
+    See [Advanced Patterns](/advanced#providecontext-patterns) for details.
+  </Accordion>
+</AccordionGroup>
 
 ## Next Steps
 

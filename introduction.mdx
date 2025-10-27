@@ -5,9 +5,24 @@ description: 'Bringing the power of MCP to the web - Enable AI agents to interac
 
 ## Welcome to WebMCP
 
-**WebMCP is a polyfill for the W3C Web Model Context API** - a standards-track proposal that lets websites expose tools to AI agents through `navigator.modelContext`.
+**Make your website AI-accessible.** Turn your JavaScript functions into tools that AI assistants like Claude, ChatGPT, and custom agents can discover and use.
 
-Add AI agent support to your website with a few lines of code. Your existing JavaScript functions become tools that AI assistants can discover and use, all while respecting user authentication and permissions.
+### The Problem
+
+AI assistants are great at conversation, but they can't reliably interact with your website. They can't click buttons, submit forms, or access your app's functionality in a structured, deterministic way.
+
+### The Solution
+
+**WebMCP** is an ecosystem that implements the **W3C Web Model Context API** - a standards-track proposal that lets websites expose structured tools to AI agents through `navigator.modelContext`.
+
+With WebMCP, your existing JavaScript functions become discoverable tools. AI assistants can then help users by directly calling your website's functionality - all while respecting authentication and permissions.
+
+### Key Terms
+
+- **WebMCP**: The ecosystem of packages and tools for web-based Model Context Protocol
+- **`navigator.modelContext`**: The W3C standard API (polyfilled by `@mcp-b/global`)
+- **MCP-B Extension**: The browser extension that connects AI agents to website tools
+- **MCP**: Model Context Protocol - Anthropic's open standard for AI-tool integration
 
 <CardGroup cols={2}>
   <Card
@@ -40,11 +55,24 @@ Add AI agent support to your website with a few lines of code. Your existing Jav
   </Card>
 </CardGroup>
 
-## What is WebMCP?
+## Who Is This For?
 
-WebMCP implements the `navigator.modelContext` web standard, letting you expose your website's functionality to AI agents. Your existing JavaScript functions become discoverable tools that AI assistants (like Claude, ChatGPT, or custom agents) can call directly.
+<CardGroup cols={2}>
+  <Card title="Website Developers" icon="code">
+    Add AI copilot features to your React, Vue, or vanilla JS app
+  </Card>
+  <Card title="App Builders" icon="hammer">
+    Let AI assistants interact with your web app's functionality
+  </Card>
+  <Card title="Extension Users" icon="puzzle-piece">
+    Customize websites with AI-powered userscripts using the [MCP-B Extension](/extension/index)
+  </Card>
+  <Card title="AI Developers" icon="robot">
+    Build frontend AI agents that can use website tools
+  </Card>
+</CardGroup>
 
-### Why Use WebMCP?
+## Why Use WebMCP?
 
 - **Standards-Based**: Implements the W3C Web Model Context API proposal
 - **Zero Backend**: Runs entirely in the browser - no server changes needed
@@ -55,10 +83,24 @@ WebMCP implements the `navigator.modelContext` web standard, letting you expose 
 
 ## How It Works
 
-1. **Load the polyfill**: Add `@mcp-b/global` to your website
-2. **Register tools**: Use `registerTool()` or the `useWebMCP()` hook
-3. **AI agents discover tools**: The MCP-B extension automatically detects your tools
-4. **Users interact**: AI assistants can now call your tools to help users
+<Steps>
+  <Step title="Add WebMCP to your site">
+    Install `@mcp-b/global` to enable `navigator.modelContext`
+  </Step>
+  <Step title="Register your tools">
+    Turn your JavaScript functions into AI-accessible tools with `registerTool()`
+  </Step>
+  <Step title="Connect AI agents">
+    Install the MCP-B Extension or integrate with AI frameworks like Assistant-UI
+  </Step>
+  <Step title="AI calls your tools">
+    AI assistants can now discover and use your tools to help users
+  </Step>
+</Steps>
+
+<Info>
+  **Want to understand the architecture first?** Check out [Core Concepts](/concepts) for diagrams and detailed explanations of how everything works together.
+</Info>
 
 ## Community
 
@@ -88,63 +130,82 @@ WebMCP implements the `navigator.modelContext` web standard, letting you expose 
 
 ## Quick Example
 
-**React (Recommended)**
+Get started in under 2 minutes:
 
-Use the `useWebMCP` hook for automatic tool registration with Zod validation:
+<Tabs>
+  <Tab title="React">
+    Use the `useWebMCP` hook for automatic tool registration:
 
-```tsx
-import '@mcp-b/global';
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { z } from 'zod';
+    ```tsx
+    import '@mcp-b/global';
+    import { useWebMCP } from '@mcp-b/react-webmcp';
+    import { z } from 'zod';
 
-function MyComponent() {
-  useWebMCP({
-    name: 'get_page_info',
-    description: 'Get current page information',
-    inputSchema: {
-      includeUrl: z.boolean().optional()
-    },
-    handler: async ({ includeUrl }) => {
-      return {
-        title: document.title,
-        ...(includeUrl && { url: window.location.href })
-      };
+    function ProductPage({ productId }) {
+      useWebMCP({
+        name: 'add_to_cart',
+        description: 'Add this product to shopping cart',
+        inputSchema: {
+          quantity: z.number().min(1).default(1)
+        },
+        handler: async ({ quantity }) => {
+          await addToCart(productId, quantity);
+          return { success: true, quantity };
+        }
+      });
+
+      return <div>Product Details</div>;
     }
-  });
+    ```
+  </Tab>
 
-  return <div>My Component</div>;
-}
-```
+  <Tab title="Vanilla JS">
+    Use `registerTool()` to register tools:
 
-**Vanilla JavaScript**
+    ```javascript
+    import '@mcp-b/global';
 
-Use `registerTool()` to register individual tools:
+    navigator.modelContext.registerTool({
+      name: "get_page_title",
+      description: "Get the current page title",
+      inputSchema: {
+        type: "object",
+        properties: {}
+      },
+      async execute() {
+        return {
+          content: [{
+            type: "text",
+            text: document.title
+          }]
+        };
+      }
+    });
+    ```
+  </Tab>
 
-```javascript
-import '@mcp-b/global';
+  <Tab title="Script Tag (No Build)">
+    No bundler needed - just add a script tag:
 
-navigator.modelContext.registerTool({
-  name: "get_page_info",
-  description: "Get current page information",
-  inputSchema: {
-    type: "object",
-    properties: {
-      includeUrl: { type: "boolean" }
-    }
-  },
-  async execute({ includeUrl }) {
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          title: document.title,
-          ...(includeUrl && { url: window.location.href })
-        })
-      }]
-    };
-  }
-});
-```
+    ```html
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    <script>
+      navigator.modelContext.registerTool({
+        name: "get_page_title",
+        description: "Get the current page title",
+        inputSchema: { type: "object", properties: {} },
+        async execute() {
+          return {
+            content: [{ type: "text", text: document.title }]
+          };
+        }
+      });
+    </script>
+    ```
+  </Tab>
+</Tabs>
+
+That's it! Your tools are now discoverable by AI agents.
 
 ## Next Steps
 

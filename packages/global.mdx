@@ -5,11 +5,11 @@ sidebarTitle: "Global (W3C API)"
 icon: "globe"
 ---
 
-**W3C Web Model Context API polyfill** - Add `navigator.modelContext` to your website for AI agent integration.
+**W3C Web Model Context API polyfill** - Add `navigator.modelContext` to your website and turn JavaScript functions into AI-accessible tools.
 
-<Note>
-  **Recommended**: Use `registerTool()` for most cases. Only use `provideContext()` for top-level base tools.
-</Note>
+<Info>
+  **Quick Start**: Use `registerTool()` to add tools. It's simple, automatic, and works everywhere.
+</Info>
 
 ## Prerequisites
 
@@ -94,48 +94,76 @@ navigator.modelContext.registerTool({
 
 This package implements the [W3C Web Model Context API](https://github.com/webmachinelearning/webmcp) specification, adding `navigator.modelContext` to your website. Your JavaScript functions become tools that AI agents can discover and call.
 
-## Tool Registration Approaches
+## Tool Registration
 
-### `registerTool()` - Recommended
+### The Default: `registerTool()`
 
-Use `registerTool()` for most cases. It gives you fine-grained control over individual tools:
+For 99% of use cases, use `registerTool()` to add tools one at a time:
 
 ```javascript
 const registration = navigator.modelContext.registerTool({
-  name: "my_tool",
-  description: "Tool description",
-  inputSchema: { type: "object", properties: {} },
-  async execute(args) {
-    return { content: [{ type: "text", text: "Result" }] };
+  name: "add_to_cart",
+  description: "Add a product to the shopping cart",
+  inputSchema: {
+    type: "object",
+    properties: {
+      productId: { type: "string" },
+      quantity: { type: "number" }
+    }
+  },
+  async execute({ productId, quantity }) {
+    await addToCart(productId, quantity);
+    return { content: [{ type: "text", text: `Added ${quantity} items` }] };
   }
 });
 
-// Unregister later if needed
+// Optional: Unregister later
 registration.unregister();
 ```
 
-### `provideContext()` - Use Sparingly
+**Why this works great:**
+- ✅ Simple and intuitive
+- ✅ Automatic cleanup with `unregister()`
+- ✅ Perfect for React/Vue component-scoped tools
+- ✅ No need to worry about tool lifecycle management
 
-Only use `provideContext()` for top-level base tools that define your app's core functionality:
+<Accordion title="Advanced: provideContext() for base tools">
+  Only use `provideContext()` when you need to define application-level base tools:
 
-```javascript
-navigator.modelContext.provideContext({
-  tools: [/* base tools array */]
-});
-```
+  ```javascript
+  navigator.modelContext.provideContext({
+    tools: [
+      {
+        name: "app_info",
+        description: "Get app information",
+        inputSchema: { type: "object", properties: {} },
+        async execute() {
+          return { content: [{ type: "text", text: "App v1.0.0" }] };
+        }
+      }
+    ]
+  });
+  ```
 
-## Two-Bucket Tool Management
+  **Important:** `provideContext()` replaces all base tools each time it's called. Most developers should use `registerTool()` instead.
 
-This package uses a **two-bucket system**:
+  See [Two-Bucket Tool Management](#two-bucket-tool-management) below for details on how these work together.
+</Accordion>
 
-- **Bucket A (Base Tools)**: Set via `provideContext()` - replaced each time you call it
-- **Bucket B (Dynamic Tools)**: Added via `registerTool()` - persist independently
+<Accordion title="Implementation Detail: Two-Bucket Tool Management">
+  This package uses a **two-bucket system** internally:
 
-**Key behaviors:**
-- ✅ `registerTool()` tools persist across `provideContext()` calls
-- ✅ Each `registerTool()` returns an `unregister()` function
-- ✅ Tool name collisions throw an error
-- ✅ Perfect for component-scoped tools in React/Vue
+  - **Bucket A (Base Tools)**: Set via `provideContext()` - replaced each time you call it
+  - **Bucket B (Dynamic Tools)**: Added via `registerTool()` - persist independently
+
+  **Key behaviors:**
+  - ✅ `registerTool()` tools persist across `provideContext()` calls
+  - ✅ Each `registerTool()` returns an `unregister()` function
+  - ✅ Tool name collisions throw an error
+  - ✅ Perfect for component-scoped tools in React/Vue
+
+  **In practice:** Just use `registerTool()` and you don't need to worry about this!
+</Accordion>
 
 ## API Reference
 

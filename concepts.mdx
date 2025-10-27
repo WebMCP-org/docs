@@ -4,9 +4,13 @@ description: 'Understanding WebMCP architecture, components, and how everything 
 icon: 'diagram-project'
 ---
 
+<Note>
+  **TL;DR:** WebMCP lets you turn JavaScript functions into AI-accessible tools using `navigator.modelContext.registerTool()`. AI agents can then discover and call these tools to help users interact with your website.
+</Note>
+
 ## What is WebMCP?
 
-WebMCP is a **polyfill for the W3C Web Model Context API** that brings the Model Context Protocol (MCP) to web browsers. It allows websites to expose their functionality as structured tools that AI agents can discover and use.
+WebMCP is an ecosystem that implements the **W3C Web Model Context API**, bringing the Model Context Protocol (MCP) to web browsers. It allows websites to expose their functionality as structured tools that AI agents can discover and use.
 
 ## Key Components
 
@@ -90,87 +94,101 @@ sequenceDiagram
     X-->>A: Show result
 ```
 
-## Tool Registration: Two Approaches
+## Tool Registration
 
-### Recommended: `registerTool()` (Dynamic Tools)
+### The Simple Way: `registerTool()`
 
-Use for component-scoped, dynamic, or lifecycle-managed tools:
+For most use cases, use `registerTool()` to add tools one at a time:
 
 ```javascript
 const registration = navigator.modelContext.registerTool({
-  name: "my_tool",
-  description: "Tool description",
-  inputSchema: { type: "object", properties: {} },
-  async execute(args) {
-    return { content: [{ type: "text", text: "Result" }] };
+  name: "add_to_cart",
+  description: "Add a product to the shopping cart",
+  inputSchema: {
+    type: "object",
+    properties: {
+      productId: { type: "string" },
+      quantity: { type: "number" }
+    }
+  },
+  async execute({ productId, quantity }) {
+    await addToCart(productId, quantity);
+    return {
+      content: [{ type: "text", text: `Added ${quantity} items` }]
+    };
   }
 });
 
-// Clean up later
+// Optional: Unregister later if needed
 registration.unregister();
 ```
 
-**Benefits:**
-- ✅ Component lifecycle integration
-- ✅ Independent of base tools
-- ✅ Can be unregistered
-- ✅ Perfect for React/Vue
+**Why `registerTool()` is the default:**
+- ✅ Works everywhere (React, Vue, vanilla JS)
+- ✅ Automatic cleanup when unregistered
+- ✅ Perfect for component-scoped tools
+- ✅ Simple and intuitive
 
-### Advanced: `provideContext()` (Base Tools)
+<Accordion title="Advanced: provideContext() for base tools">
+  Only use `provideContext()` when you need to set application-level base tools all at once:
 
-Use sparingly for application-level base tools:
+  ```javascript
+  navigator.modelContext.provideContext({
+    tools: [/* array of tool definitions */]
+  });
+  ```
 
-```javascript
-navigator.modelContext.provideContext({
-  tools: [/* array of tool definitions */]
-});
-```
+  **When to use:**
+  - Defining core application tools at startup
+  - Setting up a foundation tool set
 
-**When to use:**
-- Top-level application tools
-- Tools that define core functionality
-- Initial tool set at app startup
+  **Important:** This replaces all base tools each time it's called. For most use cases, stick with `registerTool()` instead.
 
-**Important:** Replaces all base tools each time called!
+  See [Advanced Patterns](/advanced) for detailed guidance.
+</Accordion>
 
-## Two-Bucket Tool Management
+<AccordionGroup>
+  <Accordion title="Implementation Detail: Two-Bucket Tool System">
+    WebMCP internally uses a dual-bucket system for tool organization. This is mostly transparent to you, but helps explain how `provideContext()` and `registerTool()` work together:
 
-WebMCP uses a dual-bucket system for tool organization:
+    ```mermaid
+    graph LR
+        subgraph "Bucket A: Base Tools"
+            A1[App Tool 1]
+            A2[App Tool 2]
+        end
 
-```mermaid
-graph LR
-    subgraph "Bucket A: Base Tools"
-        A1[App Tool 1]
-        A2[App Tool 2]
-    end
+        subgraph "Bucket B: Dynamic Tools"
+            B1[Component Tool 1]
+            B2[Component Tool 2]
+            B3[Feature Tool 1]
+        end
 
-    subgraph "Bucket B: Dynamic Tools"
-        B1[Component Tool 1]
-        B2[Component Tool 2]
-        B3[Feature Tool 1]
-    end
+        P[provideContext] -.->|Replaces| A1
+        P -.->|Replaces| A2
 
-    P[provideContext] -.->|Replaces| A1
-    P -.->|Replaces| A2
+        R1[registerTool] -->|Adds| B1
+        R2[registerTool] -->|Adds| B2
+        R3[registerTool] -->|Adds| B3
 
-    R1[registerTool] -->|Adds| B1
-    R2[registerTool] -->|Adds| B2
-    R3[registerTool] -->|Adds| B3
+        B1 -.->|unregister| D1[Removed]
 
-    B1 -.->|unregister| D1[Removed]
+        style A1 fill:#FFB84D
+        style A2 fill:#FFB84D
+        style B1 fill:#4B7BFF
+        style B2 fill:#4B7BFF
+        style B3 fill:#4B7BFF
+    ```
 
-    style A1 fill:#FFB84D
-    style A2 fill:#FFB84D
-    style B1 fill:#4B7BFF
-    style B2 fill:#4B7BFF
-    style B3 fill:#4B7BFF
-```
+    **Key behaviors:**
+    - Base tools (Bucket A) are replaced when `provideContext()` is called
+    - Dynamic tools (Bucket B) persist independently
+    - Each `registerTool()` returns an `unregister()` function
+    - Tool name collisions throw errors
 
-**Key behaviors:**
-- Base tools (Bucket A) are replaced when `provideContext()` is called
-- Dynamic tools (Bucket B) persist independently
-- Each `registerTool()` returns an `unregister()` function
-- Tool name collisions throw errors
+    **Why this matters:** If you use `provideContext()`, be aware it replaces all base tools. Tools registered with `registerTool()` are unaffected.
+  </Accordion>
+</AccordionGroup>
 
 ## Transport Types
 
