@@ -29,6 +29,10 @@
       {
         "label": "NPM Packages",
         "href": "https://github.com/WebMCP-org/npm-packages"
+      },
+      {
+        "label": "Discord",
+        "href": "https://discord.gg/ZnHG4csJRB"
       }
     ],
     "primary": {
