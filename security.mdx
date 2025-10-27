@@ -5,8 +5,35 @@ icon: 'shield-halved'
 ---
 
 <Warning>
-  Security is a shared responsibility. While WebMCP provides secure foundations, you must implement proper validation, authorization, and error handling in your tools.
+  As a website builder, you are responsible for protecting your users from malicious agents. Agents may have access to tools from multiple websites—some potentially malicious. Implement proper validation, authorization, and sensitive data handling to safeguard your users.
 </Warning>
+
+## Multi-Website Threat Model
+
+<Note>
+  **Critical Context**: AI agents can interact with multiple websites simultaneously. Your tools may be used by an agent that has also loaded tools from malicious websites. This creates a unique security challenge where compromised agents can abuse your tools.
+</Note>
+
+### The Multi-Origin Risk
+
+When an AI agent connects to your website, it may already have tools from other origins:
+
+- **Trusted tools**: Your website's legitimate functionality
+- **Unknown tools**: Tools from other websites the user is visiting
+- **Malicious tools**: Tools from compromised or malicious websites
+
+A malicious tool from another website could manipulate the agent into:
+- Exfiltrating sensitive data through your tools
+- Performing unauthorized actions using your authenticated APIs
+- Tricking users into approving dangerous operations
+
+### Your Responsibility
+
+As a website builder, you must assume:
+
+1. **The agent may be compromised** - It may have been influenced by malicious tools from other websites
+2. **Sensitive data must never reach the agent** - Use references instead of passing raw sensitive data to the model context
+3. **User consent is critical** - For sensitive operations, get explicit user approval through UI (not through the agent)
 
 ## Security Principles
 
@@ -58,12 +85,33 @@ The most dangerous scenarios occur when three conditions align:
 
 ### Mitigation Strategies
 
-#### Per-Origin Data Isolation
+#### Never Pass Sensitive Data to Model Context
 
-Implement clipboard-style isolation for sensitive data instead of passing it directly to the AI context:
+<Warning>
+  **Critical Rule**: Sensitive information must NEVER be passed to the AI agent's context. A compromised agent (via malicious tools from other websites) could exfiltrate this data. Always use references instead.
+</Warning>
+
+Implement clipboard-style isolation for sensitive data:
 
 ```javascript
-// ✅ BETTER: Use references instead of raw data
+// ❌ DANGEROUS: Sensitive data exposed to potentially compromised agent
+useWebMCP({
+  name: 'read_private_messages',
+  description: 'Access user messages',
+  handler: async () => {
+    const messages = await getPrivateMessages();
+
+    // DON'T DO THIS! Malicious tools from other sites could steal this data
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify(messages)  // NEVER expose sensitive data this way
+      }]
+    };
+  }
+});
+
+// ✅ CORRECT: Use references instead of raw data
 useWebMCP({
   name: 'read_private_messages',
   description: 'Access user messages',
@@ -84,9 +132,15 @@ useWebMCP({
     };
   }
 });
-
-// Later, if AI needs actual data, require explicit user approval
 ```
+
+**What should use references:**
+- Passwords, tokens, API keys, session IDs
+- Private messages, emails, documents
+- Personal information (SSN, credit cards, addresses)
+- Financial data (account numbers, balances)
+- Health records, legal documents
+- Any data you wouldn't want copied to a malicious website
 
 #### Limit Dangerous Tool Combinations
 
@@ -411,28 +465,6 @@ const transport = new TabServerTransport({
 });
 ```
 
-### Validate Extension Connections
-
-For extension transports, verify the connecting extension ID:
-
-```javascript
-// Extension background.ts
-chrome.runtime.onConnectExternal.addListener((port) => {
-  const ALLOWED_EXTENSION_IDS = [
-    'daohopfhkdelnpemnhlekblhnikhdhfa',  // MCP-B Extension
-    'your-extension-id-here'
-  ];
-
-  if (!ALLOWED_EXTENSION_IDS.includes(port.sender.id)) {
-    console.warn(`Rejected connection from unauthorized extension: ${port.sender.id}`);
-    port.disconnect();
-    return;
-  }
-
-  // Handle authorized connection
-  setupMCPConnection(port);
-});
-```
 
 ## Sensitive Operations
 
@@ -513,6 +545,176 @@ function useRateLimitedTool() {
   });
 }
 ```
+
+### User Elicitation for Sensitive Data
+
+<Note>
+  **Best Practice**: For sensitive operations requiring user input (passwords, payment details, etc.), use UI-based elicitation instead of passing data through the agent. The tool's handler returns a promise that resolves when the user provides the input directly through your UI.
+</Note>
+
+This pattern protects sensitive data from being exposed to potentially compromised agents:
+
+```javascript
+// ✅ EXCELLENT: Sensitive data collected via modal, never touches agent context
+useWebMCP({
+  name: 'transfer_funds',
+  description: 'Transfer funds to another account (requires password confirmation)',
+  inputSchema: {
+    toAccount: z.string(),
+    amount: z.number().positive()
+  },
+  handler: async ({ toAccount, amount }) => {
+    // Return a promise that resolves when user provides password via modal
+    const password = await new Promise((resolve, reject) => {
+      // Show modal to user (not visible to agent)
+      showPasswordModal({
+        title: 'Confirm Transfer',
+        message: `Transfer $${amount} to account ${toAccount}?`,
+        onSubmit: (inputPassword) => {
+          resolve(inputPassword);  // Resolves with user input
+        },
+        onCancel: () => {
+          reject(new Error('User cancelled'));
+        }
+      });
+    });
+
+    // Password never passed through agent context
+    // Validate and perform transfer
+    const isValid = await validatePassword(password);
+    if (!isValid) {
+      throw new Error('Invalid password');
+    }
+
+    const result = await transferFunds(toAccount, amount);
+
+    // Only return success confirmation, not sensitive details
+    return {
+      content: [{
+        type: "text",
+        text: `Transfer of $${amount} completed successfully`
+      }]
+    };
+  }
+});
+```
+
+**Why This Matters:**
+
+If a malicious tool from another website has compromised the agent, it cannot:
+- See the password the user types in your modal
+- Intercept sensitive data during the operation
+- Access the user input that was collected via UI
+
+**Common Use Cases for Elicitation:**
+
+```javascript
+// ✅ Payment confirmation
+useWebMCP({
+  name: 'complete_purchase',
+  description: 'Complete purchase with payment (requires CVV confirmation)',
+  inputSchema: { cartId: z.string() },
+  handler: async ({ cartId }) => {
+    // Show payment modal to collect CVV
+    const cvv = await showPaymentModal({
+      message: 'Enter CVV to complete purchase'
+    });
+
+    // CVV never exposed to agent
+    await processPayment(cartId, cvv);
+    return { success: true };
+  }
+});
+
+// ✅ Two-factor authentication
+useWebMCP({
+  name: 'enable_2fa',
+  description: 'Enable two-factor authentication',
+  inputSchema: {},
+  handler: async () => {
+    // Show modal for 2FA code entry
+    const code = await show2FASetupModal();
+
+    // Verification code never in agent context
+    await verify2FACode(code);
+    return { message: '2FA enabled successfully' };
+  }
+});
+
+// ✅ Sensitive document access
+useWebMCP({
+  name: 'decrypt_document',
+  description: 'Decrypt and view encrypted document',
+  inputSchema: { documentId: z.string() },
+  handler: async ({ documentId }) => {
+    // Elicit encryption password via secure modal
+    const password = await showSecurePasswordPrompt({
+      title: 'Document Password Required'
+    });
+
+    // Decrypt client-side, never send password to agent
+    const decrypted = await decryptDocument(documentId, password);
+
+    // Return reference to decrypted content, not content itself
+    const ref = await storeDecryptedContent(decrypted);
+    return {
+      content: [{
+        type: "reference",
+        id: ref.id,
+        description: "Decrypted document"
+      }]
+    };
+  }
+});
+```
+
+**Implementation Pattern:**
+
+```javascript
+// Helper function for secure modal elicitation
+async function elicitSensitiveInput(config) {
+  return new Promise((resolve, reject) => {
+    const modal = createSecureModal({
+      ...config,
+      onSubmit: (value) => {
+        modal.close();
+        resolve(value);
+      },
+      onCancel: () => {
+        modal.close();
+        reject(new Error('User cancelled'));
+      },
+      // Security: Clear input on close
+      onClose: () => {
+        modal.clearInputs();
+      }
+    });
+
+    modal.show();
+  });
+}
+
+// Usage in tools
+useWebMCP({
+  name: 'sensitive_operation',
+  description: 'Perform sensitive operation',
+  handler: async () => {
+    const sensitiveData = await elicitSensitiveInput({
+      title: 'Confirmation Required',
+      type: 'password',
+      validation: (val) => val.length >= 8
+    });
+
+    // Process without exposing to agent
+    await performOperation(sensitiveData);
+    return { success: true };
+  }
+});
+```
+
+<Warning>
+  **Never** ask the agent to provide sensitive user data as tool parameters. Always collect sensitive information through your UI, ensuring it never enters the agent's context where malicious tools could access it.
+</Warning>
 
 ## Tool Misrepresentation Risks
 
@@ -1031,51 +1233,6 @@ async execute({ amount }) {
 }
 ```
 
-## Chrome Extension Security
-
-### Manifest Permissions
-
-Request only necessary permissions:
-
-```json
-// ✅ GOOD: Minimal permissions
-{
-  "manifest_version": 3,
-  "permissions": [
-    "storage",
-    "activeTab"  // Only active tab, not all tabs
-  ],
-  "host_permissions": [
-    "https://myapp.com/*"  // Specific domain
-  ]
-}
-```
-
-```json
-// ❌ BAD: Overly broad permissions
-{
-  "manifest_version": 3,
-  "permissions": [
-    "storage",
-    "tabs",
-    "history",
-    "bookmarks",
-    "<all_urls>"  // Too broad!
-  ]
-}
-```
-
-### Content Security Policy
-
-Configure strict CSP in your extension manifest:
-
-```json
-{
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
-  }
-}
-```
 
 ## Logging & Monitoring
 
@@ -1246,10 +1403,6 @@ async handler({ documentId }) {
 
   <Card title="Content Security Policy" icon="lock" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP">
     MDN CSP documentation
-  </Card>
-
-  <Card title="Chrome Extension Security" icon="puzzle-piece" href="https://developer.chrome.com/docs/extensions/mv3/security/">
-    Extension security best practices
   </Card>
 
   <Card title="MCP Security" icon="shield-halved" href="https://modelcontextprotocol.io/docs/security">
