@@ -71,13 +71,13 @@
             "pages": [
               "introduction",
               "quickstart",
-              "connecting-agents",
               "examples"
             ]
           },
           {
             "group": "Guides",
             "pages": [
+              "connecting-agents",
               "development",
               "advanced",
               "security"
