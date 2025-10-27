@@ -116,24 +116,23 @@ server.registerTool('my-tool', {
 
 ## Architecture
 
-```
-┌─────────────────────────────────┐
-│  @mcp-b/webmcp-ts-sdk           │
-│                                 │
-│  ┌───────────────────────────┐  │
-│  │ BrowserMcpServer          │  │
-│  │ (Modified behavior)        │  │
-│  └───────────┬───────────────┘  │
-│              │ extends          │
-│              ▼                  │
-│  ┌───────────────────────────┐  │
-│  │ @modelcontextprotocol/sdk │  │
-│  │ (Official SDK)             │  │
-│  │ - Types                    │  │
-│  │ - Protocol                 │  │
-│  │ - Validation               │  │
-│  └───────────────────────────┘  │
-└─────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph SDK["@mcp-b/webmcp-ts-sdk"]
+        BrowserServer["BrowserMcpServer<br/>(Modified behavior)"]
+
+        subgraph OfficialSDK["@modelcontextprotocol/sdk<br/>(Official SDK)"]
+            Types["Types"]
+            Protocol["Protocol"]
+            Validation["Validation"]
+        end
+
+        BrowserServer -->|extends| OfficialSDK
+    end
+
+    style SDK fill:#e1f5ff,stroke:#0288d1
+    style BrowserServer fill:#fff3e0,stroke:#f57c00
+    style OfficialSDK fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 ## Maintenance Strategy

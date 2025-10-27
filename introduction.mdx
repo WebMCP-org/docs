@@ -111,35 +111,68 @@ graph LR
 
 ## Quick Example
 
-Here's a simple example of exposing a tool on your website:
+Here's a simple example of exposing a tool on your website using the W3C Web Model Context API:
 
-```javascript
-import { TabServerTransport } from "@mcp-b/transports";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+</head>
+<body>
+  <h1>My Website</h1>
 
-// Create the server
-const server = new McpServer({
-  name: "my-website",
-  version: "1.0.0",
-});
+  <script>
+    // Use the W3C Web Model Context API
+    window.navigator.modelContext.provideContext({
+      tools: [
+        {
+          name: "get-page-info",
+          description: "Get current page information",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          },
+          async execute() {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  title: document.title,
+                  url: window.location.href
+                })
+              }]
+            };
+          }
+        }
+      ]
+    });
+  </script>
+</body>
+</html>
+```
 
-// Expose a tool
-server.tool("getPageInfo", "Get current page info", {}, async () => {
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
+For React applications, use the `@mcp-b/react-webmcp` package:
+
+```tsx
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+function MyComponent() {
+  useWebMCP({
+    name: 'get_page_info',
+    description: 'Get current page information',
+    inputSchema: {},
+    handler: async () => {
+      return {
         title: document.title,
-        url: window.location.href,
-      }),
-    }],
-  };
-});
+        url: window.location.href
+      };
+    }
+  });
 
-// Connect the transport
-await server.connect(new TabServerTransport({ 
-  allowedOrigins: ["*"] 
-}));
+  return <div>My Component</div>;
+}
 ```
 
 ## Next Steps
