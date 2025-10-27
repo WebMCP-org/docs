@@ -84,9 +84,10 @@
       "pages": [
         "packages/global",
         "packages/transports",
-        "packages/react-hooks",
+        "packages/react-webmcp",
         "packages/extension-tools",
-        "packages/react-hook-form"
+        "packages/webmcp-ts-sdk",
+        "packages/smart-dom-reader"
       ]
     },
     {

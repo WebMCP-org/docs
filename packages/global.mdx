@@ -1,481 +1,475 @@
 ---
-title: '@mcp-b/cli'
-description: 'Global CLI tool for MCP development and server management'
-sidebarTitle: 'Global CLI'
-icon: 'terminal'
+title: "@mcp-b/global"
+description: "W3C Web Model Context API polyfill implementing window.navigator.modelContext"
+sidebarTitle: "Global (W3C API)"
+icon: "globe"
 ---
 
-## Overview
-
-The `@mcp-b/cli` package is a global command-line tool that simplifies MCP development, testing, and server management. It provides utilities for scaffolding new MCP projects, running MCP servers, and testing MCP tools interactively.
+W3C Web Model Context API polyfill - Implement `window.navigator.modelContext` for AI-powered web applications.
 
 ## Installation
 
-Install the CLI globally using npm:
+### Via IIFE Script Tag (Easiest - No Build Required)
 
-```bash
-npm install -g @mcp-b/cli
+The **IIFE (Immediately Invoked Function Expression)** version bundles everything into a single file and auto-initializes when loaded. Perfect for simple HTML pages or prototyping.
+
+Add the script to your HTML `<head>`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- IIFE version - bundles all dependencies, auto-initializes -->
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+</head>
+<body>
+  <h1>My AI-Powered App</h1>
+
+  <script>
+    // window.navigator.modelContext is already available!
+    // Register tools with AI agents
+    window.navigator.modelContext.provideContext({
+      tools: [
+        {
+          name: "get-page-title",
+          description: "Get the current page title",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          },
+          async execute() {
+            return {
+              content: [{
+                type: "text",
+                text: document.title
+              }]
+            };
+          }
+        }
+      ]
+    });
+  </script>
+</body>
+</html>
 ```
 
-Or using yarn:
+**What you get:**
+- ✅ **Self-contained** - All dependencies bundled (285KB minified)
+- ✅ **Auto-initializes** - `window.navigator.modelContext` ready immediately
+- ✅ **No build step** - Just drop it in your HTML
+- ✅ **Works everywhere** - Compatible with all modern browsers
+- ✅ **Global access** - Also exposes `window.WebMCP` for advanced usage
+
+### Via NPM
+
+For applications using a bundler (Vite, Webpack, etc.):
 
 ```bash
-yarn global add @mcp-b/cli
+npm install @mcp-b/global
 ```
-
-Or using pnpm:
-
-```bash
-pnpm add -g @mcp-b/cli
-```
-
-## Key Features
-
-- **Project Scaffolding**: Quickly create new MCP projects with templates
-- **Server Management**: Start, stop, and manage MCP servers
-- **Interactive Testing**: Test MCP tools in a REPL environment
-- **Transport Configuration**: Easy setup for different transport types
-- **Tool Discovery**: List and explore available MCP tools
-- **Debug Mode**: Built-in debugging support for development
-
-## Quick Start
-
-### Create a New Project
-
-```bash
-# Create a new MCP server project
-mcp-b init my-mcp-server
-
-# Create with a specific template
-mcp-b init my-extension --template chrome-extension
-
-# Create a React app with MCP integration
-mcp-b init my-react-app --template react
-```
-
-### Start an MCP Server
-
-```bash
-# Start a server from the current directory
-mcp-b serve
-
-# Start with a specific config file
-mcp-b serve --config mcp.config.js
-
-# Start in debug mode
-mcp-b serve --debug
-
-# Start with a specific transport
-mcp-b serve --transport websocket --port 3000
-```
-
-### Interactive Tool Testing
-
-```bash
-# Start interactive REPL
-mcp-b repl
-
-# Connect to a running server
-mcp-b repl --connect ws://localhost:3000
-
-# Test a specific tool
-mcp-b test my-tool --input '{"param": "value"}'
-```
-
-## Project Templates
-
-### Chrome Extension Template
-
-```bash
-mcp-b init my-extension --template chrome-extension
-cd my-extension
-npm install
-```
-
-This creates a Chrome extension with:
-- Background script with MCP server
-- Content script with MCP client
-- Popup UI for tool interaction
-- Pre-configured manifest.json
-
-### React Application Template
-
-```bash
-mcp-b init my-app --template react
-cd my-app
-npm install
-npm run dev
-```
-
-This creates a React app with:
-- MCP server integration
-- React hooks for MCP
-- Example tools and forms
-- TypeScript configuration
-
-### Node.js Server Template
-
-```bash
-mcp-b init my-server --template node
-cd my-server
-npm install
-npm start
-```
-
-This creates a Node.js MCP server with:
-- Express integration (optional)
-- WebSocket transport setup
-- Example tool implementations
-- Environment configuration
-
-## Configuration
-
-### mcp.config.js
-
-Create an `mcp.config.js` file in your project root:
 
 ```javascript
-module.exports = {
-  name: 'my-mcp-server',
-  version: '1.0.0',
-  transport: {
-    type: 'websocket',
-    port: 3000,
-    host: 'localhost'
-  },
-  tools: {
-    directory: './tools',
-    autoRegister: true
-  },
-  security: {
-    allowedOrigins: ['http://localhost:3000'],
-    requireAuth: false
-  },
-  debug: {
-    enabled: true,
-    logLevel: 'info'
-  }
-};
+import '@mcp-b/global';
+
+// window.navigator.modelContext is now available
+window.navigator.modelContext.provideContext({
+  tools: [/* your tools */]
+});
 ```
 
-### Environment Variables
+## Overview
 
-The CLI respects the following environment variables:
+This package implements the [W3C Web Model Context API](https://github.com/webmachinelearning/webmcp) (`window.navigator.modelContext`) specification, bridging it to the Model Context Protocol (MCP) SDK. It allows web developers to expose JavaScript functions as "tools" that AI agents can discover and invoke.
 
-```bash
-# Server configuration
-MCP_SERVER_NAME=my-server
-MCP_SERVER_PORT=3000
-MCP_TRANSPORT_TYPE=websocket
+## Two-Bucket Tool Management System
 
-# Debug settings
-MCP_DEBUG=true
-MCP_LOG_LEVEL=debug
+This package uses a **two-bucket system** for tool management to support both app-level and component-level tools:
 
-# Security
-MCP_ALLOWED_ORIGINS=http://localhost:3000,https://myapp.com
-```
+- **Bucket A (Base Tools)**: Registered via `provideContext()` - represents your app's core functionality
+- **Bucket B (Dynamic Tools)**: Registered via `registerTool()` - component-scoped tools that persist across `provideContext()` calls
 
-## Command Reference
+**Key behaviors:**
+- ✅ `provideContext()` only clears Bucket A, leaving Bucket B intact
+- ✅ `registerTool()` adds to Bucket B and persists across `provideContext()` calls
+- ✅ Tool name collisions between buckets throw an error
+- ✅ Cannot `unregister()` a tool that was registered via `provideContext()`
 
-### init
+**Use case:** React components can use `registerTool()` in `useEffect()` to manage tool lifecycle independently of the app's base tools.
 
-Create a new MCP project:
+## API Reference
 
-```bash
-mcp-b init <project-name> [options]
+### `window.navigator.modelContext.provideContext(context)`
 
-Options:
-  --template, -t    Project template [chrome-extension|react|node|vanilla]
-  --typescript      Use TypeScript (default: true)
-  --git             Initialize git repository (default: true)
-  --install         Install dependencies (default: false)
-```
+Register base/app-level tools (Bucket A). **This clears Bucket A only** and replaces with the provided array. Dynamic tools (Bucket B) registered via `registerTool()` are NOT affected.
 
-### serve
+**Parameters:**
+- `context.tools` - Array of tool descriptors
 
-Start an MCP server:
-
-```bash
-mcp-b serve [options]
-
-Options:
-  --config, -c      Config file path (default: mcp.config.js)
-  --port, -p        Server port (default: 3000)
-  --transport, -t   Transport type [websocket|worker|tab]
-  --debug, -d       Enable debug mode
-  --watch, -w       Watch for file changes
-```
-
-### repl
-
-Start interactive REPL:
-
-```bash
-mcp-b repl [options]
-
-Options:
-  --connect, -c     Connect to server URL
-  --transport, -t   Transport type for connection
-  --history         Save command history
-```
-
-### list
-
-List available tools:
-
-```bash
-mcp-b list [options]
-
-Options:
-  --server, -s      Server URL to query
-  --json            Output as JSON
-  --details         Show detailed tool information
-```
-
-### test
-
-Test an MCP tool:
-
-```bash
-mcp-b test <tool-name> [options]
-
-Options:
-  --input, -i       Input JSON for the tool
-  --server, -s      Server URL
-  --validate        Validate input against schema
-```
-
-### validate
-
-Validate MCP configuration or tools:
-
-```bash
-mcp-b validate [options]
-
-Options:
-  --config          Validate config file
-  --tools           Validate tool implementations
-  --schema          Validate against MCP schema
-```
-
-## Development Workflow
-
-### 1. Initialize Project
-
-```bash
-# Create new project
-mcp-b init my-mcp-project --template node
-
-# Navigate to project
-cd my-mcp-project
-
-# Install dependencies
-npm install
-```
-
-### 2. Develop Tools
-
-Create tools in the `tools` directory:
+**Example:**
 
 ```javascript
-// tools/calculator.js
-export const calculator = {
-  name: 'calculator',
-  description: 'Perform calculations',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      operation: { type: 'string', enum: ['add', 'subtract', 'multiply', 'divide'] },
-      a: { type: 'number' },
-      b: { type: 'number' }
-    },
-    required: ['operation', 'a', 'b']
-  },
-  handler: async ({ operation, a, b }) => {
-    switch (operation) {
-      case 'add': return a + b;
-      case 'subtract': return a - b;
-      case 'multiply': return a * b;
-      case 'divide': return b !== 0 ? a / b : 'Cannot divide by zero';
-    }
-  }
-};
-```
-
-### 3. Test Tools
-
-```bash
-# Start server in debug mode
-mcp-b serve --debug --watch
-
-# In another terminal, test the tool
-mcp-b test calculator --input '{"operation": "add", "a": 5, "b": 3}'
-
-# Or use the REPL
-mcp-b repl
-> call calculator {"operation": "multiply", "a": 4, "b": 7}
-```
-
-### 4. Deploy
-
-```bash
-# Build for production
-npm run build
-
-# Start production server
-NODE_ENV=production mcp-b serve
-```
-
-## Advanced Usage
-
-### Custom Transport Implementation
-
-```javascript
-// mcp.config.js
-const { CustomTransport } = require('./custom-transport');
-
-module.exports = {
-  transport: {
-    custom: new CustomTransport({
-      // Custom transport options
-    })
-  }
-};
-```
-
-### Plugin System
-
-```javascript
-// mcp.config.js
-module.exports = {
-  plugins: [
-    '@mcp-b/plugin-auth',
-    '@mcp-b/plugin-logging',
+window.navigator.modelContext.provideContext({
+  tools: [
     {
-      name: 'custom-plugin',
-      setup: (server) => {
-        // Plugin initialization
+      name: "add-todo",
+      description: "Add a new todo item to the list",
+      inputSchema: {
+        type: "object",
+        properties: {
+          text: {
+            type: "string",
+            description: "The todo item text"
+          },
+          priority: {
+            type: "string",
+            enum: ["low", "medium", "high"],
+            description: "Priority level"
+          }
+        },
+        required: ["text"]
+      },
+      async execute({ text, priority = "medium" }) {
+        // Add todo to your app
+        const todo = addTodoItem(text, priority);
+
+        return {
+          content: [{
+            type: "text",
+            text: `Added todo: "${text}" with ${priority} priority`
+          }]
+        };
       }
     }
   ]
-};
+});
 ```
 
-### Middleware Support
+### `window.navigator.modelContext.registerTool(tool)`
+
+Register a single tool dynamically (Bucket B). Tools registered this way:
+- ✅ Persist across `provideContext()` calls
+- ✅ Perfect for component lifecycle management
+- ✅ Can be unregistered via the returned `unregister()` function
+- ❌ Cannot have the same name as a tool in Bucket A (provideContext)
+
+**Parameters:**
+- `tool` - A single tool descriptor
+
+**Returns:**
+- Object with `unregister()` function to remove the tool
+
+**Example:**
 
 ```javascript
-// mcp.config.js
-module.exports = {
-  middleware: [
-    async (context, next) => {
-      console.log('Before tool execution');
-      const result = await next();
-      console.log('After tool execution');
-      return result;
+// Register a tool dynamically (Bucket B)
+const registration = window.navigator.modelContext.registerTool({
+  name: "get-timestamp",
+  description: "Get the current timestamp",
+  inputSchema: {
+    type: "object",
+    properties: {}
+  },
+  async execute() {
+    return {
+      content: [{
+        type: "text",
+        text: new Date().toISOString()
+      }]
+    };
+  }
+});
+
+// Later, unregister the tool
+registration.unregister();
+
+// Note: You can call provideContext() and this tool will still be registered!
+window.navigator.modelContext.provideContext({
+  tools: [/* other tools */]
+});
+// "get-timestamp" is still available because it's in Bucket B
+```
+
+### Tool Descriptor
+
+Each tool must have:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Unique identifier for the tool |
+| `description` | `string` | Natural language description of what the tool does |
+| `inputSchema` | `object` | JSON Schema defining input parameters |
+| `execute` | `function` | Async function that implements the tool logic |
+
+### Tool Response Format
+
+Tools must return an object with:
+
+```typescript
+{
+  content: [
+    {
+      type: "text",      // or "image", "resource"
+      text: "Result..."  // the response content
+    }
+  ],
+  isError?: boolean     // optional error flag
+}
+```
+
+## Complete Examples
+
+### Todo List Application
+
+```javascript
+let todos = [];
+
+window.navigator.modelContext.provideContext({
+  tools: [
+    {
+      name: "add-todo",
+      description: "Add a new todo item",
+      inputSchema: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "Todo text" }
+        },
+        required: ["text"]
+      },
+      async execute({ text }) {
+        const todo = { id: Date.now(), text, done: false };
+        todos.push(todo);
+        updateUI();
+        return {
+          content: [{ type: "text", text: `Added: "${text}"` }]
+        };
+      }
+    },
+    {
+      name: "list-todos",
+      description: "Get all todo items",
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        const list = todos.map(t =>
+          `${t.done ? '✓' : '○'} ${t.text}`
+        ).join('\n');
+        return {
+          content: [{ type: "text", text: list || "No todos" }]
+        };
+      }
+    },
+    {
+      name: "complete-todo",
+      description: "Mark a todo as complete",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "Todo ID" }
+        },
+        required: ["id"]
+      },
+      async execute({ id }) {
+        const todo = todos.find(t => t.id === id);
+        if (!todo) {
+          return {
+            content: [{ type: "text", text: "Todo not found" }],
+            isError: true
+          };
+        }
+        todo.done = true;
+        updateUI();
+        return {
+          content: [{ type: "text", text: `Completed: "${todo.text}"` }]
+        };
+      }
     }
   ]
-};
+});
+
+function updateUI() {
+  // Update your UI
+  document.getElementById('todo-list').innerHTML =
+    todos.map(t => `<li>${t.done ? '✓' : ''} ${t.text}</li>`).join('');
+}
+```
+
+### Dynamic Tool Registration (Component Lifecycle)
+
+Perfect for managing tools tied to component lifecycle:
+
+```javascript
+import { useEffect } from 'react';
+
+function MyComponent() {
+  useEffect(() => {
+    // Register component-specific tool when component mounts (Bucket B)
+    const registration = window.navigator.modelContext.registerTool({
+      name: "component-action",
+      description: "Action specific to this component",
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        // Access component state/methods here
+        return {
+          content: [{ type: "text", text: "Component action executed!" }]
+        };
+      }
+    });
+
+    // Cleanup: unregister when component unmounts
+    return () => {
+      registration.unregister();
+    };
+  }, []);
+
+  return <div>My Component</div>;
+}
+```
+
+### Persistence Across provideContext() Calls
+
+```javascript
+// Step 1: Register base tools (Bucket A)
+window.navigator.modelContext.provideContext({
+  tools: [
+    { name: "base-tool-1", description: "Base tool", inputSchema: {}, async execute() {} }
+  ]
+});
+// Tools: ["base-tool-1"]
+
+// Step 2: Register dynamic tool (Bucket B)
+const reg = window.navigator.modelContext.registerTool({
+  name: "dynamic-tool",
+  description: "Dynamic tool",
+  inputSchema: { type: "object", properties: {} },
+  async execute() {
+    return { content: [{ type: "text", text: "Dynamic!" }] };
+  }
+});
+// Tools: ["base-tool-1", "dynamic-tool"]
+
+// Step 3: Update base tools via provideContext
+window.navigator.modelContext.provideContext({
+  tools: [
+    { name: "base-tool-2", description: "New base tool", inputSchema: {}, async execute() {} }
+  ]
+});
+// Tools: ["base-tool-2", "dynamic-tool"]
+// ✅ "dynamic-tool" persists! Only "base-tool-1" was cleared
+
+// Step 4: Clean up dynamic tool
+reg.unregister();
+// Tools: ["base-tool-2"]
+```
+
+## Event-Based Tool Calls (Advanced)
+
+For manifest-based or advanced scenarios, you can handle tool calls as events:
+
+```javascript
+window.navigator.modelContext.addEventListener('toolcall', async (event) => {
+  console.log(`Tool called: ${event.name}`, event.arguments);
+
+  if (event.name === "custom-tool") {
+    // Prevent default execution
+    event.preventDefault();
+
+    // Provide custom response
+    event.respondWith({
+      content: [{
+        type: "text",
+        text: "Custom response from event handler"
+      }]
+    });
+  }
+
+  // If not prevented, the tool's execute function will run normally
+});
+```
+
+## Feature Detection
+
+Check if the API is available:
+
+```javascript
+if ("modelContext" in navigator) {
+  // API is available
+  navigator.modelContext.provideContext({ tools: [...] });
+} else {
+  console.warn("Web Model Context API not available");
+}
 ```
 
 ## Debugging
 
-### Enable Debug Output
-
-```bash
-# Set debug environment variable
-export MCP_DEBUG=true
-
-# Or use debug flag
-mcp-b serve --debug
-
-# Verbose output
-mcp-b serve --debug --log-level verbose
-```
-
-### Chrome DevTools Integration
-
-```bash
-# Start with inspector
-mcp-b serve --inspect
-
-# Start with inspector and break
-mcp-b serve --inspect-brk
-```
-
-### Logging
+In development mode, access the internal bridge:
 
 ```javascript
-// mcp.config.js
-module.exports = {
-  logging: {
-    level: 'debug',
-    format: 'json',
-    file: './logs/mcp.log',
-    console: true
+if (window.__mcpBridge) {
+  console.log("MCP Server:", window.__mcpBridge.server);
+  console.log("Registered tools:", window.__mcpBridge.tools);
+}
+```
+
+## What's Included
+
+- **Web Model Context API** - Standard `window.navigator.modelContext` interface
+- **Dynamic Tool Registration** - `registerTool()` with `unregister()` function
+- **MCP Bridge** - Automatic bridging to Model Context Protocol
+- **Tab Transport** - Communication layer for browser contexts
+- **Event System** - Hybrid tool call handling
+- **TypeScript Types** - Full type definitions included
+
+## Security Considerations
+
+### Tool Validation
+
+Always validate inputs in your tool implementations:
+
+```javascript
+{
+  name: "delete-item",
+  description: "Delete an item",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string", pattern: "^[a-zA-Z0-9]+$" }
+    },
+    required: ["id"]
+  },
+  async execute({ id }) {
+    // Additional validation
+    if (!isValidId(id)) {
+      return {
+        content: [{ type: "text", text: "Invalid ID" }],
+        isError: true
+      };
+    }
+
+    // Proceed with deletion
+    await deleteItem(id);
+    return {
+      content: [{ type: "text", text: "Item deleted" }]
+    };
   }
-};
+}
 ```
 
-## Best Practices
+## Related Packages
 
-1. **Version Control**: Always specify versions in mcp.config.js
-2. **Security**: Configure allowed origins for production
-3. **Error Handling**: Implement proper error handling in tools
-4. **Testing**: Write tests for your MCP tools
-5. **Documentation**: Document your tools with clear descriptions
-6. **Type Safety**: Use TypeScript for better type checking
+- [`@mcp-b/transports`](../transports) - MCP transport implementations
+- [`@mcp-b/react-webmcp`](../react-webmcp) - React hooks for MCP
+- [`@modelcontextprotocol/sdk`](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Official MCP SDK
 
-## Common Issues
+## Resources
 
-### Port Already in Use
+- [Web Model Context API Explainer](https://github.com/webmachinelearning/webmcp)
+- [Model Context Protocol Spec](https://modelcontextprotocol.io/)
+- [Microsoft Edge Explainer](https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/WebModelContext/explainer.md)
 
-```bash
-# Find process using port
-lsof -i :3000
+## License
 
-# Use different port
-mcp-b serve --port 3001
-```
+MIT - see [LICENSE](https://github.com/WebMCP-org/npm-packages/blob/main/LICENSE) for details
 
-### Module Not Found
+## Support
 
-```bash
-# Clear cache and reinstall
-npm cache clean --force
-npm install
-```
-
-### Transport Connection Failed
-
-```bash
-# Check transport configuration
-mcp-b validate --config
-
-# Test with different transport
-mcp-b serve --transport worker
-```
-
-## Migration Guide
-
-### From Manual Setup
-
-If you have an existing MCP implementation:
-
-1. Install the CLI globally
-2. Run `mcp-b init --from-existing` in your project
-3. Follow the migration wizard
-4. Update configuration as needed
-
-### Version Updates
-
-```bash
-# Check for updates
-npm outdated -g @mcp-b/cli
-
-# Update to latest
-npm update -g @mcp-b/cli
-
-# Update project dependencies
-mcp-b update
-```
+- [GitHub Issues](https://github.com/WebMCP-org/npm-packages/issues)
+- [Discord Community](https://discord.gg/a9fBR6Bw)
