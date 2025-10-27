@@ -1,106 +1,51 @@
 ---
 title: 'Quick Start'
-description: 'Get WebMCP running on your website in minutes'
+description: 'Get WebMCP running in minutes'
 ---
 
 <Info>
-  **Prerequisites**:
-  - Node.js 18+ (check with `node --version`)
-  - A website with JavaScript (vanilla, React, etc.)
-  - [MCP-B Chrome Extension](https://chrome.google.com/webstore/detail/mcp-b) installed for testing
+  **Prerequisites**: Node.js 18+, [MCP-B Chrome Extension](https://chrome.google.com/webstore/detail/mcp-b)
 </Info>
 
-## Installation Methods
-
-Choose your preferred installation method:
+## Installation
 
 <Tabs>
-  <Tab title="Script Tag (Easiest)">
-    ## Simple Script Integration
-
-    Add the W3C Web Model Context API to any website - no build tools required:
-
+  <Tab title="Script Tag">
     ```html
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <!-- IIFE version - bundles all dependencies, auto-initializes -->
-      <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-    </head>
-    <body>
-      <h1>My AI-Powered App</h1>
-
-      <script>
-        // window.navigator.modelContext is already available!
-        window.navigator.modelContext.provideContext({
-          tools: [
-            {
-              name: "get-page-title",
-              description: "Get the current page title",
-              inputSchema: {
-                type: "object",
-                properties: {}
-              },
-              async execute() {
-                return {
-                  content: [{
-                    type: "text",
-                    text: document.title
-                  }]
-                };
-              }
-            }
-          ]
-        });
-      </script>
-    </body>
-    </html>
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    <script>
+      navigator.modelContext.provideContext({
+        tools: [{
+          name: "get_page_title",
+          description: "Get current page title",
+          inputSchema: { type: "object", properties: {} },
+          async execute() {
+            return { content: [{ type: "text", text: document.title }] };
+          }
+        }]
+      });
+    </script>
     ```
   </Tab>
 
-  <Tab title="NPM Package">
-    ## Step 1: Install Dependencies
-
-    For apps using a bundler (Vite, Webpack, etc.):
-
-    ```bash npm
-    npm install @mcp-b/global
-    ```
-
-    ```bash pnpm
+  <Tab title="NPM">
+    ```bash
     pnpm add @mcp-b/global
     ```
-
-    ```bash yarn
-    yarn add @mcp-b/global
-    ```
-
-    ## Step 2: Import and Use
 
     ```javascript
     import '@mcp-b/global';
 
-    // window.navigator.modelContext is now available
-    window.navigator.modelContext.provideContext({
+    navigator.modelContext.provideContext({
       tools: [/* your tools */]
     });
     ```
   </Tab>
 
-  <Tab title="React Hooks">
-    ## Install React Package
-
-    For React applications with hooks:
-
-    ```bash npm
-    npm install @mcp-b/react-webmcp @mcp-b/global zod
-    ```
-
-    ```bash pnpm
+  <Tab title="React">
+    ```bash
     pnpm add @mcp-b/react-webmcp @mcp-b/global zod
     ```
-
-    ## Use in Components
 
     ```tsx
     import '@mcp-b/global';
@@ -110,12 +55,9 @@ Choose your preferred installation method:
     function MyComponent() {
       useWebMCP({
         name: 'my_tool',
-        description: 'Does something useful',
-        inputSchema: {
-          param: z.string()
-        },
+        description: 'Tool description',
+        inputSchema: { param: z.string() },
         handler: async ({ param }) => {
-          // Your logic here
           return { result: 'success' };
         }
       });
@@ -126,172 +68,106 @@ Choose your preferred installation method:
   </Tab>
 </Tabs>
 
-## Step 2: Register Your Tools
+## Real-World Example
 
-WebMCP uses the W3C Web Model Context API to expose tools to AI agents:
+Wrap existing application logic as tools:
 
 ```javascript
-window.navigator.modelContext.provideContext({
-  tools: [
-    {
-      name: "add-to-cart",
-      description: "Add an item to the shopping cart",
-      inputSchema: {
-        type: "object",
-        properties: {
-          productId: {
-            type: "string",
-            description: "The product ID to add"
-          },
-          quantity: {
-            type: "number",
-            description: "Quantity to add",
-            minimum: 1
-          }
-        },
-        required: ["productId", "quantity"]
+navigator.modelContext.provideContext({
+  tools: [{
+    name: "add_to_cart",
+    description: "Add item to shopping cart",
+    inputSchema: {
+      type: "object",
+      properties: {
+        productId: { type: "string" },
+        quantity: { type: "number", minimum: 1 }
       },
-      async execute({ productId, quantity }) {
-        // Your existing app logic here
-        const result = await fetch('/api/cart/add', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId, quantity })
-        });
-
-        return {
-          content: [{
-            type: "text",
-            text: `Added ${quantity} of product ${productId} to cart`
-          }]
-        };
-      }
+      required: ["productId", "quantity"]
+    },
+    async execute({ productId, quantity }) {
+      await fetch('/api/cart/add', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: JSON.stringify({ productId, quantity })
+      });
+      return {
+        content: [{ type: "text", text: `Added ${quantity} items` }]
+      };
     }
-  ]
+  }]
 });
 ```
 
-## Step 3: Test Your Integration
+## Testing
 
-<Steps>
-  <Step title="Start your website">
-    Run your site via a dev server (e.g., `npm run dev`)
-  </Step>
+1. Run dev server: `pnpm dev`
+2. Open in Chrome with MCP-B extension
+3. Click extension icon → Tools tab
+4. Test tools via chat or inspector
 
-  <Step title="Open in Chrome">
-    Visit your page with the MCP-B extension installed
-  </Step>
-
-  <Step title="Open extension popup">
-    Click the MCP-B icon in your toolbar
-  </Step>
-
-  <Step title="Test your tools">
-    - Go to the "Tools" tab to see exposed tools
-    - Use the chat interface to interact with AI
-    - Or manually invoke tools via the inspector
-  </Step>
-</Steps>
-
-## Framework Examples
+## Examples
 
 <CardGroup cols={2}>
+  <Card
+    title="webmcp.sh"
+    icon="play"
+    href="https://github.com/WebMCP-org/webmcp-sh"
+  >
+    Production-ready React app with database, navigation, and graph tools
+  </Card>
+
   <Card
     title="Vanilla TypeScript"
     icon="js"
     href="https://github.com/WebMCP-org/examples/tree/main/vanilla-ts"
   >
-    Simple todo app with dynamic tool registration
+    Todo app with dynamic tool registration
   </Card>
 
   <Card
-    title="React"
-    icon="react"
-    href="https://github.com/WebMCP-org/examples/tree/main/reactFlowVoiceAgent"
+    title="Script Tag"
+    icon="code"
+    href="https://github.com/WebMCP-org/examples/tree/main/script-tag"
   >
-    Modern React app with hooks and state management
+    Zero-config setup with no build tools
   </Card>
 
   <Card
-    title="Vue"
-    icon="vuejs"
-    href="https://github.com/bestian/vue-MCP-B-demo"
+    title="More Examples"
+    icon="folder"
+    href="/examples"
   >
-    Vue.js integration example by community
-  </Card>
-
-  <Card
-    title="Nuxt 3"
-    icon="nuxt"
-    href="https://github.com/mikechao/nuxt3-mcp-b-demo"
-  >
-    Nuxt 3 example with SSR support
+    Vue, Nuxt, React Flow, and community examples
   </Card>
 </CardGroup>
 
 ## Best Practices
 
-<AccordionGroup>
-  <Accordion title="Security Considerations">
-    - Only expose tools you'd allow via UI
-    - Validate all tool inputs with JSON Schema or Zod
-    - Tools run in your page's context with same permissions
-    - Consider rate limiting for expensive operations
-  </Accordion>
+**Security**: Only expose tools allowed via UI. Validate inputs. Tools run with same permissions as your page.
 
-  <Accordion title="Tool Design">
-    - Wrap existing app logic, don't duplicate it
-    - Use descriptive tool names and descriptions
-    - Add visual feedback for AI actions (notifications, highlights)
-    - Keep tools focused on single actions
-  </Accordion>
+**Tool Design**: Wrap existing logic, don't duplicate. Use descriptive names. Add visual feedback.
 
-  <Accordion title="Authentication">
-    - Use `credentials: 'same-origin'` for authenticated API calls
-    - Tools respect existing session cookies
-    - Scope admin tools to admin pages only
-  </Accordion>
+**Authentication**: Use `credentials: 'same-origin'`. Tools respect session cookies.
 
-  <Accordion title="Performance">
-    - Use `registerTool()` for component-scoped tools in React
-    - Use tool caching for expensive operations
-    - Register/unregister tools dynamically based on page state
-  </Accordion>
-</AccordionGroup>
+**Performance**: In React, tools auto-register/cleanup. Register dynamically based on page state.
 
-## What's Next?
+## Next Steps
 
-<CardGroup>
-  <Card
-    title="Explore Examples"
-    icon="code"
-    href="/examples"
-  >
-    See complete working examples for different use cases
+<CardGroup cols={2}>
+  <Card title="Examples" icon="code" href="/examples">
+    Complete working examples and patterns
   </Card>
 
-  <Card
-    title="NPM Packages"
-    icon="box"
-    href="/packages/global"
-  >
-    Learn about @mcp-b/global, transports, and React hooks
+  <Card title="React Hooks" icon="react" href="/packages/react-webmcp">
+    @mcp-b/react-webmcp package documentation
   </Card>
 
-  <Card
-    title="Advanced Usage"
-    icon="gear"
-    href="/advanced"
-  >
-    Learn about dynamic tools, Chrome extensions, and more
+  <Card title="Packages" icon="box" href="/packages/global">
+    All available NPM packages
   </Card>
 
-  <Card
-    title="Troubleshooting"
-    icon="wrench"
-    href="/troubleshooting"
-  >
-    Common issues and solutions
+  <Card title="Advanced" icon="gear" href="/advanced">
+    Chrome extensions, transports, and more
   </Card>
 </CardGroup>
