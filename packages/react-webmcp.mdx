@@ -7,6 +7,14 @@ icon: "react"
 
 React hooks for registering tools via `navigator.modelContext` and consuming tools from MCP servers.
 
+## Prerequisites
+
+- **React 18+** or **React 19** (supports both versions)
+- **@mcp-b/global** package installed
+- **Zod** for schema validation
+- **[MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)** for testing tools
+- Basic understanding of React hooks and async/await
+
 ## Installation
 
 ```bash
@@ -261,7 +269,9 @@ function Counter() {
 
 ---
 
-# Migration from @mcp-b/mcp-react-hooks
+# Migration from Legacy Package
+
+If you're migrating from an older version of this package (previously named `@mcp-b/mcp-react-hooks`):
 
 **Before:**
 ```tsx
@@ -283,3 +293,30 @@ useWebMCP({
 ```
 
 Client hooks (`McpClientProvider`, `useMcpClient`) remain unchanged.
+
+---
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="@mcp-b/global" icon="globe" href="/packages/global">
+    Web Model Context API polyfill
+  </Card>
+
+  <Card title="@mcp-b/transports" icon="arrows-left-right" href="/packages/transports">
+    Transport implementations
+  </Card>
+
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Architecture and tool lifecycle
+  </Card>
+
+  <Card title="Security Guide" icon="shield-halved" href="/security">
+    Best practices for tool security
+  </Card>
+</CardGroup>
+
+**See also:**
+- [Quick Start Guide](/quickstart) - Get started with WebMCP
+- [Examples](/examples) - Real-world React implementations
+- [Glossary](/glossary) - Key terminology reference

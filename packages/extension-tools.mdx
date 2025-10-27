@@ -9,6 +9,15 @@ icon: "puzzle-piece"
 
 The `@mcp-b/extension-tools` package provides Model Context Protocol (MCP) wrappers for Chrome Extension APIs. It enables standardized, protocol-based access to browser extension functionalities, allowing MCP clients to interact with Chrome's extensive API surface.
 
+## Prerequisites
+
+- **Chrome Extension** with Manifest V3
+- **@mcp-b/transports** package installed
+- **@modelcontextprotocol/sdk** installed
+- **Required Chrome permissions** in manifest.json
+- **TypeScript 5.0+** (recommended)
+- Understanding of Chrome Extension APIs and MCP protocol
+
 ## Installation
 
 ```bash
@@ -405,15 +414,35 @@ const options: TabsApiToolsOptions = {
 };
 ```
 
-## Related Packages
+## Related Documentation
 
-- [@mcp-b/transports](/packages/transports) - Transport implementations for MCP
+<CardGroup cols={2}>
+  <Card title="@mcp-b/transports" icon="arrows-left-right" href="/packages/transports">
+    Extension transport layer
+  </Card>
+
+  <Card title="Extension Guide" icon="puzzle-piece" href="/extension/index">
+    MCP-B browser extension
+  </Card>
+
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Extension architecture
+  </Card>
+
+  <Card title="Security Guide" icon="shield-halved" href="/security">
+    Extension security best practices
+  </Card>
+</CardGroup>
+
+**See also:**
+- [Advanced Patterns](/advanced) - Extension development patterns
+- [Troubleshooting](/troubleshooting) - Extension-specific issues
+- [Glossary](/glossary) - Extension terminology
+
+## External Resources
+
 - [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Core MCP SDK
-- [@mcp-b/mcp-react-hooks](/packages/react-hooks) - React hooks for MCP
-
-## Resources
-
-- [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
-- [Extension Connector Example](https://github.com/WebMCP-org/examples/tree/main/extension-connector)
-- [Chrome Extension API Reference](https://developer.chrome.com/docs/extensions/reference/)
-- [MCP Protocol Specification](https://modelcontextprotocol.io)
+- [Extension Connector Example](https://github.com/WebMCP-org/examples/tree/main/extension-connector) - Working example
+- [Chrome Extension API Reference](https://developer.chrome.com/docs/extensions/reference/) - Official Chrome docs
+- [MCP Protocol Specification](https://modelcontextprotocol.io) - Protocol details
+- [GitHub Repository](https://github.com/WebMCP-org/npm-packages) - Source code

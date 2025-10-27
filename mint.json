@@ -43,6 +43,10 @@
     {
       "name": "Documentation",
       "url": "/"
+    },
+    {
+      "name": "Extension",
+      "url": "/extension"
     }
   ],
   "anchors": [
@@ -72,11 +76,26 @@
       ]
     },
     {
+      "group": "Core Concepts",
+      "pages": [
+        "concepts",
+        "glossary"
+      ]
+    },
+    {
       "group": "Guides",
       "pages": [
         "development",
         "advanced",
-        "troubleshooting"
+        "security"
+      ]
+    },
+    {
+      "group": "Extension",
+      "pages": [
+        "extension/index",
+        "extension/agents",
+        "extension/managing-userscripts"
       ]
     },
     {
@@ -91,8 +110,11 @@
       ]
     },
     {
-      "group": "Tools",
+      "group": "Reference",
       "pages": [
+        "changelog",
+        "native-host-setup",
+        "troubleshooting",
         "tools/claude-code"
       ]
     }
@@ -118,12 +140,7 @@
       "twitter:title": "WebMCP Documentation - AI-Powered Web Tools",
       "twitter:description": "WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server.",
       "twitter:image": "https://docs.webmcp.dev/logo/social-card.png",
-      "twitter:image:alt": "WebMCP Documentation - Model Context Protocol for the Web",
-      "article:published_time": "2024-01-01T00:00:00+00:00",
-      "article:modified_time": "2024-12-01T00:00:00+00:00",
-      "article:author": "WebMCP Team",
-      "article:section": "Technology",
-      "article:tag": "MCP, Model Context Protocol, AI, Web Development, Browser Extension"
+      "twitter:image:alt": "WebMCP Documentation - Model Context Protocol for the Web"
     }
   },
   "footerSocials": {

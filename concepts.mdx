@@ -1,0 +1,513 @@
+---
+title: 'Core Concepts'
+description: 'Understanding WebMCP architecture, components, and how everything works together'
+icon: 'diagram-project'
+---
+
+## What is WebMCP?
+
+WebMCP is a **polyfill for the W3C Web Model Context API** that brings the Model Context Protocol (MCP) to web browsers. It allows websites to expose their functionality as structured tools that AI agents can discover and use.
+
+## Key Components
+
+<CardGroup cols={2}>
+  <Card title="W3C Web Model Context API" icon="globe">
+    Standard browser API (`navigator.modelContext`) for registering tools
+  </Card>
+
+  <Card title="MCP Bridge" icon="arrows-left-right">
+    Automatic bridging between Web API and MCP protocol
+  </Card>
+
+  <Card title="Transport Layer" icon="tower-broadcast">
+    Communication between browser contexts (tabs, extensions, pages)
+  </Card>
+
+  <Card title="MCP-B Extension" icon="puzzle-piece">
+    Browser extension that connects AI agents to website tools
+  </Card>
+</CardGroup>
+
+## Architecture Overview
+
+### High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph "Your Website"
+        A[JavaScript Code] -->|registerTool| B[navigator.modelContext]
+        B -->|Polyfill| C[MCP Bridge]
+    end
+
+    subgraph "Browser Layer"
+        C -->|Tab Transport| D[MCP-B Extension]
+        D -->|Extension Transport| E[AI Agent Interface]
+    end
+
+    subgraph "AI Layer"
+        E -->|Tool Discovery| F[Available Tools]
+        E -->|Tool Execution| G[Call Tool]
+        G -->|Response| E
+    end
+
+    style A fill:#4B7BFF
+    style B fill:#1F5EFF
+    style C fill:#1449CC
+    style D fill:#FFB84D
+    style E fill:#50C878
+```
+
+### Component Interaction Flow
+
+```mermaid
+sequenceDiagram
+    participant W as Website
+    participant N as navigator.modelContext
+    participant B as MCP Bridge
+    participant T as Transport
+    participant X as MCP-B Extension
+    participant A as AI Agent
+
+    W->>N: registerTool(config)
+    N->>B: Store tool definition
+    B->>T: Expose via MCP protocol
+
+    A->>X: Request available tools
+    X->>T: List tools
+    T->>B: Get registered tools
+    B-->>X: Return tool list
+    X-->>A: Display available tools
+
+    A->>X: Call tool(name, args)
+    X->>T: Execute tool
+    T->>B: Route to tool handler
+    B->>N: Call execute()
+    N->>W: Run handler function
+    W-->>N: Return result
+    N-->>B: Format response
+    B-->>T: MCP response
+    T-->>X: Tool result
+    X-->>A: Show result
+```
+
+## Tool Registration: Two Approaches
+
+### Recommended: `registerTool()` (Dynamic Tools)
+
+Use for component-scoped, dynamic, or lifecycle-managed tools:
+
+```javascript
+const registration = navigator.modelContext.registerTool({
+  name: "my_tool",
+  description: "Tool description",
+  inputSchema: { type: "object", properties: {} },
+  async execute(args) {
+    return { content: [{ type: "text", text: "Result" }] };
+  }
+});
+
+// Clean up later
+registration.unregister();
+```
+
+**Benefits:**
+- ✅ Component lifecycle integration
+- ✅ Independent of base tools
+- ✅ Can be unregistered
+- ✅ Perfect for React/Vue
+
+### Advanced: `provideContext()` (Base Tools)
+
+Use sparingly for application-level base tools:
+
+```javascript
+navigator.modelContext.provideContext({
+  tools: [/* array of tool definitions */]
+});
+```
+
+**When to use:**
+- Top-level application tools
+- Tools that define core functionality
+- Initial tool set at app startup
+
+**Important:** Replaces all base tools each time called!
+
+## Two-Bucket Tool Management
+
+WebMCP uses a dual-bucket system for tool organization:
+
+```mermaid
+graph LR
+    subgraph "Bucket A: Base Tools"
+        A1[App Tool 1]
+        A2[App Tool 2]
+    end
+
+    subgraph "Bucket B: Dynamic Tools"
+        B1[Component Tool 1]
+        B2[Component Tool 2]
+        B3[Feature Tool 1]
+    end
+
+    P[provideContext] -.->|Replaces| A1
+    P -.->|Replaces| A2
+
+    R1[registerTool] -->|Adds| B1
+    R2[registerTool] -->|Adds| B2
+    R3[registerTool] -->|Adds| B3
+
+    B1 -.->|unregister| D1[Removed]
+
+    style A1 fill:#FFB84D
+    style A2 fill:#FFB84D
+    style B1 fill:#4B7BFF
+    style B2 fill:#4B7BFF
+    style B3 fill:#4B7BFF
+```
+
+**Key behaviors:**
+- Base tools (Bucket A) are replaced when `provideContext()` is called
+- Dynamic tools (Bucket B) persist independently
+- Each `registerTool()` returns an `unregister()` function
+- Tool name collisions throw errors
+
+## Transport Types
+
+### Tab Transport (In-Page Communication)
+
+For communication within the same browser tab:
+
+```mermaid
+graph LR
+    A[Web Page MCP Server] <-->|window.postMessage| B[Content Script]
+    B <-->|chrome.runtime| C[Extension Background]
+    C <-->|MCP Protocol| D[AI Agent]
+
+    style A fill:#4B7BFF
+    style B fill:#50C878
+    style C fill:#FFB84D
+    style D fill:#9B59B6
+```
+
+**Use cases:**
+- Website exposing tools to extension
+- Same-origin communication
+- Real-time tool updates
+
+### Extension Transport (Cross-Context)
+
+For communication between extension components:
+
+```mermaid
+graph TB
+    subgraph "Extension Background"
+        A[MCP Hub]
+    end
+
+    subgraph "Tab 1"
+        B1[Content Script] --> C1[Page MCP Server]
+    end
+
+    subgraph "Tab 2"
+        B2[Content Script] --> C2[Page MCP Server]
+    end
+
+    subgraph "Extension UI"
+        D[Sidebar/Popup]
+    end
+
+    B1 <-->|Port| A
+    B2 <-->|Port| A
+    D <-->|Port| A
+
+    style A fill:#FFB84D
+    style C1 fill:#4B7BFF
+    style C2 fill:#4B7BFF
+    style D fill:#50C878
+```
+
+**Use cases:**
+- Multi-tab tool aggregation
+- Extension-to-extension communication
+- Centralized tool management
+
+## Tool Lifecycle
+
+### React Component Example
+
+```mermaid
+stateDiagram-v2
+    [*] --> Mounted: Component mounts
+    Mounted --> Registered: useWebMCP() registers tool
+    Registered --> Executing: AI calls tool
+    Executing --> Registered: Execution complete
+    Registered --> Unregistered: Component unmounts
+    Unregistered --> [*]
+
+    note right of Registered
+        Tool available to AI agents
+    end note
+
+    note right of Executing
+        Handler function runs
+        UI can update
+    end note
+```
+
+### Vanilla JavaScript Example
+
+```mermaid
+stateDiagram-v2
+    [*] --> PageLoad: Page loads
+    PageLoad --> ToolsRegistered: registerTool() calls
+    ToolsRegistered --> Active: Tools discoverable
+    Active --> Active: Tools can be called
+    Active --> Cleanup: Page unload
+    Cleanup --> [*]
+```
+
+## Data Flow
+
+### Tool Execution Flow
+
+```mermaid
+flowchart TD
+    A[AI Agent] -->|1. Discover tools| B{MCP-B Extension}
+    B -->|2. List tools request| C[Tab Transport]
+    C -->|3. Query| D[MCP Bridge]
+    D -->|4. Return tools| C
+    C -->|5. Tool list| B
+    B -->|6. Display| A
+
+    A -->|7. Call tool| B
+    B -->|8. Execute| C
+    C -->|9. Route| D
+    D -->|10. Run handler| E[Your Code]
+    E -->|11. Return data| D
+    D -->|12. Format MCP response| C
+    C -->|13. Response| B
+    B -->|14. Show result| A
+
+    style A fill:#9B59B6
+    style B fill:#FFB84D
+    style C fill:#50C878
+    style D fill:#1F5EFF
+    style E fill:#4B7BFF
+```
+
+## Security Model
+
+### Authentication & Authorization
+
+Tools run in the user's browser context with their existing session:
+
+```mermaid
+graph TB
+    A[AI Agent Request] --> B{MCP-B Extension}
+    B --> C[Content Script]
+    C --> D[Website Tool]
+    D --> E{Auth Check}
+    E -->|Authenticated| F[Execute Tool]
+    E -->|Not Authenticated| G[Reject/Login]
+    F --> H[Use User's Session]
+    H --> I[API Call with Cookies]
+
+    style E fill:#FFB84D
+    style H fill:#50C878
+    style I fill:#4B7BFF
+```
+
+**Security principles:**
+- ✅ Tools inherit user authentication
+- ✅ Same-origin policy enforced
+- ✅ No credential sharing needed
+- ✅ Tools respect existing permissions
+
+### Origin Validation
+
+Tab Transport validates origins:
+
+```javascript
+new TabServerTransport({
+  allowedOrigins: ['https://myapp.com', 'https://api.myapp.com']
+  // or ['*'] for development only
+});
+```
+
+## Extension Architecture
+
+### MCP-B Extension Components
+
+```mermaid
+graph TB
+    subgraph "MCP-B Extension"
+        A[Background Service Worker]
+        B[Content Scripts]
+        C[Sidebar/Popup UI]
+        D[Native Host Bridge]
+    end
+
+    subgraph "Web Pages"
+        E[Page 1 MCP Server]
+        F[Page 2 MCP Server]
+    end
+
+    subgraph "Native MCP"
+        G[Local MCP Servers]
+    end
+
+    B -->|Tab Transport| E
+    B -->|Tab Transport| F
+    B -->|Extension Transport| A
+    C -->|Extension Transport| A
+    A -->|Native Messaging| D
+    D -->|HTTP/SSE| G
+
+    style A fill:#FFB84D
+    style B fill:#50C878
+    style C fill:#9B59B6
+    style E fill:#4B7BFF
+    style F fill:#4B7BFF
+    style G fill:#E74C3C
+```
+
+## Tool Schema & Validation
+
+### Input Schema (JSON Schema)
+
+```javascript
+{
+  type: "object",
+  properties: {
+    userId: {
+      type: "string",
+      pattern: "^[a-zA-Z0-9]+$",
+      description: "User identifier"
+    },
+    limit: {
+      type: "number",
+      minimum: 1,
+      maximum: 100,
+      default: 10
+    }
+  },
+  required: ["userId"]
+}
+```
+
+### Zod Schema (React)
+
+```typescript
+import { z } from 'zod';
+
+const schema = {
+  userId: z.string().regex(/^[a-zA-Z0-9]+$/),
+  limit: z.number().min(1).max(100).default(10)
+};
+```
+
+## Best Practices
+
+### Tool Design
+
+<AccordionGroup>
+  <Accordion title="Use descriptive names">
+    Follow `verb_noun` pattern with domain prefix:
+    - ✅ `posts_create`, `graph_navigate`, `db_query`
+    - ❌ `doStuff`, `action1`, `helper`
+  </Accordion>
+
+  <Accordion title="Provide detailed descriptions">
+    Help AI understand when and how to use your tools:
+    ```javascript
+    description: "Search products by name, category, or SKU. Returns paginated results with stock status."
+    ```
+  </Accordion>
+
+  <Accordion title="Validate all inputs">
+    Use JSON Schema or Zod to enforce types and constraints:
+    ```javascript
+    inputSchema: {
+      productId: z.string().uuid(),
+      quantity: z.number().positive().int()
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Return structured data">
+    Use consistent response format:
+    ```javascript
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }]
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Handle errors gracefully">
+    Provide clear error messages:
+    ```javascript
+    return {
+      content: [{ type: "text", text: "Product not found" }],
+      isError: true
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Performance Considerations
+
+### Tool Registration
+
+- ✅ Register tools once per component lifecycle
+- ✅ Unregister when components unmount
+- ❌ Don't register/unregister repeatedly
+- ❌ Avoid creating too many tools (>50 per page)
+
+### Tool Execution
+
+- ✅ Use async/await for all operations
+- ✅ Implement proper error handling
+- ✅ Show loading states in UI
+- ❌ Don't block the main thread
+- ❌ Avoid heavy computations in handlers
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Glossary" icon="book" href="/glossary">
+    Key terminology and definitions
+  </Card>
+
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started in minutes
+  </Card>
+
+  <Card title="API Reference" icon="code" href="/packages/global">
+    Detailed API documentation
+  </Card>
+
+  <Card title="Security Guide" icon="shield" href="/security">
+    Security best practices
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Steps>
+  <Step title="Understand the glossary">
+    Review [key terminology](/glossary) used throughout the documentation
+  </Step>
+
+  <Step title="Follow the quickstart">
+    Build your first WebMCP integration in [Quick Start](/quickstart)
+  </Step>
+
+  <Step title="Explore examples">
+    See real-world implementations in [Examples](/examples)
+  </Step>
+
+  <Step title="Deep dive into packages">
+    Learn about specific packages in the [NPM Packages](/packages/global) section
+  </Step>
+</Steps>

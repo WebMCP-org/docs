@@ -1,0 +1,287 @@
+---
+title: 'Changelog'
+description: 'Version history and breaking changes for WebMCP packages'
+icon: 'clock-rotate-left'
+---
+
+## Version 1.0.0 - January 2025
+
+<Warning>
+  **Breaking Changes**: Version 1.0.0 introduces breaking changes. Please review the migration guide below before upgrading.
+</Warning>
+
+### Major Changes
+
+#### Package Renaming
+
+Several packages have been renamed for clarity and consistency:
+
+| Old Name | New Name | Migration |
+|----------|----------|-----------|
+| `@mcp-b/mcp-react-hooks` | `@mcp-b/react-webmcp` | Update import statements |
+| `useMcpServer()` hook | `useWebMCP()` | Replace hook calls |
+
+#### API Changes
+
+**@mcp-b/react-webmcp**
+
+- Removed `useMcpServer()` hook - use `useWebMCP()` instead
+- New `useWebMCPContext()` hook for read-only context
+- Automatic registration/cleanup (no manual `useEffect` needed)
+- Built-in Zod support for type-safe schemas
+
+**Before (v0.x):**
+```tsx
+const { registerTool } = useMcpServer();
+
+useEffect(() => {
+  const tool = registerTool('my_tool', { description: '...' }, handler);
+  return () => tool.remove();
+}, []);
+```
+
+**After (v1.0):**
+```tsx
+useWebMCP({
+  name: 'my_tool',
+  description: '...',
+  handler
+});
+// Auto-registers and cleans up
+```
+
+#### navigator.modelContext API
+
+Version 1.0.0 aligns with the W3C Web Model Context API proposal:
+
+- `registerTool()` is now the recommended approach (returns `unregister()`)
+- `provideContext()` only for base tools (replaces all base tools)
+- Two-bucket tool management system introduced
+
+### New Features
+
+#### @mcp-b/global
+
+- ✨ Two-bucket tool management (base vs dynamic tools)
+- ✨ IIFE build for CDN usage (no build step required)
+- ✨ Event-based tool call handling
+- ✨ Improved TypeScript types
+
+#### @mcp-b/react-webmcp
+
+- ✨ `useWebMCP()` hook with automatic lifecycle management
+- ✨ `useWebMCPContext()` for read-only tools
+- ✨ Execution state tracking (`isExecuting`, `lastResult`, `error`)
+- ✨ `McpClientProvider` and `useMcpClient()` for consuming tools
+
+#### @mcp-b/transports
+
+- ✨ Enhanced origin validation
+- ✨ Keep-alive support for extension transports
+- ✨ Server discovery for tab clients
+- ✨ Cross-extension communication support
+
+#### @mcp-b/extension-tools
+
+- ✨ 62+ Chrome Extension API wrappers
+- ✨ Comprehensive TypeScript definitions
+- ✨ Zod-based validation
+- ✨ Manifest V3 compatible
+
+### Migration Guide
+
+<Steps>
+  <Step title="Update package names">
+    ```bash
+    # Remove old packages
+    pnpm remove @mcp-b/mcp-react-hooks
+
+    # Install new packages
+    pnpm add @mcp-b/react-webmcp @mcp-b/global zod
+    ```
+  </Step>
+
+  <Step title="Update imports">
+    ```tsx
+    // Before
+    import { useMcpServer } from '@mcp-b/mcp-react-hooks';
+
+    // After
+    import { useWebMCP } from '@mcp-b/react-webmcp';
+    ```
+  </Step>
+
+  <Step title="Replace useMcpServer with useWebMCP">
+    ```tsx
+    // Before
+    const { registerTool } = useMcpServer();
+    useEffect(() => {
+      const tool = registerTool('my_tool', config, handler);
+      return () => tool.remove();
+    }, []);
+
+    // After
+    useWebMCP({
+      name: 'my_tool',
+      description: 'Tool description',
+      inputSchema: { /* Zod schemas */ },
+      handler: async (args) => { /* ... */ }
+    });
+    ```
+  </Step>
+
+  <Step title="Update vanilla JS tool registration">
+    ```javascript
+    // Before - still works but not recommended
+    window.navigator.modelContext.provideContext({
+      tools: [/* all your tools */]
+    });
+
+    // After - recommended for most tools
+    const reg = window.navigator.modelContext.registerTool({
+      name: 'my_tool',
+      description: '...',
+      inputSchema: {},
+      async execute(args) { /* ... */ }
+    });
+
+    // Clean up when needed
+    reg.unregister();
+    ```
+  </Step>
+
+  <Step title="Test your integration">
+    - Verify all tools register correctly
+    - Test tool execution with MCP-B extension
+    - Check that tools unregister on component unmount
+    - Validate input schemas work as expected
+  </Step>
+</Steps>
+
+### Bug Fixes
+
+- Fixed tool name collision errors
+- Improved error messages for schema validation
+- Fixed memory leaks in React StrictMode
+- Corrected TypeScript definitions for transport options
+- Fixed race condition in extension port connections
+
+### Performance Improvements
+
+- Reduced bundle size by 30%
+- Optimized tool registration performance
+- Improved transport message handling
+- Better memory management in long-running sessions
+
+---
+
+## Version 0.9.x - December 2024
+
+### 0.9.5
+
+- Added experimental React hooks package
+- Improved documentation
+- Bug fixes for transport disconnections
+
+### 0.9.0
+
+- Initial public release
+- Basic MCP support for web browsers
+- Tab transport implementation
+- Extension transport for Chrome extensions
+
+---
+
+## Upcoming Features
+
+### Version 1.1.0 (Planned - Q1 2025)
+
+- 🔄 Firefox extension support
+- 🔄 Enhanced developer tools
+- 🔄 Performance monitoring
+- 🔄 Tool analytics and insights
+
+### Version 1.2.0 (Planned - Q2 2025)
+
+- 🔄 Safari extension support
+- 🔄 Advanced caching strategies
+- 🔄 Tool versioning support
+- 🔄 Multi-language tool descriptions
+
+---
+
+## Deprecation Notices
+
+### Deprecated in 1.0.0
+
+<Warning>
+  The following will be removed in version 2.0.0 (estimated Q3 2025):
+</Warning>
+
+- `@mcp-b/mcp-react-hooks` package (use `@mcp-b/react-webmcp`)
+- `useMcpServer()` hook (use `useWebMCP()`)
+- Implicit tool registration patterns (use explicit `registerTool()`)
+
+### Migration Timeline
+
+| Version | Release | Deprecated Features | Removed Features |
+|---------|---------|---------------------|------------------|
+| 1.0.0 | Jan 2025 | Old package names | - |
+| 1.5.0 | Jun 2025 | - | - |
+| 2.0.0 | Sep 2025 | - | Old packages, `useMcpServer()` |
+
+---
+
+## Breaking Change Policy
+
+WebMCP follows [Semantic Versioning](https://semver.org/):
+
+- **Major versions** (X.0.0): Breaking changes, major new features
+- **Minor versions** (1.X.0): New features, backward compatible
+- **Patch versions** (1.0.X): Bug fixes, backward compatible
+
+### Deprecation Process
+
+1. **Announce**: Deprecated features announced in release notes
+2. **Warn**: Console warnings added in code
+3. **Grace period**: Minimum 6 months before removal
+4. **Remove**: Removed in next major version
+
+---
+
+## Stay Updated
+
+<CardGroup cols={2}>
+  <Card title="GitHub Releases" icon="github" href="https://github.com/WebMCP-org/npm-packages/releases">
+    View detailed release notes
+  </Card>
+
+  <Card title="NPM Changelog" icon="npm" href="https://www.npmjs.com/package/@mcp-b/global?activeTab=versions">
+    Browse version history
+  </Card>
+
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/ZnHG4csJRB">
+    Discuss updates and ask questions
+  </Card>
+
+  <Card title="Migration Guides" icon="book" href="/quickstart">
+    Step-by-step upgrade instructions
+  </Card>
+</CardGroup>
+
+---
+
+## Reporting Issues
+
+Found a bug or regression? Please report it:
+
+1. Check [existing issues](https://github.com/WebMCP-org/npm-packages/issues)
+2. Create a [new issue](https://github.com/WebMCP-org/npm-packages/issues/new) with:
+   - Version numbers
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Browser and extension versions
+
+<Note>
+  For security vulnerabilities, please email [security@webmcp.dev](mailto:security@webmcp.dev) instead of creating a public issue.
+</Note>

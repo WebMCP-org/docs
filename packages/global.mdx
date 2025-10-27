@@ -11,6 +11,12 @@ icon: "globe"
   **Recommended**: Use `registerTool()` for most cases. Only use `provideContext()` for top-level base tools.
 </Note>
 
+## Prerequisites
+
+- **Modern browser** supporting ES2020+ (Chrome, Edge, Firefox, Safari)
+- **[MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)** for testing tools
+- **Node.js 18+** and package manager (for NPM method) OR basic HTML knowledge (for script tag method)
+
 ## Installation
 
 ### Via IIFE Script Tag (Easiest - No Build Required)
@@ -482,17 +488,37 @@ Always validate inputs in your tool implementations:
 }
 ```
 
-## Related Packages
+## Related Documentation
 
-- [`@mcp-b/transports`](../transports) - MCP transport implementations
-- [`@mcp-b/react-webmcp`](../react-webmcp) - React hooks for MCP
-- [`@modelcontextprotocol/sdk`](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Official MCP SDK
+<CardGroup cols={2}>
+  <Card title="@mcp-b/react-webmcp" icon="react" href="/packages/react-webmcp">
+    React hooks with automatic lifecycle
+  </Card>
 
-## Resources
+  <Card title="@mcp-b/transports" icon="arrows-left-right" href="/packages/transports">
+    Transport layer implementation
+  </Card>
 
-- [Web Model Context API Explainer](https://github.com/webmachinelearning/webmcp)
-- [Model Context Protocol Spec](https://modelcontextprotocol.io/)
-- [Microsoft Edge Explainer](https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/WebModelContext/explainer.md)
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Two-bucket tool management
+  </Card>
+
+  <Card title="Security Guide" icon="shield-halved" href="/security">
+    Tool security best practices
+  </Card>
+</CardGroup>
+
+**See also:**
+- [Quick Start](/quickstart) - Get started guide
+- [Examples](/examples) - Working implementations
+- [Glossary](/glossary) - API terminology reference
+
+## External Resources
+
+- [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Official MCP SDK
+- [Web Model Context API Explainer](https://github.com/webmachinelearning/webmcp) - W3C proposal
+- [Model Context Protocol Spec](https://modelcontextprotocol.io/) - Protocol specification
+- [Microsoft Edge Explainer](https://github.com/MicrosoftEdge/MSEdgeExplainers/blob/main/WebModelContext/explainer.md) - Browser integration
 
 ## License
 

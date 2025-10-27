@@ -15,52 +15,134 @@ npm install @mcp-b/smart-dom-reader
 
 ## Overview
 
-Smart DOM Reader is designed to extract relevant information from web pages while minimizing token usage for LLM consumption. It focuses on interactive elements (buttons, links, forms) and semantic content, filtering out noise like scripts, styles, and decorative elements.
+Smart DOM Reader is designed to extract relevant information from web pages while minimizing token usage for LLM consumption. It provides two extraction approaches:
+
+1. **Full Extraction (`SmartDOMReader`)** - Complete single-pass extraction
+2. **Progressive Extraction (`ProgressiveExtractor`)** - Step-by-step, token-efficient approach
 
 ## Key Features
 
 - **Token-Efficient**: Extracts only interactive and semantic elements
-- **Selector Generation**: Generates reliable CSS selectors for extracted elements
+- **Two Extraction Strategies**: Full or progressive extraction based on your needs
+- **Selector Generation**: Generates reliable CSS/XPath selectors for extracted elements
 - **Interactive Elements**: Identifies buttons, links, inputs, and other interactive components
 - **Form Detection**: Extracts form structure with field information
 - **Semantic Content**: Preserves heading hierarchy and meaningful text
+- **Shadow DOM Support**: Can extract from shadow DOM trees
 - **Browser & Node.js**: Works in both browser environments and Node.js (with jsdom)
 
-## Basic Usage
+## Full Extraction Approach
 
-### Browser Environment
+Use `SmartDOMReader` when you need all information upfront and have sufficient token budget.
+
+### Basic Usage
 
 ```typescript
-import { extractDOMContent } from '@mcp-b/smart-dom-reader';
+import { SmartDOMReader } from '@mcp-b/smart-dom-reader';
 
-// Extract interactive elements from the current page
-const content = extractDOMContent(document.body);
+// Create reader instance
+const reader = new SmartDOMReader({
+  mode: 'interactive', // or 'full'
+  maxDepth: 5,
+  includeHidden: false
+});
 
-console.log(content);
+// Extract from current page
+const result = reader.extract(document);
+
+console.log(result);
 // Output:
 // {
-//   interactive: [
-//     { type: 'button', text: 'Submit', selector: '#submit-btn', role: 'button' },
-//     { type: 'link', text: 'Home', selector: 'nav a:nth-of-type(1)', href: '/' }
-//   ],
-//   forms: [
-//     {
-//       selector: 'form#login',
-//       fields: [
-//         { type: 'email', name: 'email', label: 'Email', selector: '#email' },
-//         { type: 'password', name: 'password', label: 'Password', selector: '#password' }
-//       ]
-//     }
-//   ],
-//   content: "Login | Welcome back | Email | Password | Submit"
+//   mode: 'interactive',
+//   timestamp: 1234567890,
+//   page: { url: '...', title: '...', hasErrors: false, ... },
+//   landmarks: { navigation: [...], main: [...], forms: [...], ... },
+//   interactive: {
+//     buttons: [{ tag: 'button', text: 'Submit', selector: {...}, ... }],
+//     links: [{ tag: 'a', text: 'Home', selector: {...}, href: '/', ... }],
+//     inputs: [...],
+//     forms: [...],
+//     clickable: [...]
 //   }
+// }
+```
+
+### Extraction Modes
+
+#### Interactive Mode (Default)
+
+Extracts only interactive elements (buttons, links, inputs, forms):
+
+```typescript
+const reader = new SmartDOMReader({ mode: 'interactive' });
+const result = reader.extract(document);
+
+// result.interactive contains all UI elements
+console.log(result.interactive.buttons); // All buttons
+console.log(result.interactive.links);   // All links
+console.log(result.interactive.inputs);  // All form inputs
+console.log(result.interactive.forms);   // All forms
+```
+
+#### Full Mode
+
+Includes interactive elements plus semantic content (headings, images, tables):
+
+```typescript
+const reader = new SmartDOMReader({ mode: 'full' });
+const result = reader.extract(document);
+
+// All interactive elements
+console.log(result.interactive);
+
+// Plus semantic elements
+console.log(result.semantic.headings); // h1-h6 elements
+console.log(result.semantic.images);   // img elements
+console.log(result.semantic.tables);   // table elements
+console.log(result.semantic.lists);    // ul/ol elements
+
+// Plus metadata
+console.log(result.metadata.totalElements);
+console.log(result.metadata.mainContent);
+```
+
+### Constructor Options
+
+```typescript
+interface ExtractionOptions {
+  mode?: 'interactive' | 'full';
+  maxDepth?: number;                  // Max traversal depth (default: 5)
+  includeHidden?: boolean;            // Include hidden elements (default: false)
+  includeShadowDOM?: boolean;         // Include shadow DOM (default: true)
+  includeIframes?: boolean;           // Include iframe content (default: false)
+  viewportOnly?: boolean;             // Only visible viewport (default: false)
+  mainContentOnly?: boolean;          // Only main content area (default: false)
+  customSelectors?: string[];         // Additional selectors to extract
+  attributeTruncateLength?: number;   // Max attribute length (default: 100)
+  dataAttributeTruncateLength?: number; // Max data-* length (default: 50)
+  textTruncateLength?: number;        // Max text length (default: unlimited)
+}
+```
+
+### Runtime Options Override
+
+You can override constructor options at extraction time:
+
+```typescript
+const reader = new SmartDOMReader({ mode: 'interactive' });
+
+// Normal extraction
+const interactive = reader.extract(document);
+
+// Override to full mode for one extraction
+const full = reader.extract(document, { mode: 'full' });
 ```
 
 ### Node.js with jsdom
 
 ```typescript
 import { JSDOM } from 'jsdom';
-import { extractDOMContent } from '@mcp-b/smart-dom-reader';
+import { SmartDOMReader } from '@mcp-b/smart-dom-reader';
 
 const dom = new JSDOM(`
   <html>
@@ -75,15 +157,169 @@ const dom = new JSDOM(`
   </html>
 `);
 
-const content = extractDOMContent(dom.window.document.body);
+const reader = new SmartDOMReader();
+const result = reader.extract(dom.window.document);
+console.log(result.interactive.buttons); // Extracted buttons
+```
+
+## Progressive Extraction Approach
+
+Use `ProgressiveExtractor` for token-efficient, step-by-step extraction.
+
+### Step 1: Extract Structure
+
+Get a high-level overview of the page structure (minimal tokens):
+
+```typescript
+import { ProgressiveExtractor } from '@mcp-b/smart-dom-reader';
+
+const structure = ProgressiveExtractor.extractStructure(document);
+
+console.log(structure);
+// {
+//   regions: {
+//     header: { selector: 'header', label: 'Page Header', interactiveCount: 5 },
+//     navigation: [{ selector: 'nav', label: 'Main Navigation', interactiveCount: 10 }],
+//     main: { selector: 'main', label: 'Main Content', interactiveCount: 25 },
+//     sections: [...],
+//     sidebars: [...],
+//     footer: { selector: 'footer', label: 'Footer', interactiveCount: 8 }
+//   }
+// }
+```
+
+### Step 2: Extract Specific Region
+
+Extract detailed information from a specific region:
+
+```typescript
+// Extract just the main content area
+const mainContent = ProgressiveExtractor.extractRegion('main', document);
+
+console.log(mainContent);
+// SmartDOMResult focused on the main content area only
+```
+
+You can also use selectors from the structure extraction:
+
+```typescript
+const structure = ProgressiveExtractor.extractStructure(document);
+const headerSelector = structure.regions.header?.selector;
+
+if (headerSelector) {
+  const headerData = ProgressiveExtractor.extractRegion(headerSelector, document);
+}
+```
+
+### Step 3: Extract Content
+
+Extract readable text content from a region:
+
+```typescript
+const content = ProgressiveExtractor.extractContent('article', document, {
+  includeMarkdown: true,
+  preserveStructure: true
+});
+
+console.log(content);
+// {
+//   selector: 'article',
+//   text: '...',  // Plain text content
+//   markdown: '...', // Markdown-formatted content (if includeMarkdown: true)
+//   structure: { headings: [...], paragraphs: [...] } // If preserveStructure: true
+// }
+```
+
+## Return Types
+
+### SmartDOMResult
+
+```typescript
+interface SmartDOMResult {
+  mode: 'interactive' | 'full';
+  timestamp: number;
+  page: {
+    url: string;
+    title: string;
+    hasErrors: boolean;
+    isLoading: boolean;
+    hasModals: boolean;
+    hasFocus?: string;
+  };
+  landmarks: {
+    navigation: string[];  // Selector strings
+    main: string[];
+    forms: string[];
+    headers: string[];
+    footers: string[];
+    articles: string[];
+    sections: string[];
+  };
+  interactive: {
+    buttons: ExtractedElement[];
+    links: ExtractedElement[];
+    inputs: ExtractedElement[];
+    forms: FormInfo[];
+    clickable: ExtractedElement[];
+  };
+  semantic?: {  // Only in 'full' mode
+    headings: ExtractedElement[];
+    images: ExtractedElement[];
+    tables: ExtractedElement[];
+    lists: ExtractedElement[];
+    articles: ExtractedElement[];
+  };
+  metadata?: {  // Only in 'full' mode
+    totalElements: number;
+    extractedElements: number;
+    mainContent?: string;
+    language?: string;
+  };
+}
+```
+
+### ExtractedElement
+
+```typescript
+interface ExtractedElement {
+  tag: string;
+  text: string;
+  selector: {
+    css: string;
+    xpath: string;
+    textBased?: string;
+    dataTestId?: string;
+    ariaLabel?: string;
+    candidates?: SelectorCandidate[];  // Ranked by stability
+  };
+  attributes: Record<string, string>;
+  context: {
+    nearestForm?: string;
+    nearestSection?: string;
+    nearestMain?: string;
+    nearestNav?: string;
+    parentChain: string[];
+  };
+  interaction: {
+    click?: boolean;
+    change?: boolean;
+    submit?: boolean;
+    nav?: boolean;
+    disabled?: boolean;
+    hidden?: boolean;
+    role?: string;
+    form?: string;
+  };
+  children?: ExtractedElement[];
+}
 ```
 
 ## MCP Server Integration
 
-Smart DOM Reader can be used with the Model Context Protocol to expose DOM extraction as a tool:
+Use Smart DOM Reader with Model Context Protocol:
 
 ```typescript
-import { extractDOMContent } from '@mcp-b/smart-dom-reader';
+import { SmartDOMReader } from '@mcp-b/smart-dom-reader';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
@@ -92,92 +328,29 @@ const server = new McpServer({
   version: '1.0.0'
 });
 
+const reader = new SmartDOMReader();
+
 server.tool(
-  'extract_page_content',
-  'Extract interactive elements and content from the current page',
+  'extract_page_elements',
+  'Extract interactive elements from the current page',
   {
-    includeImages: z.boolean().optional().describe('Include image information'),
-    includeForms: z.boolean().optional().describe('Include form details')
+    mode: z.enum(['interactive', 'full']).optional(),
+    mainContentOnly: z.boolean().optional()
   },
   async (args) => {
-    const content = extractDOMContent(document.body, {
-      includeImages: args.includeImages ?? false,
-      includeForms: args.includeForms ?? true
+    const result = reader.extract(document, {
+      mode: args.mode || 'interactive',
+      mainContentOnly: args.mainContentOnly || false
     });
 
     return {
       content: [{
         type: 'text',
-        text: JSON.stringify(content, null, 2)
+        text: JSON.stringify(result, null, 2)
       }]
     };
   }
 );
-```
-
-## API Reference
-
-### `extractDOMContent(element, options?)`
-
-Extracts structured information from a DOM element.
-
-**Parameters:**
-- `element` (HTMLElement) - The root element to extract from
-- `options` (object) - Optional configuration:
-  - `includeImages` (boolean) - Include image elements (default: false)
-  - `includeForms` (boolean) - Include form information (default: true)
-  - `includeHidden` (boolean) - Include hidden elements (default: false)
-  - `maxDepth` (number) - Maximum traversal depth (default: unlimited)
-
-**Returns:**
-```typescript
-{
-  interactive: Array<{
-    type: 'button' | 'link' | 'input' | 'select' | 'textarea',
-    text: string,
-    selector: string,
-    role?: string,
-    href?: string,  // for links
-    value?: string  // for inputs
-  }>,
-  forms: Array<{
-    selector: string,
-    action?: string,
-    method?: string,
-    fields: Array<{
-      type: string,
-      name: string,
-      label?: string,
-      selector: string,
-      required?: boolean,
-      placeholder?: string
-    }>
-  }>,
-  content: string  // Concatenated text content
-}
-```
-
-### `generateSelector(element)`
-
-Generates a unique, reliable CSS selector for an element.
-
-**Parameters:**
-- `element` (HTMLElement) - The element to generate a selector for
-
-**Returns:**
-- `string` - A CSS selector that uniquely identifies the element
-
-**Example:**
-```typescript
-import { generateSelector } from '@mcp-b/smart-dom-reader';
-
-const button = document.querySelector('#submit-btn');
-const selector = generateSelector(button);
-// Returns: '#submit-btn'
-
-const link = document.querySelector('nav a');
-const linkSelector = generateSelector(link);
-// Returns: 'nav > a:nth-of-type(1)'
 ```
 
 ## Use Cases
@@ -185,133 +358,170 @@ const linkSelector = generateSelector(link);
 ### Web Scraping for LLMs
 
 ```typescript
-// Extract page content for LLM processing
-const pageContent = extractDOMContent(document.body);
+// Extract page content for LLM processing with minimal tokens
+const reader = new SmartDOMReader({ mode: 'interactive' });
+const pageData = reader.extract(document);
 
 // Send to LLM with minimal tokens
 const prompt = `
-  Page has these interactive elements:
-  ${pageContent.interactive.map(el => `- ${el.type}: "${el.text}"`).join('\n')}
+  Page: ${pageData.page.title}
 
-  Please interact with the "Submit" button.
+  Interactive elements:
+  ${pageData.interactive.buttons.map(el => `- Button: "${el.text}"`).join('\n')}
+  ${pageData.interactive.links.map(el => `- Link: "${el.text}" → ${el.attributes.href}`).join('\n')}
+
+  Please click the "Submit" button.
 `;
 ```
 
 ### Browser Automation
 
 ```typescript
-// Find and click an element
-const content = extractDOMContent(document.body);
-const submitButton = content.interactive.find(el =>
-  el.type === 'button' && el.text.toLowerCase().includes('submit')
+// Find and interact with elements
+const reader = new SmartDOMReader();
+const result = reader.extract(document);
+
+const submitButton = result.interactive.buttons.find(el =>
+  el.text.toLowerCase().includes('submit')
 );
 
 if (submitButton) {
-  const element = document.querySelector(submitButton.selector);
+  const element = document.querySelector(submitButton.selector.css);
   element?.click();
 }
+```
+
+### Progressive LLM Interaction
+
+```typescript
+// Step 1: Show overview (minimal tokens)
+const structure = ProgressiveExtractor.extractStructure(document);
+console.log('Page regions:', Object.keys(structure.regions));
+
+// Step 2: LLM decides which region to explore
+const targetRegion = 'main'; // From LLM decision
+
+// Step 3: Extract detailed info from that region only
+const regionData = ProgressiveExtractor.extractRegion(targetRegion, document);
+console.log('Interactive elements in main:', regionData.interactive);
 ```
 
 ### Form Analysis
 
 ```typescript
 // Analyze forms on a page
-const content = extractDOMContent(document.body, { includeForms: true });
+const reader = new SmartDOMReader({ mode: 'interactive' });
+const result = reader.extract(document);
 
-content.forms.forEach(form => {
+result.interactive.forms.forEach(form => {
   console.log(`Form at ${form.selector}:`);
-  form.fields.forEach(field => {
-    console.log(`  - ${field.label || field.name}: ${field.type}${field.required ? ' (required)' : ''}`);
+  console.log(`  Action: ${form.action || 'none'}`);
+  console.log(`  Method: ${form.method || 'GET'}`);
+  console.log('  Fields:');
+
+  form.inputs.forEach(field => {
+    const required = field.attributes.required ? ' (required)' : '';
+    console.log(`    - ${field.attributes.name}: ${field.attributes.type}${required}`);
   });
 });
 ```
 
-### Testing & QA
+## Advanced Features
+
+### Selector Generation
+
+The package provides robust selector generation:
 
 ```typescript
-// Extract all interactive elements for testing coverage
-const content = extractDOMContent(document.body);
-const untested = content.interactive.filter(el =>
-  !el.selector.match(/data-testid/)
-);
+import { SelectorGenerator } from '@mcp-b/smart-dom-reader';
 
-console.log('Elements without test IDs:', untested);
+const button = document.querySelector('#my-button');
+const selectors = SelectorGenerator.generateSelectors(button);
+
+console.log(selectors);
+// {
+//   css: '#my-button',
+//   xpath: '//*[@id="my-button"]',
+//   dataTestId: '[data-testid="my-button"]',
+//   candidates: [
+//     { type: 'id', value: '#my-button', score: 100 },
+//     { type: 'data-testid', value: '[data-testid="my-button"]', score: 95 },
+//     ...
+//   ]
+// }
 ```
 
-## Bundle String Export
+### Content Detection
 
-The package also provides a bundled string version that can be injected into pages:
+Automatically detect main content areas:
 
 ```typescript
-import bundleString from '@mcp-b/smart-dom-reader/bundle-string';
+import { ContentDetection } from '@mcp-b/smart-dom-reader';
 
-// Inject into a page
-await page.evaluate(bundleString);
+const mainContent = ContentDetection.findMainContent(document);
+const landmarks = ContentDetection.detectLandmarks(document);
 
-// Now use extractDOMContent in the page context
-const content = await page.evaluate(() => {
-  return window.extractDOMContent(document.body);
-});
+console.log('Main content element:', mainContent);
+console.log('Page landmarks:', landmarks);
 ```
-
-## Advanced Usage
 
 ### Custom Element Filtering
 
-```typescript
-const content = extractDOMContent(document.body);
-
-// Filter to only buttons
-const buttons = content.interactive.filter(el => el.type === 'button');
-
-// Find elements by text content
-const loginButton = content.interactive.find(el =>
-  el.text.toLowerCase().includes('log in')
-);
-```
-
-### Handling Dynamic Content
+Filter extracted elements with custom logic:
 
 ```typescript
-// Wait for dynamic content to load
-const observer = new MutationObserver(() => {
-  const content = extractDOMContent(document.body);
-  // Process updated content
+const reader = new SmartDOMReader({
+  mode: 'interactive',
+  filter: {
+    // Only buttons with specific text
+    textContains: ['submit', 'save', 'continue'],
+
+    // Only elements with data-testid
+    hasAttributes: ['data-testid'],
+
+    // Exclude elements within nav
+    excludeSelectors: ['nav *']
+  }
 });
 
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
+const result = reader.extract(document);
+// Only filtered elements included
 ```
 
 ## Best Practices
 
 ### Token Efficiency
 
-- Use `includeImages: false` if images aren't needed
-- Set `includeForms: false` if forms aren't relevant
-- Extract from specific containers instead of `document.body`:
+- Use `mode: 'interactive'` if you don't need semantic content
+- Set `mainContentOnly: true` to skip headers/footers/nav
+- Use `ProgressiveExtractor` for multi-step interactions with LLMs
+- Truncate long attributes with `attributeTruncateLength`
+- Extract from specific containers instead of the whole document:
   ```typescript
   const main = document.querySelector('main');
-  const content = extractDOMContent(main);
+  const result = reader.extract(main);
   ```
 
 ### Selector Reliability
 
-- Generated selectors prioritize:
+- Generated selectors prioritize stability:
   1. IDs (`#my-id`)
-  2. Unique classes
-  3. Semantic structure (`nav > a:nth-of-type(1)`)
-- Store selectors for later use
-- Re-query before interaction to ensure element is still present
+  2. Data attributes (`[data-testid="..."]`)
+  3. ARIA labels
+  4. Unique classes
+  5. Structural paths
+- Check `selector.candidates` for alternative selectors
+- Re-query before interaction to ensure element still exists
 
 ### Error Handling
 
 ```typescript
 try {
-  const content = extractDOMContent(document.body);
-  const element = document.querySelector(content.interactive[0].selector);
+  const reader = new SmartDOMReader();
+  const result = reader.extract(document);
+
+  const button = result.interactive.buttons[0];
+  const element = document.querySelector(button.selector.css);
 
   if (!element) {
     console.error('Element no longer exists in DOM');
@@ -323,6 +533,23 @@ try {
 }
 ```
 
+## Bundle String Export
+
+For injection into pages via extension or userscript:
+
+```typescript
+import { SMART_DOM_READER_BUNDLE } from '@mcp-b/smart-dom-reader/bundle-string';
+
+// Inject into a page
+await page.evaluate(SMART_DOM_READER_BUNDLE);
+
+// Now SmartDOMReader is available in the page context
+const content = await page.evaluate(() => {
+  const reader = new SmartDOMReader();
+  return reader.extract(document);
+});
+```
+
 ## Browser Compatibility
 
 - Chrome/Edge: Full support
@@ -332,7 +559,7 @@ try {
 
 ## Related Packages
 
-- [`@mcp-b/extension-tools`](../extension-tools) - Includes DOM tools for Chrome extensions
+- [`@mcp-b/extension-tools`](/packages/extension-tools) - Includes DOM tools for Chrome extensions
 - [`@modelcontextprotocol/sdk`](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Official MCP SDK
 
 ## Resources

@@ -1,6 +1,7 @@
 ---
 title: 'Troubleshooting'
 description: 'Common issues and solutions for WebMCP integration'
+icon: 'wrench'
 ---
 
 ## Common Setup Issues
@@ -8,9 +9,9 @@ description: 'Common issues and solutions for WebMCP integration'
 <AccordionGroup>
   <Accordion title="Git clone times out">
     If the initial clone fails, complete it manually:
-    
+
     ```bash
-    git clone https://github.com/MiguelsPizza/WebMCP.git
+    git clone https://github.com/WebMCP-org/WebMCP.git
     cd WebMCP
     git pull origin main
     ```
@@ -71,19 +72,25 @@ description: 'Common issues and solutions for WebMCP integration'
   
   <Accordion title="Tools not working">
     **Verify transport configuration:**
-    
+
     ```javascript
     // Check allowedOrigins includes your domain
-    new TabServerTransport({ 
+    new TabServerTransport({
       allowedOrigins: ["*"] // Or specific domains
     })
     ```
-    
+
     **Ensure proper tool registration:**
     ```javascript
-    // Tools must be registered before connection
-    server.tool("myTool", "Description", {}, handler);
-    await server.connect(transport); // Connect AFTER tools
+    // For navigator.modelContext approach (recommended)
+    navigator.modelContext.registerTool({
+      name: "myTool",
+      description: "Description",
+      inputSchema: { type: "object", properties: {} },
+      async execute(args) {
+        return { content: [{ type: "text", text: "Result" }] };
+      }
+    });
     ```
   </Accordion>
   
@@ -203,30 +210,43 @@ description: 'Common issues and solutions for WebMCP integration'
 <AccordionGroup>
   <Accordion title="Tools not appearing in extension">
     **Common causes:**
-    
-    1. **Registration timing**: Tools must be registered before connection
+
+    1. **Registration timing**: Ensure `@mcp-b/global` is imported
     2. **Syntax errors**: Check browser console for JavaScript errors
-    3. **Transport not connected**: Verify `server.connect()` was called
-    
+    3. **Tool registration**: Verify tools are properly registered
+
     **Debug with logging:**
     ```javascript
-    server.on('tool-registered', (tool) => {
-      console.log('Tool registered:', tool.name);
-    });
+    // After registering a tool
+    console.log('Tool registered');
+
+    // Check if navigator.modelContext is available
+    if ('modelContext' in navigator) {
+      console.log('WebMCP is loaded');
+    }
     ```
   </Accordion>
   
   <Accordion title="Tool calls failing">
     **Check error messages:**
-    
+
     ```javascript
-    server.tool("myTool", "Description", schema, async (params) => {
-      try {
-        // Your tool logic
-        return { content: [{ type: "text", text: "Success" }] };
-      } catch (error) {
-        console.error('Tool error:', error);
-        throw error; // Re-throw for MCP error handling
+    navigator.modelContext.registerTool({
+      name: "myTool",
+      description: "Description",
+      inputSchema: { type: "object", properties: {} },
+      async execute(params) {
+        try {
+          // Your tool logic
+          return { content: [{ type: "text", text: "Success" }] };
+        } catch (error) {
+          console.error('Tool error:', error);
+          // Return error response
+          return {
+            content: [{ type: "text", text: `Error: ${error.message}` }],
+            isError: true
+          };
+        }
       }
     });
     ```
@@ -252,39 +272,63 @@ description: 'Common issues and solutions for WebMCP integration'
 <AccordionGroup>
   <Accordion title="Too many tools slowing down page">
     **Optimize tool registration:**
-    
+
     ```javascript
-    // Register tools lazily
+    // Register tools lazily based on page context
     const registerToolsForPage = (page) => {
       // Only register relevant tools
       if (page === 'dashboard') {
-        registerDashboardTools();
+        const reg = navigator.modelContext.registerTool({
+          name: 'dashboard_tool',
+          description: 'Dashboard-specific tool',
+          inputSchema: { type: "object", properties: {} },
+          async execute() {
+            // Tool logic
+            return { content: [{ type: "text", text: "Result" }] };
+          }
+        });
+
+        // Store registration for cleanup
+        return reg;
       }
     };
-    
+
     // Unregister when not needed
-    const cleanup = () => {
-      server.unregisterTool('toolName');
+    const cleanup = (registration) => {
+      registration.unregister();
     };
     ```
   </Accordion>
   
   <Accordion title="Memory leaks">
     **Clean up properly:**
-    
+
     ```javascript
-    // In React
-    useEffect(() => {
-      const server = createServer();
-      
-      return () => {
-        server.disconnect();
-      };
-    }, []);
-    
+    // In React with useWebMCP
+    import { useWebMCP } from '@mcp-b/react-webmcp';
+
+    // Auto cleanup when component unmounts
+    useWebMCP({
+      name: 'my_tool',
+      description: 'Tool description',
+      handler: async () => {
+        return { success: true };
+      }
+    });
+
     // In vanilla JS
+    const registration = navigator.modelContext.registerTool({
+      name: 'my_tool',
+      description: 'Tool description',
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        return { content: [{ type: "text", text: "Result" }] };
+      }
+    });
+
+    // Unregister when done
     window.addEventListener('beforeunload', () => {
-      server.disconnect();
+      registration.unregister();
     });
     ```
   </Accordion>
@@ -300,7 +344,7 @@ If you're still experiencing issues:
   </Step>
   
   <Step title="Search existing issues">
-    Look for similar problems in [GitHub Issues](https://github.com/MiguelsPizza/WebMCP/issues)
+    Look for similar problems in [GitHub Issues](https://github.com/WebMCP-org/WebMCP/issues)
   </Step>
   
   <Step title="Join the community">
@@ -308,7 +352,7 @@ If you're still experiencing issues:
   </Step>
   
   <Step title="Create an issue">
-    If it's a bug, [create a detailed issue](https://github.com/MiguelsPizza/WebMCP/issues/new) with:
+    If it's a bug, [create a detailed issue](https://github.com/WebMCP-org/WebMCP/issues/new) with:
     - Steps to reproduce
     - Expected vs actual behavior
     - Browser and extension versions
@@ -321,15 +365,18 @@ If you're still experiencing issues:
 Enable debug logging for more information:
 
 ```javascript
-// Enable verbose logging
-const server = new McpServer({
-  name: "my-app",
-  version: "1.0.0",
-  debug: true // Enable debug mode
-});
+// Check if WebMCP is loaded
+if (window.__mcpBridge) {
+  console.log('MCP Server:', window.__mcpBridge.server);
+  console.log('Registered tools:', window.__mcpBridge.tools);
+}
 
-// Or set via environment variable
-process.env.DEBUG = 'mcp:*';
+// Check navigator.modelContext availability
+if ('modelContext' in navigator) {
+  console.log('navigator.modelContext is available');
+} else {
+  console.error('navigator.modelContext not found - ensure @mcp-b/global is imported');
+}
 ```
 
 <Note>

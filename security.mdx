@@ -1,0 +1,706 @@
+---
+title: 'Security Best Practices'
+description: 'Security guidelines and best practices for WebMCP integration'
+icon: 'shield-halved'
+---
+
+<Warning>
+  Security is a shared responsibility. While WebMCP provides secure foundations, you must implement proper validation, authorization, and error handling in your tools.
+</Warning>
+
+## Security Principles
+
+WebMCP follows these core security principles:
+
+<CardGroup cols={2}>
+  <Card title="User Context" icon="user-shield">
+    Tools run with the user's existing session and permissions
+  </Card>
+
+  <Card title="Origin Validation" icon="globe">
+    Transport layer enforces same-origin policy
+  </Card>
+
+  <Card title="No Credential Sharing" icon="key">
+    AI agents never receive user credentials
+  </Card>
+
+  <Card title="Explicit Actions" icon="hand">
+    Tools only expose user-authorized actions
+  </Card>
+</CardGroup>
+
+## Authentication & Authorization
+
+### Tools Inherit User Sessions
+
+Tools automatically run in the user's browser context with their existing authentication:
+
+```javascript
+// ✅ GOOD: Uses existing session cookies
+navigator.modelContext.registerTool({
+  name: "update_profile",
+  description: "Update user profile information",
+  inputSchema: {
+    type: "object",
+    properties: {
+      bio: { type: "string", maxLength: 500 }
+    }
+  },
+  async execute({ bio }) {
+    const response = await fetch('/api/profile', {
+      method: 'PATCH',
+      credentials: 'same-origin',  // Important: includes cookies
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bio })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update profile');
+    }
+
+    return {
+      content: [{ type: "text", text: "Profile updated successfully" }]
+    };
+  }
+});
+```
+
+### Check User Permissions
+
+Always verify the user has permission to perform the requested action:
+
+```javascript
+// ✅ GOOD: Validates user ownership before deletion
+navigator.modelContext.registerTool({
+  name: "delete_post",
+  description: "Delete a blog post (user must be owner)",
+  inputSchema: {
+    type: "object",
+    properties: {
+      postId: { type: "string", pattern: "^[a-zA-Z0-9-]+$" }
+    },
+    required: ["postId"]
+  },
+  async execute({ postId }) {
+    // Server-side check ensures user owns this post
+    const response = await fetch(`/api/posts/${postId}`, {
+      method: 'DELETE',
+      credentials: 'same-origin'
+    });
+
+    if (response.status === 403) {
+      return {
+        content: [{ type: "text", text: "Permission denied: You don't own this post" }],
+        isError: true
+      };
+    }
+
+    if (!response.ok) {
+      throw new Error('Failed to delete post');
+    }
+
+    return {
+      content: [{ type: "text", text: `Post ${postId} deleted successfully` }]
+    };
+  }
+});
+```
+
+### Conditional Tool Registration
+
+Only register tools for authenticated or authorized users:
+
+```javascript
+// ✅ GOOD: Only registers admin tools for admin users
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useAuth } from './hooks/useAuth';
+
+function AdminPanel() {
+  const { user } = useAuth();
+
+  // Only register if user is admin
+  if (user?.role === 'admin') {
+    useWebMCP({
+      name: 'admin_delete_user',
+      description: 'Delete a user account (admin only)',
+      inputSchema: { userId: z.string().uuid() },
+      handler: async ({ userId }) => {
+        await adminAPI.deleteUser(userId);
+        return { success: true };
+      }
+    });
+  }
+
+  return <div>Admin Panel</div>;
+}
+```
+
+## Input Validation
+
+### Always Validate Inputs
+
+Use JSON Schema or Zod to enforce type and format constraints:
+
+```javascript
+// ✅ GOOD: Comprehensive input validation
+import { z } from 'zod';
+
+useWebMCP({
+  name: 'create_order',
+  description: 'Create a new order',
+  inputSchema: {
+    items: z.array(z.object({
+      productId: z.string().uuid(),
+      quantity: z.number().int().positive().max(100)
+    })).min(1).max(50),
+    shippingAddress: z.object({
+      street: z.string().min(1).max(200),
+      city: z.string().min(1).max(100),
+      postalCode: z.string().regex(/^[0-9]{5}(-[0-9]{4})?$/)
+    }),
+    paymentMethodId: z.string().uuid()
+  },
+  handler: async (order) => {
+    // Inputs are already validated by Zod
+    const result = await createOrder(order);
+    return { orderId: result.id };
+  }
+});
+```
+
+```javascript
+// ❌ BAD: No input validation
+navigator.modelContext.registerTool({
+  name: 'delete_all_posts',
+  description: 'Delete all posts',
+  inputSchema: { type: "object", properties: {} },
+  async execute(args) {
+    // No confirmation, no validation, dangerous!
+    await deleteAllPosts();
+    return { content: [{ type: "text", text: "Deleted all posts" }] };
+  }
+});
+```
+
+### Sanitize User Inputs
+
+Prevent injection attacks by sanitizing inputs before use:
+
+```javascript
+// ✅ GOOD: Sanitizes HTML and validates email
+import DOMPurify from 'dompurify';
+
+useWebMCP({
+  name: 'send_message',
+  description: 'Send a message to another user',
+  inputSchema: {
+    recipientEmail: z.string().email().max(255),
+    subject: z.string().min(1).max(200),
+    body: z.string().min(1).max(10000)
+  },
+  handler: async ({ recipientEmail, subject, body }) => {
+    // Sanitize HTML content
+    const sanitizedBody = DOMPurify.sanitize(body);
+
+    await fetch('/api/messages', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: recipientEmail,
+        subject,
+        body: sanitizedBody
+      })
+    });
+
+    return { success: true };
+  }
+});
+```
+
+## Transport Security
+
+### Configure Allowed Origins
+
+In production, explicitly whitelist allowed origins:
+
+```javascript
+// ✅ GOOD: Production configuration
+import { TabServerTransport } from '@mcp-b/transports';
+
+const transport = new TabServerTransport({
+  allowedOrigins: [
+    'https://app.mywebsite.com',
+    'https://api.mywebsite.com'
+  ]
+});
+```
+
+```javascript
+// ⚠️ DEVELOPMENT ONLY: Wildcard origin
+const transport = new TabServerTransport({
+  allowedOrigins: ['*']  // Only use in development!
+});
+```
+
+### Validate Extension Connections
+
+For extension transports, verify the connecting extension ID:
+
+```javascript
+// Extension background.ts
+chrome.runtime.onConnectExternal.addListener((port) => {
+  const ALLOWED_EXTENSION_IDS = [
+    'daohopfhkdelnpemnhlekblhnikhdhfa',  // MCP-B Extension
+    'your-extension-id-here'
+  ];
+
+  if (!ALLOWED_EXTENSION_IDS.includes(port.sender.id)) {
+    console.warn(`Rejected connection from unauthorized extension: ${port.sender.id}`);
+    port.disconnect();
+    return;
+  }
+
+  // Handle authorized connection
+  setupMCPConnection(port);
+});
+```
+
+## Sensitive Operations
+
+### Mark Destructive Tools
+
+Use annotations to signal dangerous operations:
+
+```javascript
+// ✅ GOOD: Clearly marked as destructive
+useWebMCP({
+  name: 'delete_account',
+  description: 'Permanently delete the user account (irreversible)',
+  annotations: {
+    destructiveHint: true,  // Warns AI this is dangerous
+    readOnlyHint: false,
+    idempotentHint: false
+  },
+  inputSchema: {
+    confirmation: z.literal('DELETE_MY_ACCOUNT')  // Requires exact match
+  },
+  handler: async ({ confirmation }) => {
+    await api.deleteAccount();
+    return { message: 'Account deleted' };
+  }
+});
+```
+
+### Require Confirmations
+
+For critical actions, require explicit confirmation:
+
+```javascript
+// ✅ GOOD: Requires typed confirmation
+useWebMCP({
+  name: 'reset_database',
+  description: 'Reset database to initial state (requires confirmation)',
+  inputSchema: {
+    confirmation: z.string().refine(
+      (val) => val === 'RESET_DATABASE_CONFIRM',
+      'Must type "RESET_DATABASE_CONFIRM" to proceed'
+    )
+  },
+  handler: async ({ confirmation }) => {
+    await resetDatabase();
+    return { success: true };
+  }
+});
+```
+
+### Rate Limiting
+
+Implement rate limiting for sensitive operations:
+
+```javascript
+// ✅ GOOD: Client-side rate limiting
+import { useCallback, useRef } from 'react';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+function useRateLimitedTool() {
+  const lastCallTime = useRef<number>(0);
+  const RATE_LIMIT_MS = 60000; // 1 minute
+
+  useWebMCP({
+    name: 'send_email',
+    description: 'Send an email (rate limited to 1/minute)',
+    inputSchema: { to: z.string().email(), body: z.string() },
+    handler: async (args) => {
+      const now = Date.now();
+      if (now - lastCallTime.current < RATE_LIMIT_MS) {
+        const waitTime = Math.ceil((RATE_LIMIT_MS - (now - lastCallTime.current)) / 1000);
+        throw new Error(`Rate limit: Please wait ${waitTime} seconds`);
+      }
+
+      lastCallTime.current = now;
+      await sendEmail(args);
+      return { success: true };
+    }
+  });
+}
+```
+
+## Data Exposure
+
+### Only Expose Necessary Data
+
+Don't leak sensitive information in tool responses:
+
+```javascript
+// ✅ GOOD: Returns only safe, user-specific data
+useWebMCP({
+  name: 'get_user_profile',
+  description: 'Get current user profile',
+  inputSchema: {},
+  handler: async () => {
+    const user = await getCurrentUser();
+
+    // Return only safe fields
+    return {
+      username: user.username,
+      displayName: user.displayName,
+      bio: user.bio,
+      avatarUrl: user.avatarUrl
+      // ❌ Don't include: email, password hash, API keys, etc.
+    };
+  }
+});
+```
+
+```javascript
+// ❌ BAD: Exposes sensitive internal data
+useWebMCP({
+  name: 'get_user_data',
+  description: 'Get all user data',
+  inputSchema: {},
+  handler: async () => {
+    const user = await getUserFromDB();
+
+    // Don't return everything!
+    return user; // ❌ Includes password hash, tokens, etc.
+  }
+});
+```
+
+### Filter Responses Based on Permissions
+
+```javascript
+// ✅ GOOD: Filters response based on user role
+useWebMCP({
+  name: 'get_project_details',
+  description: 'Get project information',
+  inputSchema: { projectId: z.string() },
+  handler: async ({ projectId }) => {
+    const project = await getProject(projectId);
+    const user = await getCurrentUser();
+
+    const response = {
+      id: project.id,
+      name: project.name,
+      description: project.description
+    };
+
+    // Only include sensitive data for owners/admins
+    if (user.role === 'admin' || project.ownerId === user.id) {
+      response.apiKey = project.apiKey;
+      response.webhookSecret = project.webhookSecret;
+    }
+
+    return response;
+  }
+});
+```
+
+## Error Handling
+
+### Don't Leak System Information
+
+Avoid exposing internal errors to AI agents:
+
+```javascript
+// ✅ GOOD: Generic error messages
+useWebMCP({
+  name: 'process_payment',
+  description: 'Process a payment',
+  inputSchema: { amount: z.number(), paymentMethodId: z.string() },
+  handler: async (args) => {
+    try {
+      const result = await processPayment(args);
+      return { transactionId: result.id };
+    } catch (error) {
+      // Log full error for debugging
+      console.error('Payment processing error:', error);
+
+      // Return generic error to user/AI
+      return {
+        content: [{
+          type: "text",
+          text: "Payment processing failed. Please try again or contact support."
+        }],
+        isError: true
+      };
+    }
+  }
+});
+```
+
+```javascript
+// ❌ BAD: Exposes internal errors
+async execute({ amount }) {
+  try {
+    await charge(amount);
+  } catch (error) {
+    // Exposes database details, API keys, stack traces!
+    return {
+      content: [{ type: "text", text: error.toString() }],
+      isError: true
+    };
+  }
+}
+```
+
+## Chrome Extension Security
+
+### Manifest Permissions
+
+Request only necessary permissions:
+
+```json
+// ✅ GOOD: Minimal permissions
+{
+  "manifest_version": 3,
+  "permissions": [
+    "storage",
+    "activeTab"  // Only active tab, not all tabs
+  ],
+  "host_permissions": [
+    "https://myapp.com/*"  // Specific domain
+  ]
+}
+```
+
+```json
+// ❌ BAD: Overly broad permissions
+{
+  "manifest_version": 3,
+  "permissions": [
+    "storage",
+    "tabs",
+    "history",
+    "bookmarks",
+    "<all_urls>"  // Too broad!
+  ]
+}
+```
+
+### Content Security Policy
+
+Configure strict CSP in your extension manifest:
+
+```json
+{
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
+```
+
+## Logging & Monitoring
+
+### Log Security Events
+
+Monitor for suspicious activity:
+
+```javascript
+// ✅ GOOD: Logs security-relevant events
+useWebMCP({
+  name: 'admin_action',
+  description: 'Perform admin action',
+  inputSchema: { action: z.enum(['delete', 'ban', 'restore']) },
+  handler: async ({ action }) => {
+    const user = await getCurrentUser();
+
+    if (user.role !== 'admin') {
+      // Log unauthorized access attempt
+      await logSecurityEvent({
+        type: 'UNAUTHORIZED_ACCESS',
+        userId: user.id,
+        action: 'admin_action',
+        timestamp: new Date()
+      });
+
+      throw new Error('Unauthorized');
+    }
+
+    // Log successful admin action
+    await logSecurityEvent({
+      type: 'ADMIN_ACTION',
+      userId: user.id,
+      action,
+      timestamp: new Date()
+    });
+
+    await performAdminAction(action);
+    return { success: true };
+  }
+});
+```
+
+## Security Checklist
+
+Before deploying WebMCP tools to production:
+
+<Steps>
+  <Step title="Input Validation">
+    ✅ All inputs validated with JSON Schema or Zod
+    ✅ String lengths limited
+    ✅ Regex patterns for structured data (emails, IDs, etc.)
+    ✅ No SQL injection vectors
+  </Step>
+
+  <Step title="Authorization">
+    ✅ All tools check user permissions
+    ✅ Tools use `credentials: 'same-origin'`
+    ✅ Sensitive tools only registered for authorized users
+    ✅ Server-side authorization enforced
+  </Step>
+
+  <Step title="Data Exposure">
+    ✅ Only necessary data returned
+    ✅ No sensitive fields (passwords, tokens, keys) exposed
+    ✅ Responses filtered based on user role
+    ✅ No PII leakage
+  </Step>
+
+  <Step title="Error Handling">
+    ✅ Generic error messages for users
+    ✅ Detailed logging for debugging
+    ✅ No stack traces exposed
+    ✅ No system information leakage
+  </Step>
+
+  <Step title="Transport Security">
+    ✅ Production origins whitelisted
+    ✅ HTTPS enforced
+    ✅ Extension IDs validated
+    ✅ No wildcard origins in production
+  </Step>
+
+  <Step title="Destructive Operations">
+    ✅ Marked with `destructiveHint: true`
+    ✅ Require explicit confirmation
+    ✅ Rate limited
+    ✅ Logged for audit trail
+  </Step>
+</Steps>
+
+## Common Vulnerabilities
+
+### XSS (Cross-Site Scripting)
+
+```javascript
+// ❌ VULNERABLE: Unsanitized HTML injection
+useWebMCP({
+  name: 'set_bio',
+  inputSchema: { html: z.string() },
+  handler: async ({ html }) => {
+    document.getElementById('bio').innerHTML = html; // XSS!
+    return { success: true };
+  }
+});
+
+// ✅ SAFE: Sanitized HTML
+import DOMPurify from 'dompurify';
+
+useWebMCP({
+  name: 'set_bio',
+  inputSchema: { html: z.string().max(1000) },
+  handler: async ({ html }) => {
+    const clean = DOMPurify.sanitize(html);
+    document.getElementById('bio').innerHTML = clean;
+    return { success: true };
+  }
+});
+```
+
+### CSRF (Cross-Site Request Forgery)
+
+```javascript
+// ✅ PROTECTED: Uses CSRF token from cookies
+useWebMCP({
+  name: 'transfer_funds',
+  inputSchema: { amount: z.number(), toAccount: z.string() },
+  handler: async (args) => {
+    await fetch('/api/transfer', {
+      method: 'POST',
+      credentials: 'same-origin',  // Includes CSRF cookie
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args)
+    });
+    return { success: true };
+  }
+});
+```
+
+### Insecure Direct Object References (IDOR)
+
+```javascript
+// ❌ VULNERABLE: No ownership check
+async handler({ documentId }) {
+  const doc = await getDocument(documentId);  // Any ID works!
+  return doc;
+}
+
+// ✅ PROTECTED: Server validates ownership
+async handler({ documentId }) {
+  const response = await fetch(`/api/documents/${documentId}`, {
+    credentials: 'same-origin'  // Server checks user owns this
+  });
+
+  if (response.status === 403) {
+    throw new Error('Access denied');
+  }
+
+  return await response.json();
+}
+```
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="OWASP Top 10" icon="shield" href="https://owasp.org/www-project-top-ten/">
+    Common web security risks
+  </Card>
+
+  <Card title="Content Security Policy" icon="lock" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP">
+    MDN CSP documentation
+  </Card>
+
+  <Card title="Chrome Extension Security" icon="puzzle-piece" href="https://developer.chrome.com/docs/extensions/mv3/security/">
+    Extension security best practices
+  </Card>
+
+  <Card title="MCP Security" icon="shield-halved" href="https://modelcontextprotocol.io/docs/security">
+    MCP protocol security
+  </Card>
+</CardGroup>
+
+## Report Security Issues
+
+If you discover a security vulnerability in WebMCP:
+
+1. **Do not** open a public GitHub issue
+2. Email security concerns to: [security@webmcp.dev](mailto:security@webmcp.dev)
+3. Include detailed steps to reproduce
+4. Allow time for us to patch before public disclosure
+
+<Note>
+  We take security seriously and will respond to vulnerability reports within 48 hours.
+</Note>

@@ -7,6 +7,14 @@ icon: "arrows-left-right"
 
 Browser-specific MCP `Transport` implementations enabling communication between MCP clients and servers within web pages and browser extensions.
 
+## Prerequisites
+
+- **@modelcontextprotocol/sdk** - Official MCP SDK
+- **Modern browser** with ES2020+ support
+- **TypeScript 5.0+** (recommended for type safety)
+- **Chrome Extension Manifest V3** (for extension transports)
+- Understanding of async/await and Promises
+
 ## Installation
 
 ```bash
@@ -280,14 +288,34 @@ const result = await client.callTool({
 - Configure `allowedOrigins` appropriately for your use case
 - Tools execute in their original context (web page or extension)
 
-## Related Packages
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="@mcp-b/global" icon="globe" href="/packages/global">
+    Web Model Context API polyfill
+  </Card>
+
+  <Card title="@mcp-b/react-webmcp" icon="react" href="/packages/react-webmcp">
+    React hooks for MCP
+  </Card>
+
+  <Card title="@mcp-b/extension-tools" icon="puzzle-piece" href="/packages/extension-tools">
+    Chrome Extension API wrappers
+  </Card>
+
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Transport architecture diagrams
+  </Card>
+</CardGroup>
+
+**See also:**
+- [Advanced Patterns](/advanced) - Extension and multi-tab scenarios
+- [Security Guide](/security) - Origin validation and transport security
+- [Troubleshooting](/troubleshooting) - Common transport issues
+
+## External Resources
 
 - [@modelcontextprotocol/sdk](https://www.npmjs.com/package/@modelcontextprotocol/sdk) - Official MCP SDK
-- [@mcp-b/react-webmcp](/packages/react-webmcp) - React hooks for MCP integration
-- [@mcp-b/global](/packages/global) - Web Model Context API implementation
-
-## Resources
-
-- [GitHub Repository](https://github.com/WebMCP-org/npm-packages)
-- [MCP Protocol Specification](https://modelcontextprotocol.io)
-- [Chrome Extension Development](https://developer.chrome.com/docs/extensions)
+- [MCP Protocol Specification](https://modelcontextprotocol.io) - Protocol details
+- [Chrome Extension Development](https://developer.chrome.com/docs/extensions) - Extension APIs
+- [GitHub Repository](https://github.com/WebMCP-org/npm-packages) - Source code

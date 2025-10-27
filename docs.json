@@ -1,14 +1,144 @@
 {
- "contextual": {
-   "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
- }
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "WebMCP Documentation",
+  "description": "WebMCP Documentation - Bringing the power of Model Context Protocol (MCP) to the web. Enable AI agents to interact with your website through structured tools.",
+  "colors": {
+    "primary": "#1F5EFF",
+    "light": "#4B7BFF",
+    "dark": "#1449CC"
+  },
+  "logo": {
+    "light": "/logo/mcp-b-logo.png",
+    "dark": "/logo/mcp-b-logo.png"
+  },
+  "favicon": "/favicon.ico",
+  "appearance": {
+    "default": "light",
+    "strict": false
+  },
+  "background": {
+    "decoration": "gradient"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/WebMCP-org"
+      },
+      {
+        "label": "NPM Packages",
+        "href": "https://github.com/WebMCP-org/npm-packages"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Extension",
+      "href": "https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa"
+    }
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Live Demo",
+          "icon": "play",
+          "href": "https://mcp-b.ai"
+        },
+        {
+          "anchor": "NPM Package",
+          "icon": "npm",
+          "href": "https://www.npmjs.com/package/@mcp-b/transports"
+        },
+        {
+          "anchor": "Examples",
+          "icon": "code",
+          "href": "https://github.com/WebMCP-org/examples"
+        }
+      ]
+    },
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "examples"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "development",
+          "advanced",
+          "troubleshooting"
+        ]
+      },
+      {
+        "group": "NPM Packages",
+        "pages": [
+          "packages/global",
+          "packages/transports",
+          "packages/react-webmcp",
+          "packages/extension-tools",
+          "packages/webmcp-ts-sdk",
+          "packages/smart-dom-reader"
+        ]
+      },
+      {
+        "group": "Tools",
+        "pages": [
+          "tools/claude-code"
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/WebMCP-org",
+      "discord": "https://discord.gg/ZnHG4csJRB",
+      "linkedin": "https://www.linkedin.com/company/mcp-b"
+    }
+  },
+  "seo": {
+    "indexing": "all",
+    "metatags": {
+      "description": "WebMCP Documentation - Bringing the power of Model Context Protocol (MCP) to the web. Enable AI agents to interact with your website through structured tools.",
+      "keywords": "MCP, Model Context Protocol, WebMCP, AI agents, web tools, browser extension, tab transport, JavaScript SDK",
+      "author": "WebMCP Team",
+      "robots": "index, follow",
+      "googlebot": "index, follow",
+      "og:title": "WebMCP Documentation - AI-Powered Web Tools",
+      "og:type": "website",
+      "og:url": "https://docs.webmcp.dev",
+      "og:image": "https://docs.webmcp.dev/logo/social-card.png",
+      "og:description": "WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server. Enable AI agents to interact with your site deterministically.",
+      "og:site_name": "WebMCP Documentation",
+      "og:locale": "en_US",
+      "twitter:card": "summary_large_image",
+      "twitter:site": "@webmcp",
+      "twitter:creator": "@webmcp",
+      "twitter:title": "WebMCP Documentation - AI-Powered Web Tools",
+      "twitter:description": "WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server.",
+      "twitter:image": "https://docs.webmcp.dev/logo/social-card.png",
+      "twitter:image:alt": "WebMCP Documentation - Model Context Protocol for the Web",
+      "article:published_time": "2024-01-01T00:00:00+00:00",
+      "article:modified_time": "2024-12-01T00:00:00+00:00",
+      "article:author": "WebMCP Team",
+      "article:section": "Technology",
+      "article:tag": "MCP, Model Context Protocol, AI, Web Development, Browser Extension"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  }
 }

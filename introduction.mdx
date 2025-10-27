@@ -3,10 +3,6 @@ title: 'WebMCP Documentation'
 description: 'Bringing the power of MCP to the web - Enable AI agents to interact with your website through structured tools'
 ---
 
-<Note>
-  🚨 **Important**: Version 1.0.0 is now available on NPM with breaking changes! Make sure to update your dependencies.
-</Note>
-
 ## Welcome to WebMCP
 
 **WebMCP is a polyfill for the W3C Web Model Context API** - a standards-track proposal that lets websites expose tools to AI agents through `navigator.modelContext`.
@@ -153,16 +149,50 @@ navigator.modelContext.registerTool({
 ## Next Steps
 
 <Steps>
+  <Step title="Understand Core Concepts">
+    Learn about [WebMCP architecture and components](/concepts)
+  </Step>
   <Step title="Install the Extension">
-    Get the MCP-B Chrome Extension from the Chrome Web Store
+    Get the [MCP-B Chrome Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
   </Step>
   <Step title="Follow the Quickstart">
-    Set up WebMCP on your website in minutes
+    Set up WebMCP on your website in the [Quick Start Guide](/quickstart)
+  </Step>
+  <Step title="Review Security">
+    Understand [security best practices](/security) before deploying
   </Step>
   <Step title="Explore Examples">
-    Check out working examples for different frameworks
+    Check out [working examples](/examples) for different frameworks
   </Step>
   <Step title="Build Your Integration">
-    Create custom tools for your specific use case
+    Use our [NPM packages](/packages/global) to create custom tools
   </Step>
 </Steps>
+
+## Related Resources
+
+<CardGroup cols={3}>
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Architecture overview and diagrams
+  </Card>
+
+  <Card title="Glossary" icon="book" href="/glossary">
+    Key terminology reference
+  </Card>
+
+  <Card title="Security Guide" icon="shield-halved" href="/security">
+    Security best practices
+  </Card>
+
+  <Card title="Changelog" icon="clock-rotate-left" href="/changelog">
+    Version history and migrations
+  </Card>
+
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Common issues and solutions
+  </Card>
+
+  <Card title="Extension Guide" icon="puzzle-piece" href="/extension/index">
+    MCP-B browser extension docs
+  </Card>
+</CardGroup>

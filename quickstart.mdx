@@ -1,13 +1,19 @@
 ---
 title: 'Quick Start'
 description: 'Add AI agent support to your website in minutes'
+icon: 'rocket'
 ---
 
 WebMCP is a **polyfill for the W3C Web Model Context API** that lets you expose JavaScript functions to AI agents through the `navigator.modelContext` standard.
 
-<Info>
-  **Prerequisites**: [MCP-B Chrome Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
-</Info>
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Modern browser**: Chrome, Edge, or Brave (latest version)
+- **[MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)** installed from Chrome Web Store
+- **Node.js 18+** (for NPM installation) or basic HTML knowledge (for script tag method)
+- **Package manager**: npm, pnpm, or yarn (optional for NPM method)
 
 ## Installation
 
@@ -206,6 +212,10 @@ Wrap your existing application logic as tools:
 ## Next Steps
 
 <CardGroup cols={2}>
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Understand WebMCP architecture
+  </Card>
+
   <Card title="Examples" icon="code" href="/examples">
     Complete working examples and patterns
   </Card>
@@ -214,11 +224,22 @@ Wrap your existing application logic as tools:
     @mcp-b/react-webmcp package documentation
   </Card>
 
-  <Card title="Packages" icon="box" href="/packages/global">
-    All available NPM packages
+  <Card title="Security Guide" icon="shield-halved" href="/security">
+    Security best practices
   </Card>
 
-  <Card title="Advanced" icon="gear" href="/advanced">
+  <Card title="NPM Packages" icon="box" href="/packages/global">
+    All available packages and APIs
+  </Card>
+
+  <Card title="Advanced Patterns" icon="layer-group" href="/advanced">
     Chrome extensions, transports, and more
   </Card>
 </CardGroup>
+
+## Related Documentation
+
+- [Core Concepts](/concepts) - Architecture and component interaction
+- [Glossary](/glossary) - Key terminology and definitions
+- [Security](/security) - Authentication, validation, and best practices
+- [Troubleshooting](/troubleshooting) - Common issues and solutions

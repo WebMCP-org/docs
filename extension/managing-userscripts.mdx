@@ -1,0 +1,566 @@
+---
+title: Managing Userscripts
+description: Learn how to download, upload, enable, disable, and organize your userscripts in the MCP-B extension
+icon: gear
+---
+
+# Managing Userscripts
+
+The MCP-B extension includes a built-in userscript manager that lets you create, organize, and share custom scripts for any website. This guide covers everything you need to know about managing your userscripts.
+
+## What Are Userscripts?
+
+Userscripts are JavaScript programs that run automatically on specific websites. They can:
+
+- Modify how websites look (themes, layouts, fonts)
+- Add new features (buttons, shortcuts, tools)
+- Remove unwanted elements (ads, popups, banners)
+- Automate repetitive tasks (form filling, data extraction)
+- Expose website functionality to AI agents (WebMCP servers)
+
+<Info>
+All userscripts run locally in your browser. They only affect your view of websites - not other users'.
+</Info>
+
+## Accessing the Userscript Manager
+
+<Steps>
+  <Step title="Open the extension">
+    Click the MCP-B icon in your browser toolbar
+  </Step>
+  <Step title="Navigate to Scripts">
+    Click on the "Scripts" or "Userscripts" tab in the extension interface
+  </Step>
+  <Step title="View your scripts">
+    You'll see a list of all installed userscripts with their status
+  </Step>
+</Steps>
+
+## Creating Userscripts
+
+### Using an AI Agent
+
+The easiest way to create userscripts is by asking an AI agent:
+
+<Tabs>
+  <Tab title="Userscript Engineer">
+    <Steps>
+      <Step title="Select the agent">
+        Switch to "Userscript Engineer" in the agent dropdown
+      </Step>
+      <Step title="Describe what you want">
+        "Add a dark mode toggle to reddit.com" or "Remove ads from news.ycombinator.com"
+      </Step>
+      <Step title="Review and test">
+        The agent will create, test, and refine the script
+      </Step>
+      <Step title="Save">
+        Once satisfied, the agent will commit the script to your library
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="WebMCP Server">
+    <Steps>
+      <Step title="Select the agent">
+        Switch to "WebMCP Server" in the agent dropdown
+      </Step>
+      <Step title="Specify the site and features">
+        "Create MCP tools for searching Amazon products"
+      </Step>
+      <Step title="Test the tools">
+        The agent will build tools and test them
+      </Step>
+      <Step title="Use the tools">
+        Once created, any agent can use these tools to interact with the website
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+### Manual Creation
+
+For advanced users, you can write userscripts manually:
+
+<Steps>
+  <Step title="Open the script editor">
+    Click "New Script" in the userscript manager
+  </Step>
+  <Step title="Write your code">
+    Use TypeScript or JavaScript. No userscript header required.
+  </Step>
+  <Step title="Configure metadata">
+    Set which URLs the script should run on (matches pattern)
+  </Step>
+  <Step title="Test">
+    Use the "Execute" button to test on the current page
+  </Step>
+  <Step title="Save">
+    Click "Commit" to save permanently
+  </Step>
+</Steps>
+
+## Downloading Userscripts
+
+### Export Individual Scripts
+
+<Steps>
+  <Step title="Select the script">
+    Click on the userscript you want to download
+  </Step>
+  <Step title="Open menu">
+    Click the three dots (⋯) or "Actions" button
+  </Step>
+  <Step title="Export">
+    Select "Download" or "Export"
+  </Step>
+  <Step title="Save file">
+    Save the `.ts` or `.js` file to your computer
+  </Step>
+</Steps>
+
+### Export All Scripts
+
+<Steps>
+  <Step title="Open settings">
+    Click the settings icon in the userscript manager
+  </Step>
+  <Step title="Export library">
+    Select "Export All Scripts"
+  </Step>
+  <Step title="Save backup">
+    Save the JSON file containing all your scripts
+  </Step>
+</Steps>
+
+<Tip>
+Regular backups are recommended, especially for critical automation scripts.
+</Tip>
+
+## Uploading Userscripts
+
+### Import Individual Scripts
+
+<Steps>
+  <Step title="Open import dialog">
+    Click "Import Script" or the upload icon (⬆) in the userscript manager
+  </Step>
+  <Step title="Select file">
+    Choose a `.ts`, `.js`, or `.user.js` file from your computer
+  </Step>
+  <Step title="Review metadata">
+    Check the script name and URL patterns
+  </Step>
+  <Step title="Confirm">
+    Click "Import" to add the script to your library
+  </Step>
+</Steps>
+
+### Import Script Library
+
+<Steps>
+  <Step title="Open settings">
+    Click the settings icon in the userscript manager
+  </Step>
+  <Step title="Import library">
+    Select "Import Scripts"
+  </Step>
+  <Step title="Select JSON file">
+    Choose the backup file you previously exported
+  </Step>
+  <Step title="Choose merge behavior">
+    Decide whether to replace existing scripts or merge
+  </Step>
+  <Step title="Confirm">
+    Click "Import" to restore your scripts
+  </Step>
+</Steps>
+
+<Warning>
+Always review scripts from untrusted sources before importing. Malicious scripts can access your browsing data or perform unwanted actions.
+</Warning>
+
+## Using Userscripts
+
+### Enable/Disable Scripts
+
+<Tabs>
+  <Tab title="Individual Scripts">
+    Toggle the switch next to each script to enable or disable it. Changes take effect immediately on matching pages.
+  </Tab>
+
+  <Tab title="All Scripts">
+    Use the global toggle in settings to temporarily disable all userscripts without deleting them.
+  </Tab>
+</Tabs>
+
+### Reload After Changes
+
+When you modify or enable a userscript:
+
+<Steps>
+  <Step title="Refresh the page">
+    The script won't run on already-loaded pages until you refresh
+  </Step>
+  <Step title="Verify it's working">
+    Check that the expected changes appear
+  </Step>
+  <Step title="Check console if needed">
+    Open browser DevTools (F12) to see any error messages
+  </Step>
+</Steps>
+
+### Updating Scripts
+
+<Tabs>
+  <Tab title="Via Agent">
+    Open a chat, mention the script name, and describe the changes you want. The agent will update the script for you.
+  </Tab>
+
+  <Tab title="Manual Edit">
+    Click the script in the manager, click "Edit", make your changes, and click "Commit" to save.
+  </Tab>
+</Tabs>
+
+## Organizing Scripts
+
+### Naming Convention
+
+Use clear, descriptive names:
+
+<CardGroup cols={2}>
+  <Card title="Good Names" icon="check">
+    - `github-dark-mode`
+    - `reddit-hide-sidebar`
+    - `amazon-price-tracker`
+  </Card>
+
+  <Card title="Avoid" icon="x">
+    - `script1`
+    - `test`
+    - `untitled`
+  </Card>
+</CardGroup>
+
+### URL Patterns
+
+Configure which sites each script runs on:
+
+```javascript
+// Run on all GitHub pages
+matches: ["https://github.com/*"]
+
+// Run on multiple domains
+matches: ["https://reddit.com/*", "https://old.reddit.com/*"]
+
+// Run on all sites (use sparingly)
+matches: ["<all_urls>"]
+
+// Run on specific subdomain
+matches: ["https://news.ycombinator.com/*"]
+```
+
+<Warning>
+Be specific with URL patterns. Overly broad patterns (like `*://*/*`) can slow down browsing and create security risks.
+</Warning>
+
+### Categories
+
+Group related scripts for easy management:
+
+- **Productivity:** Auto-fill forms, keyboard shortcuts
+- **Appearance:** Dark modes, custom themes, layout changes
+- **Content:** Ad blockers, element hiders
+- **Automation:** Data extraction, monitoring
+- **MCP Servers:** Scripts that expose website tools to AI
+
+## Sharing Userscripts
+
+### Export for Sharing
+
+<Steps>
+  <Step title="Download the script">
+    Export the script you want to share
+  </Step>
+  <Step title="Share the file">
+    Send the `.ts` or `.js` file to others
+  </Step>
+  <Step title="Include instructions">
+    Explain what the script does and which sites it works on
+  </Step>
+</Steps>
+
+### Publish to Community
+
+Share your best scripts with the community:
+
+<CardGroup cols={2}>
+  <Card title="GitHub Gist" icon="github">
+    Post your script as a Gist for easy sharing
+  </Card>
+
+  <Card title="Discord" icon="discord" href="https://discord.gg/ZnHG4csJRB">
+    Share in the WebMCP Discord #userscripts channel
+  </Card>
+
+  <Card title="Examples Repo" icon="code" href="https://github.com/WebMCP-org/examples">
+    Submit a PR to the official examples repository
+  </Card>
+
+  <Card title="Social Media" icon="share">
+    Tweet about your creation with #WebMCP
+  </Card>
+</CardGroup>
+
+### Installation Instructions for Others
+
+When sharing a script, include these steps:
+
+```markdown
+## Installation
+
+1. Install the [MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
+2. Open the extension and go to "Scripts"
+3. Click "Import Script"
+4. Select this file
+5. Navigate to [website] to see it in action
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Script not running">
+    **Possible causes:**
+    - Script is disabled (check the toggle)
+    - URL pattern doesn't match current page
+    - Page needs to be refreshed
+    - Script has JavaScript errors
+
+    **Solution:** Check script status, verify URL pattern, refresh page, and check browser console for errors.
+  </Accordion>
+
+  <Accordion title="Script conflicts with website">
+    **Possible causes:**
+    - Script selectors clash with site's JavaScript
+    - Script modifies elements the site depends on
+    - Multiple scripts affecting the same elements
+
+    **Solution:** Disable other scripts one by one to identify conflicts. Ask an agent to refine the script to avoid conflicts.
+  </Accordion>
+
+  <Accordion title="Import fails">
+    **Possible causes:**
+    - File format not recognized
+    - Malformed JSON in backup file
+    - Script has syntax errors
+
+    **Solution:** Verify file extension (`.ts`, `.js`, `.user.js`, or `.json`). For JSON backups, validate the JSON structure. For scripts, check for syntax errors.
+  </Accordion>
+
+  <Accordion title="Script works then stops working">
+    **Possible causes:**
+    - Website updated and changed their HTML structure
+    - Selectors no longer match elements
+    - Website added anti-automation measures
+
+    **Solution:** Ask an agent to inspect the current page structure and update the script's selectors.
+  </Accordion>
+
+  <Accordion title="Performance issues">
+    **Possible causes:**
+    - Too many scripts running simultaneously
+    - Script has infinite loops or memory leaks
+    - Script runs on too many sites
+
+    **Solution:** Disable scripts you're not using. Review URL patterns to be more specific. Ask an agent to optimize the script.
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test in Private Window" icon="eye-slash">
+    Test scripts in incognito/private mode to ensure they work without other extensions interfering
+  </Card>
+
+  <Card title="Use Version Control" icon="code-branch">
+    Export scripts regularly and keep versions so you can roll back if needed
+  </Card>
+
+  <Card title="Comment Your Code" icon="comment">
+    Add comments explaining what each section does for future reference
+  </Card>
+
+  <Card title="Start Small" icon="seedling">
+    Build simple scripts first, then add complexity as needed
+  </Card>
+
+  <Card title="Use Stable Selectors" icon="anchor">
+    Target elements by ID or data attributes rather than generated class names
+  </Card>
+
+  <Card title="Handle Errors Gracefully" icon="shield">
+    Add checks for missing elements and provide fallback behavior
+  </Card>
+</CardGroup>
+
+## Advanced Features
+
+### Script Execution Timing
+
+Control when your script runs:
+
+<Tabs>
+  <Tab title="document_start">
+    Runs as soon as possible, before page loads. Good for blocking content or modifying page behavior early.
+  </Tab>
+
+  <Tab title="document_end">
+    Runs after DOM is loaded but before images/stylesheets. Good for most scripts.
+  </Tab>
+
+  <Tab title="document_idle">
+    Runs after page is fully loaded (default). Safest option for most use cases.
+  </Tab>
+</Tabs>
+
+### Script World
+
+Choose where the script executes:
+
+<Tabs>
+  <Tab title="MAIN">
+    Runs in the page's context with full access to page JavaScript. Required for MCP servers.
+  </Tab>
+
+  <Tab title="ISOLATED">
+    Runs in isolated context for better security. Good for simple DOM modifications.
+  </Tab>
+</Tabs>
+
+### Using Web Standard APIs
+
+WebMCP servers use the **W3C Web Model Context API** (`navigator.modelContext`) - global helpers and Zod are available:
+
+```typescript
+import { z } from 'zod';
+
+// Helper functions available globally in userscripts
+const { formatSuccess, formatError, waitForSelector } = window.mcpHelpers;
+
+// Register a tool using web standard API
+navigator.modelContext.registerTool({
+  name: 'tool_name',
+  description: 'What this tool does',
+  // Zod schemas are preferred for better type safety!
+  inputSchema: {
+    param: z.string().describe('Parameter description')
+  },
+  async execute({ param }) {
+    // Tool logic here
+    return formatSuccess('Success message', { data: 'result' });
+  }
+});
+```
+
+<Note>
+**Zod Support**: The web standard API accepts **Zod schemas** (preferred) as well as traditional JSON Schema. Zod provides better TypeScript integration, validation, and developer experience.
+</Note>
+
+## Security Considerations
+
+<Warning>
+Userscripts have significant power over websites you visit. Follow these security guidelines:
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Only install trusted scripts">
+    Review code before importing scripts from others. Malicious scripts can steal passwords, track activity, or perform unwanted actions.
+  </Accordion>
+
+  <Accordion title="Limit URL patterns">
+    Don't use `<all_urls>` unless absolutely necessary. Restrict scripts to specific domains they need.
+  </Accordion>
+
+  <Accordion title="Avoid storing sensitive data">
+    Don't hardcode passwords, API keys, or personal information in scripts. Use browser storage APIs with caution.
+  </Accordion>
+
+  <Accordion title="Keep scripts updated">
+    Regularly review and update scripts to ensure they still work correctly and securely.
+  </Accordion>
+
+  <Accordion title="Use HTTPS">
+    Only run scripts on HTTPS sites when possible to prevent man-in-the-middle attacks.
+  </Accordion>
+</AccordionGroup>
+
+## Examples and Templates
+
+<CardGroup cols={2}>
+  <Card title="Examples Repository" icon="code" href="https://github.com/WebMCP-org/examples">
+    Browse tested userscript examples for common tasks
+  </Card>
+
+  <Card title="WebMCP Playground" icon="play" href="https://webmcp.sh">
+    See WebMCP servers in action on a demo site
+  </Card>
+
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/ZnHG4csJRB">
+    Get help and share scripts with other users
+  </Card>
+
+  <Card title="Extension Tools API" icon="book" href="/packages/extension-tools">
+    Technical reference for userscript management APIs
+  </Card>
+</CardGroup>
+
+## Quick Reference
+
+### Common Tasks
+
+<Tabs>
+  <Tab title="Create">
+    Ask Userscript Engineer or WebMCP Server agent → Describe what you want → Agent builds and tests → Script is saved
+  </Tab>
+
+  <Tab title="Enable/Disable">
+    Open extension → Scripts tab → Toggle switch next to script name
+  </Tab>
+
+  <Tab title="Edit">
+    Open extension → Scripts tab → Click script → Edit → Make changes → Commit
+  </Tab>
+
+  <Tab title="Download">
+    Open extension → Scripts tab → Click script → Actions (⋯) → Export
+  </Tab>
+
+  <Tab title="Upload">
+    Open extension → Scripts tab → Import (⬆) → Select file → Confirm
+  </Tab>
+
+  <Tab title="Delete">
+    Open extension → Scripts tab → Click script → Actions (⋯) → Delete
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<Steps>
+  <Step title="Try creating a simple script">
+    Ask the Userscript Engineer to add a dark mode to your favorite website
+  </Step>
+
+  <Step title="Learn about agents">
+    Read the [Understanding Agents](/extension/agents) guide to choose the right agent for each task
+  </Step>
+
+  <Step title="Explore examples">
+    Check out the [Examples Repository](https://github.com/WebMCP-org/examples) for inspiration
+  </Step>
+
+  <Step title="Join the community">
+    Share your creations on [Discord](https://discord.gg/ZnHG4csJRB)
+  </Step>
+</Steps>

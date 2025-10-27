@@ -1,0 +1,390 @@
+---
+title: 'Glossary'
+description: 'Key terminology and concepts used in WebMCP documentation'
+icon: 'book'
+---
+
+## A
+
+### AI Agent
+A software program powered by large language models (LLMs) that can understand natural language, make decisions, and execute actions. In WebMCP, AI agents discover and call tools exposed by websites.
+
+**Examples:** Claude, ChatGPT, GitHub Copilot
+
+### Annotations
+Metadata hints attached to tools that inform AI agents about tool behavior:
+- `readOnlyHint`: Tool only reads data (doesn't modify state)
+- `idempotentHint`: Tool can be safely called multiple times with same result
+- `destructiveHint`: Tool performs irreversible actions (e.g., deletions)
+
+## B
+
+### Background Script
+A service worker in a Chrome extension that runs in the background, independent of web pages. In WebMCP, it often acts as an MCP hub aggregating tools from multiple tabs.
+
+**Location:** Specified in `manifest.json` under `background.service_worker`
+
+### Base Tools (Bucket A)
+Tools registered via `provideContext()` that define an application's core functionality. These tools are replaced entirely each time `provideContext()` is called.
+
+**Alternative:** Dynamic Tools (Bucket B)
+
+### Bridge
+See [MCP Bridge](#mcp-bridge)
+
+## C
+
+### Client
+An MCP client that connects to MCP servers to discover and call tools. Created using `@modelcontextprotocol/sdk/client`.
+
+**Example:**
+```javascript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+const client = new Client({
+  name: 'my-client',
+  version: '1.0.0'
+});
+```
+
+### Content Script
+JavaScript code injected by a browser extension that runs in the context of a web page. Content scripts can access both the page's DOM and limited extension APIs.
+
+**Use in WebMCP:** Acts as a bridge between page MCP servers and the extension background.
+
+### CORS (Cross-Origin Resource Sharing)
+Security mechanism that restricts web pages from making requests to different origins. WebMCP transports use origin validation to control which domains can connect.
+
+## D
+
+### Dynamic Tools (Bucket B)
+Tools registered via `registerTool()` that persist independently of base tools. Each returns an `unregister()` function for cleanup.
+
+**Best for:** Component-scoped tools, lifecycle-managed tools, React/Vue components
+
+## E
+
+### Execute Function
+The async function that implements a tool's logic. Called when an AI agent invokes the tool.
+
+**Signature:**
+```typescript
+async execute(args: TInput): Promise<ToolResponse>
+```
+
+### Extension Transport
+MCP transport implementation for communication between browser extension components (background, content scripts, popup, sidebar).
+
+**Package:** `@mcp-b/transports`
+**Classes:** `ExtensionClientTransport`, `ExtensionServerTransport`
+
+## H
+
+### Handler
+Another term for the execute function in a tool definition. In React hooks (`useWebMCP`), referred to as `handler`.
+
+## I
+
+### Input Schema
+JSON Schema or Zod schema defining the parameters a tool accepts. Used for validation and AI tool understanding.
+
+**JSON Schema format:**
+```javascript
+{
+  type: "object",
+  properties: {
+    name: { type: "string" }
+  },
+  required: ["name"]
+}
+```
+
+**Zod format:**
+```typescript
+{
+  name: z.string()
+}
+```
+
+## M
+
+### MCP (Model Context Protocol)
+An open standard protocol for connecting AI systems with data sources and tools. Developed by Anthropic, it standardizes how AI agents discover and interact with external capabilities.
+
+**Specification:** https://modelcontextprotocol.io
+
+### MCP-B Extension
+The official WebMCP browser extension that connects AI agents to website tools. Includes specialized agents for userscript creation, browsing, and chat.
+
+**Download:** [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
+
+### MCP Bridge
+The internal component in `@mcp-b/global` that automatically converts between the Web Model Context API and the Model Context Protocol.
+
+**Location:** Created automatically when importing `@mcp-b/global`
+
+### MCP Hub
+A centralized MCP server (typically in an extension background) that aggregates tools from multiple sources (tabs, native servers) and exposes them through a unified interface.
+
+### MCP Server
+A server that exposes tools, resources, and prompts via the Model Context Protocol. Created using `@modelcontextprotocol/sdk/server/mcp.js`.
+
+**Example:**
+```javascript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+const server = new McpServer({
+  name: 'my-server',
+  version: '1.0.0'
+});
+```
+
+### Manifest V3
+The third version of Chrome's extension platform. Required for modern Chrome extensions and WebMCP extension tools.
+
+**Key changes:** Service workers instead of background pages, improved security, declarative permissions.
+
+## N
+
+### Native Host
+A local program that browser extensions can communicate with using native messaging. In WebMCP, the native host bridges extension tools to local MCP servers via HTTP/SSE.
+
+**Package:** `@mcp-b/native-server`
+
+### navigator.modelContext
+The W3C Web Model Context API exposed on the browser's `navigator` object. Provides `registerTool()` and `provideContext()` methods for tool registration.
+
+**Status:** Polyfilled by `@mcp-b/global`, proposed W3C standard
+
+## P
+
+### Polyfill
+JavaScript code that implements modern browser features in older browsers. `@mcp-b/global` is a polyfill for the W3C Web Model Context API.
+
+### Port
+In Chrome extensions, a long-lived connection between different extension components. Used by Extension Transport for persistent MCP communication.
+
+**Creation:**
+```javascript
+const port = chrome.runtime.connect({ name: 'mcp' });
+```
+
+### provideContext()
+Method on `navigator.modelContext` for registering base tools. Replaces all base tools (Bucket A) each time it's called.
+
+**Usage:** Top-level application tools only
+
+**Syntax:**
+```javascript
+navigator.modelContext.provideContext({
+  tools: [/* tool array */]
+});
+```
+
+## R
+
+### registerTool()
+Recommended method on `navigator.modelContext` for registering individual tools. Returns an object with `unregister()` function.
+
+**Usage:** Most use cases, component-scoped tools
+
+**Syntax:**
+```javascript
+const registration = navigator.modelContext.registerTool({
+  name: "my_tool",
+  description: "Tool description",
+  inputSchema: {},
+  async execute(args) {
+    return { content: [{ type: "text", text: "Result" }] };
+  }
+});
+
+// Later
+registration.unregister();
+```
+
+### Resource
+In MCP, a resource is static or dynamic content (files, data, API responses) that servers can expose. WebMCP primarily focuses on tools, but resources are part of the broader MCP spec.
+
+## S
+
+### SDK (Software Development Kit)
+The official MCP SDK provided by `@modelcontextprotocol/sdk` containing client and server implementations.
+
+**Installation:** `npm install @modelcontextprotocol/sdk`
+
+### Server
+See [MCP Server](#mcp-server)
+
+### Session
+User authentication state maintained by the website. WebMCP tools automatically run with the user's existing session (cookies, tokens, etc.).
+
+**Benefit:** No credential sharing needed between AI and website
+
+## T
+
+### Tab Transport
+MCP transport implementation for communication within a browser tab using `window.postMessage`.
+
+**Package:** `@mcp-b/transports`
+**Classes:** `TabClientTransport`, `TabServerTransport`
+
+**Use case:** Website exposing tools to extension content scripts
+
+### Tool
+A function or capability exposed via MCP that AI agents can discover and call. Defined by name, description, input schema, and execute function.
+
+**Anatomy:**
+```javascript
+{
+  name: "tool_name",              // Unique identifier
+  description: "What it does",    // Human-readable description
+  inputSchema: {},                // JSON Schema or Zod
+  async execute(args) {           // Implementation
+    return { content: [...] };
+  },
+  annotations: {}                 // Optional metadata
+}
+```
+
+### Tool Descriptor
+An object defining a tool's interface and behavior. Includes name, description, inputSchema, and execute function.
+
+### Tool Response
+The object returned by a tool's execute function, conforming to MCP response format:
+
+```javascript
+{
+  content: [
+    {
+      type: "text",      // or "image", "resource"
+      text: "Result..."  // response content
+    }
+  ],
+  isError: false        // optional error flag
+}
+```
+
+### Transport
+An implementation of the MCP transport layer that handles message passing between clients and servers.
+
+**Types in WebMCP:**
+- `TabClientTransport` / `TabServerTransport` - In-page communication
+- `ExtensionClientTransport` / `ExtensionServerTransport` - Extension communication
+- `InMemoryTransport` - Testing
+
+## U
+
+### unregister()
+Function returned by `registerTool()` to remove a dynamic tool from the registry.
+
+**Example:**
+```javascript
+const reg = navigator.modelContext.registerTool({...});
+
+// Later, clean up
+reg.unregister();
+```
+
+### Userscript
+Custom JavaScript code that modifies web page behavior or appearance. The MCP-B Extension includes agents to help create MCP-powered userscripts.
+
+## W
+
+### W3C (World Wide Web Consortium)
+International standards organization for the web. The Web Model Context API is a proposed W3C standard.
+
+### Web Model Context API
+Proposed web standard (currently polyfilled) for exposing website functionality to AI agents via `navigator.modelContext`.
+
+**Specification:** https://github.com/webmachinelearning/webmcp
+
+### WebMCP
+The ecosystem of packages and tools that bring MCP to web browsers, including the polyfill, transports, React hooks, and browser extension.
+
+## Z
+
+### Zod
+TypeScript-first schema validation library used with `@mcp-b/react-webmcp` for type-safe input validation.
+
+**Example:**
+```typescript
+import { z } from 'zod';
+
+const schema = {
+  email: z.string().email(),
+  age: z.number().min(0).max(120)
+};
+```
+
+---
+
+## Acronyms
+
+| Acronym | Full Form | Description |
+|---------|-----------|-------------|
+| **AI** | Artificial Intelligence | Computer systems that perform tasks requiring human intelligence |
+| **API** | Application Programming Interface | Set of rules for software interaction |
+| **CORS** | Cross-Origin Resource Sharing | Security feature controlling cross-domain requests |
+| **DOM** | Document Object Model | Programming interface for web documents |
+| **IIFE** | Immediately Invoked Function Expression | JavaScript function that runs immediately |
+| **JSON** | JavaScript Object Notation | Lightweight data interchange format |
+| **LLM** | Large Language Model | AI model trained on text data |
+| **MCP** | Model Context Protocol | Protocol for AI-tool integration |
+| **NPM** | Node Package Manager | Package manager for JavaScript |
+| **SDK** | Software Development Kit | Tools for software development |
+| **SSE** | Server-Sent Events | Standard for server push technology |
+| **UI** | User Interface | Visual elements users interact with |
+| **W3C** | World Wide Web Consortium | Web standards organization |
+
+---
+
+## Common Patterns
+
+### Tool Naming Conventions
+
+Follow the `domain_verb_noun` or `verb_noun` pattern:
+
+| Good | Bad | Why |
+|------|-----|-----|
+| `posts_create` | `createPost` | Consistent, domain-prefixed |
+| `graph_navigate_node` | `navigate` | Specific, clear purpose |
+| `db_query_users` | `query` | Scoped to functionality |
+| `search_products` | `search1` | Descriptive, not numbered |
+
+### Response Patterns
+
+Always return properly formatted responses:
+
+```javascript
+// Success
+{
+  content: [{ type: "text", text: JSON.stringify(data) }]
+}
+
+// Error
+{
+  content: [{ type: "text", text: "Error message" }],
+  isError: true
+}
+```
+
+## Related Pages
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts">
+    Architecture and component overview
+  </Card>
+
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with WebMCP
+  </Card>
+
+  <Card title="API Reference" icon="code" href="/packages/global">
+    Detailed package documentation
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    Real-world implementations
+  </Card>
+</CardGroup>
