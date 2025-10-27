@@ -9,7 +9,9 @@ description: 'Bringing the power of MCP to the web - Enable AI agents to interac
 
 ## Welcome to WebMCP
 
-WebMCP extends the Model Context Protocol (MCP) with browser-specific transports, allowing your website to act as an MCP server. This enables AI agents to interact with your site deterministically, respecting user authentication and scoping tools to specific pages or user states.
+**WebMCP is a polyfill for the W3C Web Model Context API** - a standards-track proposal that lets websites expose tools to AI agents through `navigator.modelContext`.
+
+Add AI agent support to your website with a few lines of code. Your existing JavaScript functions become tools that AI assistants can discover and use, all while respecting user authentication and permissions.
 
 <CardGroup cols={2}>
   <Card
@@ -34,54 +36,33 @@ WebMCP extends the Model Context Protocol (MCP) with browser-specific transports
     Explore ready-to-use examples for various frameworks
   </Card>
   <Card
-    title="GitHub"
-    icon="github"
-    href="https://github.com/MiguelsPizza/WebMCP"
+    title="NPM Packages"
+    icon="npm"
+    href="https://github.com/WebMCP-org/npm-packages"
   >
-    View source code and contribute
+    View NPM package source code
   </Card>
 </CardGroup>
 
 ## What is WebMCP?
 
-WebMCP is a protocol that exposes functions in your browser JavaScript to LLMs as MCP tools. Websites expose existing functionality (e.g., APIs, forms, or state) as structured tools that AI agents can call directly.
+WebMCP implements the `navigator.modelContext` web standard, letting you expose your website's functionality to AI agents. Your existing JavaScript functions become discoverable tools that AI assistants (like Claude, ChatGPT, or custom agents) can call directly.
 
-### Key Components
+### Why Use WebMCP?
 
-<CardGroup cols={2}>
-  <Card
-    title="Tab Transports"
-    icon="window"
-  >
-    Use postMessage for communication between your website's MCP server and clients in the same tab
-  </Card>
-  <Card
-    title="Extension Transports"
-    icon="puzzle"
-  >
-    Use Chrome's runtime messaging for communication with browser extensions
-  </Card>
-</CardGroup>
+- **Standards-Based**: Implements the W3C Web Model Context API proposal
+- **Zero Backend**: Runs entirely in the browser - no server changes needed
+- **Respects Auth**: Tools inherit your user's session and permissions
+- **Framework Agnostic**: Works with React, Vue, vanilla JS, or any framework
+- **Developer Friendly**: Simple API with React hooks for easy integration
+- **Type Safe**: Full TypeScript support with Zod validation
 
-## Why WebMCP?
+## How It Works
 
-- **Deterministic AI Interactions**: Let AI interact with your site through well-defined tools
-- **Respects Authentication**: Works with existing session cookies and user authentication
-- **Page-Scoped Tools**: Expose different tools based on page context or user state
-- **No Backend Required**: Run entirely in the browser with client-side JavaScript
-- **Framework Agnostic**: Works with vanilla JS, React, Vue, or any framework
-
-## Architecture Overview
-
-```mermaid
-graph LR
-    A[AI Agent] --> B[MCP Client]
-    B --> C[WebMCP Extension]
-    C --> D[Tab Transport]
-    D --> E[Your Website]
-    E --> F[MCP Server]
-    F --> G[Tools]
-```
+1. **Load the polyfill**: Add `@mcp-b/global` to your website
+2. **Register tools**: Use `registerTool()` or the `useWebMCP()` hook
+3. **AI agents discover tools**: The MCP-B extension automatically detects your tools
+4. **Users interact**: AI assistants can now call your tools to help users
 
 ## Community
 
@@ -111,68 +92,62 @@ graph LR
 
 ## Quick Example
 
-Here's a simple example of exposing a tool on your website using the W3C Web Model Context API:
+**React (Recommended)**
 
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-</head>
-<body>
-  <h1>My Website</h1>
-
-  <script>
-    // Use the W3C Web Model Context API
-    window.navigator.modelContext.provideContext({
-      tools: [
-        {
-          name: "get-page-info",
-          description: "Get current page information",
-          inputSchema: {
-            type: "object",
-            properties: {}
-          },
-          async execute() {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({
-                  title: document.title,
-                  url: window.location.href
-                })
-              }]
-            };
-          }
-        }
-      ]
-    });
-  </script>
-</body>
-</html>
-```
-
-For React applications, use the `@mcp-b/react-webmcp` package:
+Use the `useWebMCP` hook for automatic tool registration with Zod validation:
 
 ```tsx
 import '@mcp-b/global';
 import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
 
 function MyComponent() {
   useWebMCP({
     name: 'get_page_info',
     description: 'Get current page information',
-    inputSchema: {},
-    handler: async () => {
+    inputSchema: {
+      includeUrl: z.boolean().optional()
+    },
+    handler: async ({ includeUrl }) => {
       return {
         title: document.title,
-        url: window.location.href
+        ...(includeUrl && { url: window.location.href })
       };
     }
   });
 
   return <div>My Component</div>;
 }
+```
+
+**Vanilla JavaScript**
+
+Use `registerTool()` to register individual tools:
+
+```javascript
+import '@mcp-b/global';
+
+navigator.modelContext.registerTool({
+  name: "get_page_info",
+  description: "Get current page information",
+  inputSchema: {
+    type: "object",
+    properties: {
+      includeUrl: { type: "boolean" }
+    }
+  },
+  async execute({ includeUrl }) {
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          title: document.title,
+          ...(includeUrl && { url: window.location.href })
+        })
+      }]
+    };
+  }
+});
 ```
 
 ## Next Steps

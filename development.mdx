@@ -1,130 +1,315 @@
 ---
-title: 'Development'
-description: 'Learn how to set up and develop with WebMCP locally'
+title: 'Local Development'
+description: 'Set up and develop with WebMCP locally on your website'
 ---
 
 <Info>
-  **Prerequisites** You should have installed Node.js (version 18.0.0 or higher) and pnpm package manager.
+  **Prerequisites**: Node.js 18+, [MCP-B Chrome Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
 </Info>
 
-## Getting Started
+## Quick Setup
 
-Step 1. Clone the WebMCP repository:
+### 1. Install Dependencies
 
-```bash
-git clone https://github.com/MiguelsPizza/WebMCP.git
-cd WebMCP
-```
+<Tabs>
+  <Tab title="React">
+    ```bash
+    pnpm add @mcp-b/react-webmcp @mcp-b/global zod
+    ```
+  </Tab>
 
-Step 2. Install dependencies:
+  <Tab title="Vanilla JS">
+    ```bash
+    pnpm add @mcp-b/global
+    ```
+  </Tab>
 
-```bash
-pnpm install
-```
+  <Tab title="Script Tag (No Build)">
+    ```html
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    ```
+  </Tab>
+</Tabs>
 
-Step 3. Build shared packages first:
-
-```bash
-pnpm build:shared
-```
-
-Step 4. Start development mode:
+### 2. Start Your Dev Server
 
 ```bash
 pnpm dev
+# or
+npm run dev
 ```
 
-This runs all applications in development mode with hot reloading.
+### 3. Open in Chrome with MCP-B Extension
 
-## Development Ports
+1. Navigate to your local dev server (e.g., `http://localhost:5173`)
+2. Click the MCP-B extension icon
+3. Check the "Tools" tab to see your registered tools
 
-The WebMCP development environment uses the following ports:
+## Development Workflow
 
-- **Main dev server**: 5173-5174
-- **Extension dev server**: 3000  
-- **Native host**: 12306
+### React Development
 
-Make sure these ports are available before starting development.
+```tsx
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+import { useState } from 'react';
 
-## Repository Structure
+function TodoApp() {
+  const [todos, setTodos] = useState([]);
 
+  // Tools auto-register when component mounts
+  // and auto-cleanup when component unmounts
+  useWebMCP({
+    name: 'add_todo',
+    description: 'Add a new todo item',
+    inputSchema: {
+      text: z.string().min(1),
+      priority: z.enum(['low', 'medium', 'high']).optional()
+    },
+    handler: async ({ text, priority = 'medium' }) => {
+      const newTodo = { id: Date.now(), text, priority, done: false };
+      setTodos(prev => [...prev, newTodo]);
+      return { success: true, todo: newTodo };
+    }
+  });
+
+  useWebMCP({
+    name: 'list_todos',
+    description: 'Get all todos',
+    handler: async () => {
+      return { todos };
+    }
+  });
+
+  return <div>{/* Your UI */}</div>;
+}
 ```
-WebMCP/
-├── apps/                    # Application packages
-│   ├── extension/          # Browser extension
-│   ├── backend/            # Backend server (Cloudflare Workers)
-│   └── native-server/      # Native messaging host
-├── shared/                 # Internal shared packages
-│   └── utils/             # Shared utility functions
-└── e2e-tests/             # End-to-end tests
+
+### Vanilla JavaScript Development
+
+```javascript
+import '@mcp-b/global';
+
+let todos = [];
+
+// Register tools individually
+const addTodoRegistration = navigator.modelContext.registerTool({
+  name: 'add_todo',
+  description: 'Add a new todo item',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      text: { type: 'string' },
+      priority: { type: 'string', enum: ['low', 'medium', 'high'] }
+    },
+    required: ['text']
+  },
+  async execute({ text, priority = 'medium' }) {
+    const newTodo = { id: Date.now(), text, priority, done: false };
+    todos.push(newTodo);
+    updateUI();
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ success: true, todo: newTodo })
+      }]
+    };
+  }
+});
+
+// Unregister when needed
+// addTodoRegistration.unregister();
 ```
 
-## Building Specific Components
+## Hot Reload Support
 
-### Extension Development
+WebMCP works seamlessly with hot module replacement (HMR):
 
-For extension-specific development with hot reloading:
+### Vite
 
-```bash
-pnpm --filter @mcp-b/extension dev
+Tools registered with `useWebMCP()` automatically handle HMR - they'll re-register when your component code changes.
+
+### Webpack
+
+For vanilla JS with Webpack HMR:
+
+```javascript
+if (module.hot) {
+  module.hot.dispose(() => {
+    // Clean up registrations
+    registration.unregister();
+  });
+}
 ```
 
-### Building Extension for Production
+## Debugging Tools
 
-```bash
-pnpm --filter @mcp-b/extension build
+### Browser DevTools
+
+Access the MCP bridge in the console:
+
+```javascript
+// Check if WebMCP is loaded
+console.log(window.navigator.modelContext);
+
+// In development, access the bridge
+if (window.__mcpBridge) {
+  console.log('Registered tools:', window.__mcpBridge.tools);
+  console.log('MCP server:', window.__mcpBridge.server);
+}
 ```
 
-The built extension will be available in `./apps/extension/.output/chrome-mv3` for loading as an unpacked extension.
+### MCP-B Extension Inspector
+
+1. Click the MCP-B extension icon
+2. Go to the "Tools" tab
+3. See all registered tools from your page
+4. Test tools directly from the inspector
+
+### React DevTools
+
+The `useWebMCP` hook exposes execution state:
+
+```tsx
+const tool = useWebMCP({
+  name: 'my_tool',
+  description: 'My tool',
+  handler: async () => { /* ... */ }
+});
+
+// Access in your component for debugging
+console.log(tool.state.isExecuting);
+console.log(tool.state.lastResult);
+console.log(tool.state.error);
+```
+
+## Testing
+
+### Unit Testing Tools
+
+```typescript
+import { describe, it, expect, beforeEach } from 'vitest';
+
+describe('Todo Tools', () => {
+  beforeEach(() => {
+    // Reset state before each test
+    todos = [];
+  });
+
+  it('should add a todo', async () => {
+    const result = await execute({
+      text: 'Test todo',
+      priority: 'high'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.todo.text).toBe('Test todo');
+    expect(todos.length).toBe(1);
+  });
+});
+```
+
+### E2E Testing with Playwright
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('MCP tools are registered', async ({ page }) => {
+  await page.goto('http://localhost:5173');
+
+  // Wait for WebMCP to load
+  await page.waitForFunction(() => 'modelContext' in navigator);
+
+  // Check tools are registered (requires expose)
+  const hasTools = await page.evaluate(() => {
+    return window.__mcpBridge?.tools?.length > 0;
+  });
+
+  expect(hasTools).toBe(true);
+});
+```
+
+## Environment Configuration
+
+### Development vs Production
+
+```javascript
+const isDev = import.meta.env.DEV;
+
+if (isDev) {
+  // Development-only tools
+  navigator.modelContext.registerTool({
+    name: 'debug_state',
+    description: 'Get current app state (dev only)',
+    async execute() {
+      return {
+        content: [{ type: 'text', text: JSON.stringify(appState) }]
+      };
+    }
+  });
+}
+```
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Git clone times out">
-    If the initial clone fails, complete it manually:
-    ```bash
-    git clone https://github.com/MiguelsPizza/WebMCP.git
-    cd WebMCP
-    git pull origin main
-    ```
+  <Accordion title="Tools not appearing in extension">
+    1. Ensure `@mcp-b/global` is imported
+    2. Check browser console for errors
+    3. Verify extension is installed and enabled
+    4. Refresh the page after starting dev server
+    5. Check extension popup "Tools" tab
   </Accordion>
-  
-  <Accordion title="Native server postinstall errors">
-    These errors during `pnpm install` are normal and can be ignored:
-    ```
-    Cannot find module '/path/to/apps/native-server/dist/scripts/postinstall.js'
-    ```
-    The packages will still build correctly.
+
+  <Accordion title="Tools not executing">
+    1. Check tool handler for errors
+    2. Verify inputSchema matches arguments
+    3. Ensure async handler returns proper format
+    4. Check browser console for exceptions
   </Accordion>
-  
-  <Accordion title="Import resolution errors">
-    For monorepo development, ensure the workspace is properly built:
-    ```bash
-    pnpm build:shared  # Build internal shared packages
-    pnpm build:apps     # Build all applications
-    ```
+
+  <Accordion title="React tools registering multiple times">
+    This is normal in React StrictMode (development only). `useWebMCP()` handles this correctly and deduplicates registrations.
   </Accordion>
-  
-  <Accordion title="Port conflicts">
-    If you encounter port conflicts, check that the following ports are available:
-    - Main dev server: 5173-5174
-    - Extension dev server: 3000
-    - Native host: 12306
-  </Accordion>
-  
-  <Accordion title="Extension not detecting tools">
-    1. Ensure the extension is installed and enabled
-    2. Refresh the page after starting your MCP server
-    3. Check the extension popup "Tools" tab
-    4. Look for console errors in browser DevTools
+
+  <Accordion title="HMR breaking tool registration">
+    Use `useWebMCP()` in React - it handles HMR automatically. For vanilla JS, unregister tools in HMR disposal hooks.
   </Accordion>
 </AccordionGroup>
 
-## Additional Resources
+## Next Steps
 
-- **NPM Packages**: Core packages (@mcp-b/transports, @mcp-b/mcp-react-hooks, etc.)
-- **Examples Repository**: Starter projects and demos
-- **Web Demo**: Full-stack demo site with documentation
-- **Userscripts**: Tampermonkey scripts for popular websites
+<CardGroup cols={2}>
+  <Card
+    title="Examples"
+    icon="code"
+    href="/examples"
+  >
+    Explore complete examples and patterns
+  </Card>
 
-For more examples and detailed integration guides, check out the [MCP-B Examples Repository](https://github.com/MiguelsPizza/WebMCP).
+  <Card
+    title="React Hooks"
+    icon="react"
+    href="/packages/react-webmcp"
+  >
+    Deep dive into useWebMCP hook
+  </Card>
+
+  <Card
+    title="Advanced Patterns"
+    icon="gear"
+    href="/advanced"
+  >
+    Learn advanced techniques
+  </Card>
+
+  <Card
+    title="Troubleshooting"
+    icon="wrench"
+    href="/troubleshooting"
+  >
+    Common issues and solutions
+  </Card>
+</CardGroup>

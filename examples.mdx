@@ -70,14 +70,14 @@ description: 'Explore various WebMCP implementations and use cases'
 
 ## Quick Reference
 
-### Vanilla TypeScript
-Use `navigator.modelContext.provideContext()` to register tools. Perfect for adding WebMCP to existing sites without frameworks.
-
-### React Hooks
+### React Hooks (Recommended)
 Use `useWebMCP()` from `@mcp-b/react-webmcp` for automatic lifecycle management, Zod validation, and execution state tracking.
 
+### Vanilla TypeScript
+Use `navigator.modelContext.registerTool()` to register individual tools. Perfect for adding WebMCP to existing sites without frameworks.
+
 ### Script Tag Integration
-Add `@mcp-b/global` via unpkg for zero-config setup - no build tools required.
+Add `@mcp-b/global` via unpkg and use `registerTool()` for zero-config setup - no build tools required.
 
 ## Community Examples
 

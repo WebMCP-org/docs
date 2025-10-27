@@ -137,7 +137,10 @@
       "view",
       "chatgpt",
       "claude",
-      "perplexity"
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
     ]
   }
 }

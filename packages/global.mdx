@@ -5,7 +5,11 @@ sidebarTitle: "Global (W3C API)"
 icon: "globe"
 ---
 
-W3C Web Model Context API polyfill - Implement `window.navigator.modelContext` for AI-powered web applications.
+**W3C Web Model Context API polyfill** - Add `navigator.modelContext` to your website for AI agent integration.
+
+<Note>
+  **Recommended**: Use `registerTool()` for most cases. Only use `provideContext()` for top-level base tools.
+</Note>
 
 ## Installation
 
@@ -27,26 +31,22 @@ Add the script to your HTML `<head>`:
 
   <script>
     // window.navigator.modelContext is already available!
-    // Register tools with AI agents
-    window.navigator.modelContext.provideContext({
-      tools: [
-        {
-          name: "get-page-title",
-          description: "Get the current page title",
-          inputSchema: {
-            type: "object",
-            properties: {}
-          },
-          async execute() {
-            return {
-              content: [{
-                type: "text",
-                text: document.title
-              }]
-            };
-          }
-        }
-      ]
+    // Register tools for AI agents (recommended approach)
+    window.navigator.modelContext.registerTool({
+      name: "get-page-title",
+      description: "Get the current page title",
+      inputSchema: {
+        type: "object",
+        properties: {}
+      },
+      async execute() {
+        return {
+          content: [{
+            type: "text",
+            text: document.title
+          }]
+        };
+      }
     });
   </script>
 </body>
@@ -71,86 +71,71 @@ npm install @mcp-b/global
 ```javascript
 import '@mcp-b/global';
 
-// window.navigator.modelContext is now available
-window.navigator.modelContext.provideContext({
-  tools: [/* your tools */]
+// Register individual tools (recommended)
+navigator.modelContext.registerTool({
+  name: "my_tool",
+  description: "Tool description",
+  inputSchema: { type: "object", properties: {} },
+  async execute(args) {
+    return {
+      content: [{ type: "text", text: "Result" }]
+    };
+  }
 });
 ```
 
 ## Overview
 
-This package implements the [W3C Web Model Context API](https://github.com/webmachinelearning/webmcp) (`window.navigator.modelContext`) specification, bridging it to the Model Context Protocol (MCP) SDK. It allows web developers to expose JavaScript functions as "tools" that AI agents can discover and invoke.
+This package implements the [W3C Web Model Context API](https://github.com/webmachinelearning/webmcp) specification, adding `navigator.modelContext` to your website. Your JavaScript functions become tools that AI agents can discover and call.
 
-## Two-Bucket Tool Management System
+## Tool Registration Approaches
 
-This package uses a **two-bucket system** for tool management to support both app-level and component-level tools:
+### `registerTool()` - Recommended
 
-- **Bucket A (Base Tools)**: Registered via `provideContext()` - represents your app's core functionality
-- **Bucket B (Dynamic Tools)**: Registered via `registerTool()` - component-scoped tools that persist across `provideContext()` calls
-
-**Key behaviors:**
-- ✅ `provideContext()` only clears Bucket A, leaving Bucket B intact
-- ✅ `registerTool()` adds to Bucket B and persists across `provideContext()` calls
-- ✅ Tool name collisions between buckets throw an error
-- ✅ Cannot `unregister()` a tool that was registered via `provideContext()`
-
-**Use case:** React components can use `registerTool()` in `useEffect()` to manage tool lifecycle independently of the app's base tools.
-
-## API Reference
-
-### `window.navigator.modelContext.provideContext(context)`
-
-Register base/app-level tools (Bucket A). **This clears Bucket A only** and replaces with the provided array. Dynamic tools (Bucket B) registered via `registerTool()` are NOT affected.
-
-**Parameters:**
-- `context.tools` - Array of tool descriptors
-
-**Example:**
+Use `registerTool()` for most cases. It gives you fine-grained control over individual tools:
 
 ```javascript
-window.navigator.modelContext.provideContext({
-  tools: [
-    {
-      name: "add-todo",
-      description: "Add a new todo item to the list",
-      inputSchema: {
-        type: "object",
-        properties: {
-          text: {
-            type: "string",
-            description: "The todo item text"
-          },
-          priority: {
-            type: "string",
-            enum: ["low", "medium", "high"],
-            description: "Priority level"
-          }
-        },
-        required: ["text"]
-      },
-      async execute({ text, priority = "medium" }) {
-        // Add todo to your app
-        const todo = addTodoItem(text, priority);
+const registration = navigator.modelContext.registerTool({
+  name: "my_tool",
+  description: "Tool description",
+  inputSchema: { type: "object", properties: {} },
+  async execute(args) {
+    return { content: [{ type: "text", text: "Result" }] };
+  }
+});
 
-        return {
-          content: [{
-            type: "text",
-            text: `Added todo: "${text}" with ${priority} priority`
-          }]
-        };
-      }
-    }
-  ]
+// Unregister later if needed
+registration.unregister();
+```
+
+### `provideContext()` - Use Sparingly
+
+Only use `provideContext()` for top-level base tools that define your app's core functionality:
+
+```javascript
+navigator.modelContext.provideContext({
+  tools: [/* base tools array */]
 });
 ```
 
-### `window.navigator.modelContext.registerTool(tool)`
+## Two-Bucket Tool Management
 
-Register a single tool dynamically (Bucket B). Tools registered this way:
-- ✅ Persist across `provideContext()` calls
-- ✅ Perfect for component lifecycle management
-- ✅ Can be unregistered via the returned `unregister()` function
-- ❌ Cannot have the same name as a tool in Bucket A (provideContext)
+This package uses a **two-bucket system**:
+
+- **Bucket A (Base Tools)**: Set via `provideContext()` - replaced each time you call it
+- **Bucket B (Dynamic Tools)**: Added via `registerTool()` - persist independently
+
+**Key behaviors:**
+- ✅ `registerTool()` tools persist across `provideContext()` calls
+- ✅ Each `registerTool()` returns an `unregister()` function
+- ✅ Tool name collisions throw an error
+- ✅ Perfect for component-scoped tools in React/Vue
+
+## API Reference
+
+### `navigator.modelContext.registerTool(tool)` - Recommended
+
+Register a single tool dynamically. This is the **recommended approach** for most use cases.
 
 **Parameters:**
 - `tool` - A single tool descriptor
@@ -158,35 +143,79 @@ Register a single tool dynamically (Bucket B). Tools registered this way:
 **Returns:**
 - Object with `unregister()` function to remove the tool
 
+**Benefits:**
+- ✅ Persist across `provideContext()` calls
+- ✅ Perfect for component lifecycle management
+- ✅ Fine-grained control over individual tools
+- ✅ Can be unregistered when no longer needed
+
 **Example:**
 
 ```javascript
-// Register a tool dynamically (Bucket B)
-const registration = window.navigator.modelContext.registerTool({
-  name: "get-timestamp",
-  description: "Get the current timestamp",
+// Register a tool (recommended approach)
+const registration = navigator.modelContext.registerTool({
+  name: "add-todo",
+  description: "Add a new todo item to the list",
   inputSchema: {
     type: "object",
-    properties: {}
+    properties: {
+      text: {
+        type: "string",
+        description: "The todo item text"
+      },
+      priority: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+        description: "Priority level"
+      }
+    },
+    required: ["text"]
   },
-  async execute() {
+  async execute({ text, priority = "medium" }) {
+    const todo = addTodoItem(text, priority);
     return {
       content: [{
         type: "text",
-        text: new Date().toISOString()
+        text: `Added todo: "${text}" with ${priority} priority`
       }]
     };
   }
 });
 
-// Later, unregister the tool
+// Later, unregister the tool if needed
 registration.unregister();
+```
 
-// Note: You can call provideContext() and this tool will still be registered!
-window.navigator.modelContext.provideContext({
-  tools: [/* other tools */]
+### `navigator.modelContext.provideContext(context)` - Use Sparingly
+
+Register base/app-level tools. **Use sparingly** - only for top-level base tools.
+
+**Parameters:**
+- `context.tools` - Array of tool descriptors
+
+**Warning:** This replaces all base tools each time it's called. Tools registered via `registerTool()` are NOT affected.
+
+**Example:**
+
+```javascript
+// Only use for top-level base tools
+navigator.modelContext.provideContext({
+  tools: [
+    {
+      name: "app-info",
+      description: "Get application information",
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify({ name: "MyApp", version: "1.0.0" })
+          }]
+        };
+      }
+    }
+  ]
 });
-// "get-timestamp" is still available because it's in Bucket B
 ```
 
 ### Tool Descriptor
