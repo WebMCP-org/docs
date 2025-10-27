@@ -17,9 +17,9 @@ Our examples demonstrate WebMCP integration across different frameworks and use 
     icon="js"
     href="https://github.com/WebMCP-org/examples/tree/main/vanilla-ts"
   >
-    A simple todo app demonstrating core MCP-B concepts
+    A simple todo app demonstrating core WebMCP concepts with navigator.modelContext
   </Card>
-  
+
   <Card
     title="React Flow Voice Agent"
     icon="microphone"
@@ -27,28 +27,28 @@ Our examples demonstrate WebMCP integration across different frameworks and use 
   >
     Advanced React app with voice input, visual flow, and Gemini AI
   </Card>
-  
+
   <Card
     title="Script Tag"
     icon="code"
     href="https://github.com/WebMCP-org/examples/tree/main/script-tag"
   >
-    No build tools required - just add a script tag
+    No build tools required - just add a script tag for W3C API
   </Card>
-  
+
   <Card
     title="Login Flow"
     icon="lock"
     href="https://github.com/WebMCP-org/examples/tree/main/login"
   >
-    Authentication and session management with MCP-B
+    Authentication and session management with WebMCP
   </Card>
 </CardGroup>
 
 ## Vanilla TypeScript Example
 
 The vanilla TypeScript example demonstrates:
-- Dynamic tool registration and unregistration
+- Using `navigator.modelContext.provideContext()` for tool registration
 - Todo CRUD operations exposed as tools
 - Visual feedback for AI actions
 - State management without frameworks
@@ -56,30 +56,39 @@ The vanilla TypeScript example demonstrates:
 ### Key Features
 
 ```typescript
-// Dynamic tool registration based on todos
-todos.forEach(todo => {
-  server.tool(
-    `toggleTodo_${todo.id}`,
-    `Toggle todo: ${todo.text}`,
-    {},
-    async () => {
-      todo.completed = !todo.completed;
-      render();
-      return {
-        content: [{
-          type: "text",
-          text: `Toggled todo: ${todo.text}`
-        }]
-      };
+// Use the W3C Web Model Context API
+window.navigator.modelContext.provideContext({
+  tools: [
+    {
+      name: "add-todo",
+      description: "Add a new todo item",
+      inputSchema: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "Todo text" }
+        },
+        required: ["text"]
+      },
+      async execute({ text }) {
+        const todo = { id: Date.now(), text, done: false };
+        todos.push(todo);
+        render();
+        return {
+          content: [{
+            type: "text",
+            text: `Added todo: "${text}"`
+          }]
+        };
+      }
     }
-  );
+  ]
 });
 ```
 
 ## React Example
 
 The React example showcases:
-- Integration with React hooks and state
+- Integration with `@mcp-b/react-webmcp` hooks
 - Component-based tool organization
 - Modern React patterns with TypeScript
 - Real-time UI updates from tool calls
@@ -87,58 +96,67 @@ The React example showcases:
 ### React Hook Integration
 
 ```tsx
-import { useMcpServer } from '@mcp-b/mcp-react-hooks';
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
 
 function TodoApp() {
-  const { server } = useMcpServer("todo-app", "1.0.0");
   const [todos, setTodos] = useState([]);
-  
-  useEffect(() => {
-    server.tool("addTodo", "Add a new todo", 
-      { text: z.string() },
-      async ({ text }) => {
-        setTodos([...todos, { id: Date.now(), text }]);
-        return { content: [{ type: "text", text: "Added" }] };
-      }
-    );
-  }, [todos]);
+
+  // Register tool with React hook
+  useWebMCP({
+    name: 'add_todo',
+    description: 'Add a new todo',
+    inputSchema: {
+      text: z.string().describe('The todo text')
+    },
+    handler: async ({ text }) => {
+      setTodos([...todos, { id: Date.now(), text, done: false }]);
+      return { success: true };
+    },
+    formatOutput: (result) => `Todo added successfully!`
+  });
+
+  return <div>{/* Your UI */}</div>;
 }
 ```
 
 ## Script Tag Example
 
-Perfect for adding MCP-B to existing websites without build tools:
+Perfect for adding WebMCP to existing websites without build tools:
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://unpkg.com/@mcp-b/browser-bundle/dist/index.js"></script>
+  <!-- IIFE version - bundles all dependencies, auto-initializes -->
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
 </head>
 <body>
-  <div id="app"></div>
-  
+  <div id="app">Hello World</div>
+
   <script>
-    // MCP-B is available globally
-    const { McpServer, TabServerTransport } = window.MCP;
-    
-    const server = new McpServer({
-      name: "simple-site",
-      version: "1.0.0"
+    // window.navigator.modelContext is already available!
+    window.navigator.modelContext.provideContext({
+      tools: [
+        {
+          name: "get-message",
+          description: "Get the page message",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          },
+          async execute() {
+            return {
+              content: [{
+                type: "text",
+                text: document.getElementById('app').innerText
+              }]
+            };
+          }
+        }
+      ]
     });
-    
-    server.tool("getMessage", "Get page message", {}, async () => {
-      return {
-        content: [{
-          type: "text",
-          text: document.getElementById('app').innerText
-        }]
-      };
-    });
-    
-    server.connect(new TabServerTransport({ 
-      allowedOrigins: ["*"] 
-    }));
   </script>
 </body>
 </html>
@@ -154,7 +172,7 @@ Perfect for adding MCP-B to existing websites without build tools:
   >
     Vue 3 composition API integration by Besian
   </Card>
-  
+
   <Card
     title="Nuxt 3"
     icon="nuxt"
@@ -166,23 +184,27 @@ Perfect for adding MCP-B to existing websites without build tools:
 
 ## Common Patterns
 
-### Tool Lifecycle Management
+### Dynamic Tool Registration (React)
 
-```javascript
-// Register tools when component mounts
-componentDidMount() {
-  this.registerTools();
-}
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
 
-// Unregister when unmounting
-componentWillUnmount() {
-  this.unregisterTools();
-}
+function MyComponent() {
+  const [isActive, setIsActive] = useState(false);
 
-// Dynamic tool updates
-updateTools(newState) {
-  this.unregisterTools();
-  this.registerTools(newState);
+  // Tool auto-registers when component mounts
+  // and auto-unregisters when it unmounts
+  useWebMCP({
+    name: 'component_action',
+    description: 'Component-specific action',
+    inputSchema: {},
+    handler: async () => {
+      // Your logic
+      return { success: true };
+    }
+  });
+
+  return <div>My Component</div>;
 }
 ```
 
@@ -191,12 +213,26 @@ updateTools(newState) {
 ```javascript
 // Only expose admin tools for admin users
 if (user.role === 'admin') {
-  server.tool("deleteAll", "Delete all items", {}, async () => {
-    await fetch('/api/admin/delete-all', {
-      method: 'POST',
-      credentials: 'same-origin'
-    });
-    return { content: [{ type: "text", text: "Deleted" }] };
+  window.navigator.modelContext.provideContext({
+    tools: [
+      {
+        name: "delete-all",
+        description: "Delete all items",
+        inputSchema: {
+          type: "object",
+          properties: {}
+        },
+        async execute() {
+          await fetch('/api/admin/delete-all', {
+            method: 'POST',
+            credentials: 'same-origin'
+          });
+          return {
+            content: [{ type: "text", text: "All items deleted" }]
+          };
+        }
+      }
+    ]
   });
 }
 ```
@@ -204,19 +240,36 @@ if (user.role === 'admin') {
 ### Visual Feedback
 
 ```javascript
-server.tool("highlightElement", "Highlight an element", 
-  { selector: z.string() },
-  async ({ selector }) => {
+window.navigator.modelContext.registerTool({
+  name: "highlight-element",
+  description: "Highlight an element on the page",
+  inputSchema: {
+    type: "object",
+    properties: {
+      selector: {
+        type: "string",
+        description: "CSS selector for the element"
+      }
+    },
+    required: ["selector"]
+  },
+  async execute({ selector }) {
     const element = document.querySelector(selector);
     if (element) {
       element.style.backgroundColor = 'yellow';
       setTimeout(() => {
         element.style.backgroundColor = '';
       }, 2000);
+      return {
+        content: [{ type: "text", text: `Highlighted ${selector}` }]
+      };
     }
-    return { content: [{ type: "text", text: "Highlighted" }] };
+    return {
+      content: [{ type: "text", text: "Element not found" }],
+      isError: true
+    };
   }
-);
+});
 ```
 
 ## Running the Examples
@@ -251,29 +304,29 @@ pnpm dev
 
 ## Building Your Own
 
-When creating your own MCP-B integration:
+When creating your own WebMCP integration:
 
 <Steps>
-  <Step title="Start with an example">
-    Clone the example closest to your use case
+  <Step title="Choose your approach">
+    Use `@mcp-b/global` for simple sites or `@mcp-b/react-webmcp` for React apps
   </Step>
-  
+
   <Step title="Identify existing functionality">
     List the actions users can take in your app
   </Step>
-  
+
   <Step title="Wrap as tools">
-    Create MCP tools that wrap your existing functions
+    Use `navigator.modelContext.provideContext()` or `useWebMCP()` hook
   </Step>
-  
+
   <Step title="Add validation">
-    Use Zod schemas to validate tool inputs
+    Use JSON Schema or Zod schemas to validate tool inputs
   </Step>
-  
+
   <Step title="Test with extension">
     Use the MCP-B extension to test your tools
   </Step>
-  
+
   <Step title="Add feedback">
     Provide visual feedback when tools are called
   </Step>
@@ -285,15 +338,15 @@ When creating your own MCP-B integration:
   <Card
     title="GitHub Discussions"
     icon="comment"
-    href="https://github.com/MiguelsPizza/WebMCP/discussions"
+    href="https://github.com/WebMCP-org/WebMCP/discussions"
   >
     Get help from the community
   </Card>
-  
+
   <Card
     title="GitHub Issues"
     icon="github"
-    href="https://github.com/MiguelsPizza/WebMCP/issues"
+    href="https://github.com/WebMCP-org/npm-packages/issues"
   >
     Report bugs or request features
   </Card>
