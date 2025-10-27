@@ -273,25 +273,30 @@ Understanding how data flows through WebMCP when AI agents interact with your we
 
 ### Tool Execution Flow
 
-The following diagram shows the complete request-response cycle when an AI agent discovers and calls a tool:
+The following diagram shows how the extension maintains a fresh tool list and handles AI requests:
 
 ```mermaid
 sequenceDiagram
-    participant A as AI Agent
-    participant X as MCP-B Extension
-    participant T as Tab Transport
-    participant B as MCP Bridge
     participant W as Your Code
+    participant B as MCP Bridge
+    participant T as Tab Transport
+    participant X as MCP-B Extension
+    participant A as AI Agent
 
-    Note over A,W: Tool Discovery Phase
-    A->>X: Request available tools
-    X->>T: List tools request
+    Note over W,X: Tool Registration & Updates
+    W->>B: registerTool() / unregister()
+    B->>T: Tool list change event
+    T->>X: Notify tools changed
+    X->>T: Fetch fresh tool list
     T->>B: Query registered tools
     B-->>T: Return tool definitions
-    T-->>X: Tool list
-    X-->>A: Display available tools
+    T-->>X: Updated tool list
 
-    Note over A,W: Tool Execution Phase
+    Note over X,A: AI Inference Request
+    X->>A: Send context with fresh tool list
+    A->>A: Analyze available tools
+
+    Note over W,A: Tool Execution Phase
     A->>X: Call tool(name, args)
     X->>T: Execute tool request
     T->>B: Route to tool handler
