@@ -1,0 +1,135 @@
+---
+title: 'llms.txt - LLM-Optimized Documentation Index'
+sidebarTitle: 'llms.txt'
+description: 'Automatically generated llms.txt and llms-full.txt files make WebMCP documentation easy for AI assistants like Claude, ChatGPT, and Gemini to index and search'
+icon: 'file-lines'
+---
+
+export const PreviewButton = ({children, href}) => {
+  return <a href={href} className="text-sm font-medium text-white dark:!text-zinc-950 bg-zinc-900 hover:bg-zinc-700 dark:bg-zinc-100 hover:dark:bg-zinc-300 rounded-full px-3.5 py-1.5 not-prose">
+        {children}
+      </a>;
+};
+
+## What is llms.txt?
+
+The [llms.txt file](https://llmstxt.org) is an emerging industry standard that helps large language models (LLMs) and AI assistants index and understand documentation more efficiently. Similar to how `robots.txt` and `sitemap.xml` help search engines, `llms.txt` provides a structured overview of your documentation for AI tools.
+
+When AI assistants like Claude, ChatGPT, or Gemini need to answer questions about WebMCP, they can reference the `llms.txt` file to quickly locate relevant documentation pages.
+
+## Automatic Generation
+
+**Zero maintenance required.** Mintlify automatically generates and hosts both `llms.txt` and `llms-full.txt` files at the root of your documentation site. These files stay up-to-date automatically as you add, update, or remove pages.
+
+### View Your Files
+
+<div className="flex gap-3 flex-wrap mt-4">
+  <PreviewButton href="https://docs.mcp-b.ai/llms.txt">
+    View llms.txt
+  </PreviewButton>
+  <PreviewButton href="https://docs.mcp-b.ai/llms-full.txt">
+    View llms-full.txt
+  </PreviewButton>
+</div>
+
+Access these files by appending `/llms.txt` or `/llms-full.txt` to any documentation URL.
+
+## File Structure
+
+### llms.txt
+
+An `llms.txt` file is a plain Markdown file containing:
+
+* **Site title** - Your documentation site name as an H1 heading
+* **Structured sections** - Organized groups of pages with links and descriptions
+* **Page descriptions** - Pulled from the `description` field in each page's frontmatter
+
+Pages are listed in alphabetical order by directory structure, starting from the root.
+
+```mdx Example llms.txt
+# WebMCP Documentation
+
+## Getting Started
+
+- [Introduction](https://docs.mcp-b.ai/introduction): W3C standard for making websites AI-accessible
+- [Quickstart](https://docs.mcp-b.ai/quickstart): Build your first WebMCP server in 5 minutes
+- [Examples](https://docs.mcp-b.ai/examples): Sample implementations and use cases
+
+## Guides
+
+- [Development](https://docs.mcp-b.ai/development): Build and test WebMCP servers
+- [Advanced](https://docs.mcp-b.ai/advanced): Advanced patterns and optimization
+```
+
+This structured format enables AI assistants to:
+- Quickly scan available documentation topics
+- Navigate directly to relevant pages
+- Understand the documentation hierarchy
+- Provide accurate, context-aware responses
+
+### llms-full.txt
+
+The `llms-full.txt` file combines your **entire documentation site** into a single comprehensive file. This provides maximum context for AI assistants and is optimized for LLM processing.
+
+<div className="mt-4">
+  <PreviewButton href="https://docs.mcp-b.ai/llms-full.txt">
+    View llms-full.txt
+  </PreviewButton>
+</div>
+
+## Custom Files
+
+You can override the automatically generated files by creating custom `llms.txt` or `llms-full.txt` files in the root of your project.
+
+<Note>
+  When you add a custom file, it completely replaces the automatic version. If you delete your custom file, the automatic generation resumes.
+</Note>
+
+### Requirements for Custom Files
+
+Your custom files must include:
+
+1. **Site title** as an H1 heading (required)
+2. **Optional sections** per the [llms.txt specification](https://llmstxt.org/#format)
+
+See the [format documentation](https://llmstxt.org/#format) for best practices on structuring custom content.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Add descriptions to all pages">
+    Every MDX file should include a `description` field in its frontmatter. This description appears in the `llms.txt` file and helps AI assistants understand page content at a glance.
+
+    ```mdx
+    ---
+    title: 'My Page'
+    description: 'Clear, concise summary of page content'
+    ---
+    ```
+  </Accordion>
+
+  <Accordion title="Keep descriptions concise">
+    Aim for 10-20 words that clearly explain what the page covers. Focus on keywords relevant to common search queries.
+  </Accordion>
+
+  <Accordion title="Use consistent terminology">
+    Maintain consistent terminology across descriptions to help AI assistants recognize related concepts. For WebMCP docs, use standard terms like "MCP-B", "navigator.modelContext", "tab transport", etc.
+  </Accordion>
+
+  <Accordion title="Let automatic generation handle updates">
+    Unless you have specific customization needs, rely on automatic generation. Manual maintenance of `llms.txt` files can become outdated quickly.
+  </Accordion>
+</AccordionGroup>
+
+## SEO Benefits
+
+While designed for AI assistants, `llms.txt` files also provide SEO benefits:
+
+- **Improved discoverability** - AI-powered search tools can better index your documentation
+- **Structured data** - Clear content hierarchy signals quality to search engines
+- **Better AI integration** - As AI becomes more integrated with search, proper `llms.txt` implementation future-proofs your docs
+- **Enhanced user experience** - Users asking AI assistants questions get more accurate documentation references
+
+<Tip>
+  The `llms.txt` standard is growing rapidly. Early adoption positions your documentation for the AI-powered search era.
+</Tip>
