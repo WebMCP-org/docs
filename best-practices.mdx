@@ -1,0 +1,1226 @@
+---
+title: Best Practices for Creating Tools
+description: Learn best practices for designing and implementing WebMCP tools on websites where you have full control
+icon: list-check
+---
+
+# Best Practices for Creating Tools
+
+This guide provides comprehensive best practices for website owners creating WebMCP tools. Unlike userscripts where you work around existing site structure, having full control over your website allows you to design tools from the ground up for optimal AI agent integration.
+
+<Info>
+These practices apply when you own the website and can integrate WebMCP tools directly into your codebase. For userscript development, see [Managing Userscripts](/extension/managing-userscripts).
+</Info>
+
+## Tool Design Principles
+
+### Use Descriptive, Consistent Names
+
+Follow a clear naming convention for all your tools:
+
+<CardGroup cols={2}>
+  <Card title="Good Names" icon="check">
+    - `products_search`
+    - `cart_add_item`
+    - `user_get_profile`
+    - `orders_list_recent`
+  </Card>
+
+  <Card title="Avoid" icon="x">
+    - `doStuff`
+    - `action1`
+    - `helper`
+    - `processData`
+  </Card>
+</CardGroup>
+
+**Naming pattern:** Use `domain_verb_noun` or `verb_noun` format:
+
+```javascript
+// ✅ Clear, descriptive names
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  name: 'cart_add_item',
+  name: 'orders_get_status'
+});
+
+// ❌ Vague names
+navigator.modelContext.registerTool({
+  name: 'search',      // Too generic
+  name: 'doAction',    // Unclear purpose
+  name: 'helper1'      // Meaningless
+});
+```
+
+### Provide Detailed Descriptions
+
+Help AI agents understand **when** and **how** to use your tools:
+
+```javascript
+// ✅ Detailed, actionable description
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: 'Search products by name, category, or SKU. Returns paginated results with title, price, stock status, and product URLs. Use this when users ask about product availability or pricing.',
+  // ...
+});
+
+// ❌ Vague description
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: 'Searches for products',
+  // ...
+});
+```
+
+**Include in descriptions:**
+- What the tool does
+- What parameters it accepts
+- What data it returns
+- When to use it vs similar tools
+- Any important limitations or constraints
+
+### Design Atomic, Focused Tools
+
+Create single-purpose tools rather than monolithic multi-function tools:
+
+<Tabs>
+  <Tab title="Good: Atomic Tools">
+    ```javascript
+    // ✅ Separate, focused tools
+    navigator.modelContext.registerTool({
+      name: 'cart_add_item',
+      description: 'Add a single product to cart',
+      // ...
+    });
+
+    navigator.modelContext.registerTool({
+      name: 'cart_remove_item',
+      description: 'Remove a product from cart',
+      // ...
+    });
+
+    navigator.modelContext.registerTool({
+      name: 'cart_get_contents',
+      description: 'View current cart contents',
+      // ...
+    });
+    ```
+  </Tab>
+
+  <Tab title="Avoid: Monolithic Tools">
+    ```javascript
+    // ❌ One tool trying to do too much
+    navigator.modelContext.registerTool({
+      name: 'cart_manager',
+      description: 'Manage cart operations',
+      inputSchema: {
+        action: z.enum(['add', 'remove', 'view', 'clear', 'update']),
+        productId: z.string().optional(),
+        quantity: z.number().optional()
+      },
+      // ...
+    });
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits of atomic tools:**
+- Easier for AI to select the right tool
+- Simpler input schemas
+- Better error handling
+- More testable
+- Clearer documentation
+
+## Input Validation
+
+### Use Zod for Type-Safe Validation
+
+Zod provides excellent TypeScript integration and runtime validation:
+
+```typescript
+import { z } from 'zod';
+
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: 'Search products by various criteria',
+  inputSchema: {
+    query: z.string()
+      .min(1, 'Search query cannot be empty')
+      .max(100, 'Search query too long')
+      .describe('Product name, category, or SKU to search for'),
+
+    minPrice: z.number()
+      .positive()
+      .optional()
+      .describe('Minimum price filter in USD'),
+
+    maxPrice: z.number()
+      .positive()
+      .optional()
+      .describe('Maximum price filter in USD'),
+
+    category: z.enum(['electronics', 'clothing', 'home', 'sports'])
+      .optional()
+      .describe('Product category filter'),
+
+    limit: z.number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(10)
+      .describe('Number of results to return')
+  },
+  async execute({ query, minPrice, maxPrice, category, limit }) {
+    // TypeScript knows the exact types here
+    // ...
+  }
+});
+```
+
+### Validate Business Logic Constraints
+
+Go beyond type checking to enforce business rules:
+
+```typescript
+inputSchema: {
+  productId: z.string().uuid().describe('Product UUID'),
+  quantity: z.number()
+    .int()
+    .positive()
+    .max(99, 'Cannot order more than 99 items at once')
+    .describe('Quantity to add to cart'),
+
+  promoCode: z.string()
+    .regex(/^[A-Z0-9]{6,12}$/, 'Invalid promo code format')
+    .optional()
+    .describe('Optional promotional code')
+}
+```
+
+### Provide Helpful Error Messages
+
+```javascript
+async execute({ productId, quantity }) {
+  // Validate availability
+  const product = await getProduct(productId);
+
+  if (!product) {
+    return {
+      content: [{
+        type: "text",
+        text: `Product ${productId} not found. Please verify the product ID.`
+      }],
+      isError: true
+    };
+  }
+
+  if (product.stock < quantity) {
+    return {
+      content: [{
+        type: "text",
+        text: `Only ${product.stock} units available. Requested: ${quantity}.`
+      }],
+      isError: true
+    };
+  }
+
+  // Proceed with adding to cart
+  // ...
+}
+```
+
+## Response Format
+
+### Return Structured, Consistent Data
+
+Use a consistent response format across all your tools:
+
+```javascript
+// ✅ Structured response format
+async execute({ query }) {
+  try {
+    const results = await searchProducts(query);
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: true,
+          data: results,
+          meta: {
+            total: results.length,
+            query: query,
+            timestamp: new Date().toISOString()
+          }
+        }, null, 2)
+      }]
+    };
+  } catch (error) {
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          error: error.message,
+          errorCode: error.code
+        }, null, 2)
+      }],
+      isError: true
+    };
+  }
+}
+```
+
+### Include Metadata in Responses
+
+Provide context that helps AI agents understand the results:
+
+```javascript
+return {
+  content: [{
+    type: "text",
+    text: JSON.stringify({
+      products: results,
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 156,
+        hasMore: true
+      },
+      filters: {
+        category: 'electronics',
+        priceRange: { min: 0, max: 1000 }
+      },
+      searchInfo: {
+        query: query,
+        resultsFound: results.length,
+        searchTime: '45ms'
+      }
+    }, null, 2)
+  }]
+};
+```
+
+## Error Handling
+
+### Handle Errors Gracefully
+
+Always anticipate and handle potential failures:
+
+```javascript
+async execute({ userId }) {
+  try {
+    // Check authentication
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return {
+        content: [{
+          type: "text",
+          text: "User not authenticated. Please log in first."
+        }],
+        isError: true
+      };
+    }
+
+    // Check authorization
+    if (currentUser.id !== userId && !currentUser.isAdmin) {
+      return {
+        content: [{
+          type: "text",
+          text: "Unauthorized. You can only access your own profile."
+        }],
+        isError: true
+      };
+    }
+
+    // Fetch data with timeout
+    const profile = await fetchUserProfile(userId, { timeout: 5000 });
+
+    if (!profile) {
+      return {
+        content: [{
+          type: "text",
+          text: `User profile ${userId} not found.`
+        }],
+        isError: true
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(profile) }]
+    };
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+
+    return {
+      content: [{
+        type: "text",
+        text: `Failed to fetch user profile: ${error.message}`
+      }],
+      isError: true
+    };
+  }
+}
+```
+
+### Use Specific Error Codes
+
+Help AI agents understand what went wrong:
+
+```typescript
+enum ErrorCode {
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  NOT_FOUND = 'NOT_FOUND',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  RATE_LIMIT = 'RATE_LIMIT',
+  SERVER_ERROR = 'SERVER_ERROR'
+}
+
+function formatError(code: ErrorCode, message: string, details?: any) {
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        success: false,
+        errorCode: code,
+        message,
+        details
+      }, null, 2)
+    }],
+    isError: true
+  };
+}
+
+// Usage
+if (rateLimitExceeded) {
+  return formatError(
+    ErrorCode.RATE_LIMIT,
+    'Too many requests. Please try again in 60 seconds.',
+    { retryAfter: 60 }
+  );
+}
+```
+
+## Security Best Practices
+
+### Validate User Authentication
+
+Tools run with the user's session, but always verify:
+
+```javascript
+async execute({ orderId }) {
+  const session = await getSession();
+
+  if (!session?.user) {
+    return formatError(
+      'UNAUTHORIZED',
+      'Please log in to view order details.'
+    );
+  }
+
+  const order = await getOrder(orderId);
+
+  // Verify order belongs to current user
+  if (order.userId !== session.user.id && !session.user.isAdmin) {
+    return formatError(
+      'FORBIDDEN',
+      'You do not have permission to view this order.'
+    );
+  }
+
+  return { content: [{ type: "text", text: JSON.stringify(order) }] };
+}
+```
+
+### Sanitize Inputs
+
+Never trust input data, even with schema validation:
+
+```javascript
+import DOMPurify from 'dompurify';
+import { escapeHtml } from './utils';
+
+async execute({ content }) {
+  // Sanitize HTML content
+  const sanitized = DOMPurify.sanitize(content);
+
+  // Escape for database
+  const escaped = escapeHtml(sanitized);
+
+  // Use parameterized queries
+  await db.query(
+    'INSERT INTO posts (content) VALUES ($1)',
+    [escaped]
+  );
+
+  return { content: [{ type: "text", text: "Post created successfully" }] };
+}
+```
+
+### Rate Limit Tool Calls
+
+Protect your API from abuse:
+
+```javascript
+import rateLimit from './rate-limiter';
+
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10 // 10 requests per minute per user
+});
+
+navigator.modelContext.registerTool({
+  name: 'expensive_operation',
+  description: 'Performs a resource-intensive operation',
+  async execute(params) {
+    const session = await getSession();
+    const userId = session?.user?.id || 'anonymous';
+
+    const allowed = await limiter.check(userId);
+
+    if (!allowed) {
+      return formatError(
+        'RATE_LIMIT',
+        'Rate limit exceeded. Maximum 10 requests per minute.',
+        { retryAfter: limiter.getResetTime(userId) }
+      );
+    }
+
+    // Process the request
+    // ...
+  }
+});
+```
+
+### Avoid Exposing Sensitive Data
+
+Be careful what data you include in responses:
+
+```javascript
+// ✅ Safe: Only expose necessary data
+async execute({ userId }) {
+  const user = await getUser(userId);
+
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        createdAt: user.createdAt
+        // ✅ NOT including: password hash, internal IDs, private notes
+      })
+    }]
+  };
+}
+
+// ❌ Dangerous: Exposing everything
+async execute({ userId }) {
+  const user = await getUser(userId);
+
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify(user) // ❌ Might include sensitive fields!
+    }]
+  };
+}
+```
+
+## Performance Optimization
+
+### Design for Async Operations
+
+All tool execution should be non-blocking:
+
+```javascript
+// ✅ Async with proper error handling
+async execute({ query }) {
+  try {
+    const [products, categories, suggestions] = await Promise.all([
+      searchProducts(query),
+      getCategories(),
+      getSuggestions(query)
+    ]);
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({ products, categories, suggestions })
+      }]
+    };
+  } catch (error) {
+    return formatError('SERVER_ERROR', error.message);
+  }
+}
+```
+
+### Implement Timeouts
+
+Prevent tools from hanging indefinitely:
+
+```javascript
+const TIMEOUT = 5000; // 5 seconds
+
+async execute({ query }) {
+  try {
+    const result = await Promise.race([
+      performSearch(query),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), TIMEOUT)
+      )
+    ]);
+
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  } catch (error) {
+    if (error.message === 'Timeout') {
+      return formatError(
+        'TIMEOUT',
+        'Search took too long. Please try a more specific query.'
+      );
+    }
+    throw error;
+  }
+}
+```
+
+### Cache Expensive Operations
+
+Use caching to improve performance:
+
+```javascript
+import { LRUCache } from 'lru-cache';
+
+const cache = new LRUCache({
+  max: 500,
+  ttl: 1000 * 60 * 5 // 5 minutes
+});
+
+async execute({ productId }) {
+  const cacheKey = `product:${productId}`;
+
+  // Check cache first
+  let product = cache.get(cacheKey);
+
+  if (!product) {
+    // Cache miss - fetch from database
+    product = await db.getProduct(productId);
+    cache.set(cacheKey, product);
+  }
+
+  return { content: [{ type: "text", text: JSON.stringify(product) }] };
+}
+```
+
+### Limit Response Size
+
+Prevent sending huge payloads:
+
+```javascript
+const MAX_RESULTS = 100;
+const MAX_RESPONSE_SIZE = 1024 * 100; // 100KB
+
+async execute({ query, limit = 10 }) {
+  const safLimit = Math.min(limit, MAX_RESULTS);
+  const results = await search(query, safLimit);
+
+  const response = JSON.stringify(results);
+
+  if (response.length > MAX_RESPONSE_SIZE) {
+    return formatError(
+      'RESPONSE_TOO_LARGE',
+      `Response exceeds maximum size. Try reducing limit (current: ${safLimit}).`
+    );
+  }
+
+  return { content: [{ type: "text", text: response }] };
+}
+```
+
+## Testing & Quality Assurance
+
+### Test Tool Registration
+
+Verify tools are properly registered:
+
+```typescript
+import { describe, it, expect, beforeEach } from 'vitest';
+
+describe('Product Search Tool', () => {
+  beforeEach(() => {
+    // Mock navigator.modelContext
+    global.navigator = {
+      modelContext: {
+        registerTool: vi.fn()
+      }
+    } as any;
+  });
+
+  it('should register with correct schema', () => {
+    registerProductSearchTool();
+
+    expect(navigator.modelContext.registerTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'products_search',
+        description: expect.any(String),
+        inputSchema: expect.any(Object)
+      })
+    );
+  });
+});
+```
+
+### Test Tool Execution
+
+Verify tool handlers work correctly:
+
+```typescript
+describe('Product Search Execution', () => {
+  it('should return products for valid query', async () => {
+    const result = await executeProductSearch({ query: 'laptop' });
+
+    expect(result.content[0].text).toBeTruthy();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.success).toBe(true);
+    expect(data.products).toBeInstanceOf(Array);
+  });
+
+  it('should handle empty query gracefully', async () => {
+    const result = await executeProductSearch({ query: '' });
+
+    expect(result.isError).toBe(true);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('should handle database errors', async () => {
+    // Mock database failure
+    vi.spyOn(db, 'searchProducts').mockRejectedValue(
+      new Error('Database connection failed')
+    );
+
+    const result = await executeProductSearch({ query: 'laptop' });
+
+    expect(result.isError).toBe(true);
+  });
+});
+```
+
+### Test with Real AI Agents
+
+Use the MCP-B Extension to test with actual AI:
+
+<Steps>
+  <Step title="Install MCP-B Extension">
+    Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
+  </Step>
+
+  <Step title="Load your website">
+    Navigate to your development site where tools are registered
+  </Step>
+
+  <Step title="Verify tool discovery">
+    Open the extension and confirm your tools appear in the available tools list
+  </Step>
+
+  <Step title="Test with natural language">
+    Ask the AI agent to use your tools: "Search for laptops under $1000"
+  </Step>
+
+  <Step title="Verify results">
+    Check that the AI correctly interprets tool responses and presents them to the user
+  </Step>
+</Steps>
+
+## Tool Organization
+
+### Group Related Tools
+
+Organize tools logically in your codebase:
+
+```typescript
+// tools/products.ts
+export function registerProductTools() {
+  navigator.modelContext.registerTool({
+    name: 'products_search',
+    // ...
+  });
+
+  navigator.modelContext.registerTool({
+    name: 'products_get_details',
+    // ...
+  });
+}
+
+// tools/cart.ts
+export function registerCartTools() {
+  navigator.modelContext.registerTool({
+    name: 'cart_add_item',
+    // ...
+  });
+
+  navigator.modelContext.registerTool({
+    name: 'cart_get_contents',
+    // ...
+  });
+}
+
+// tools/index.ts
+export function registerAllTools() {
+  registerProductTools();
+  registerCartTools();
+  registerOrderTools();
+}
+```
+
+### Use Consistent Prefixes
+
+Group tools by domain using name prefixes:
+
+```javascript
+// Product domain
+products_search
+products_get_details
+products_get_reviews
+
+// Cart domain
+cart_add_item
+cart_remove_item
+cart_update_quantity
+cart_clear
+
+// Order domain
+orders_create
+orders_get_status
+orders_list_recent
+```
+
+### Document Tool Dependencies
+
+Make it clear when tools depend on each other:
+
+```typescript
+navigator.modelContext.registerTool({
+  name: 'cart_checkout',
+  description: `
+    Proceed to checkout with current cart contents.
+
+    Prerequisites:
+    - User must be authenticated
+    - Cart must contain at least one item (use cart_get_contents to verify)
+    - Shipping address must be set (use user_set_shipping_address)
+
+    Returns a checkout URL where user can complete payment.
+  `,
+  // ...
+});
+```
+
+## Framework Integration
+
+### React with Hooks
+
+Use `useWebMCP` for component-scoped tools:
+
+```typescript
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function ProductSearch() {
+  const [results, setResults] = useState([]);
+
+  useWebMCP({
+    name: 'products_search',
+    description: 'Search products',
+    inputSchema: {
+      query: z.string().min(1)
+    },
+    async execute({ query }) {
+      const data = await searchProducts(query);
+      setResults(data); // Update UI
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(data) }]
+      };
+    }
+  });
+
+  return (
+    <div>
+      {/* Component renders search results */}
+      {results.map(product => <ProductCard key={product.id} {...product} />)}
+    </div>
+  );
+}
+```
+
+### Vue with Composition API
+
+```typescript
+import { onMounted, onUnmounted } from 'vue';
+
+export function useProductSearch() {
+  const results = ref([]);
+  let registration: ToolRegistration | null = null;
+
+  onMounted(() => {
+    registration = navigator.modelContext.registerTool({
+      name: 'products_search',
+      description: 'Search products',
+      inputSchema: {
+        query: z.string().min(1)
+      },
+      async execute({ query }) {
+        const data = await searchProducts(query);
+        results.value = data;
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(data) }]
+        };
+      }
+    });
+  });
+
+  onUnmounted(() => {
+    registration?.unregister();
+  });
+
+  return { results };
+}
+```
+
+### Vanilla JavaScript
+
+```javascript
+// Register on page load
+document.addEventListener('DOMContentLoaded', () => {
+  const registration = navigator.modelContext.registerTool({
+    name: 'products_search',
+    description: 'Search products',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' }
+      }
+    },
+    async execute({ query }) {
+      const results = await searchProducts(query);
+
+      // Update DOM
+      document.getElementById('results').innerHTML =
+        results.map(p => `<div>${p.name}</div>`).join('');
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(results) }]
+      };
+    }
+  });
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    registration.unregister();
+  });
+});
+```
+
+## Documentation
+
+### Document Your Tools
+
+Create clear documentation for developers and AI:
+
+```typescript
+/**
+ * Product Search Tool
+ *
+ * Searches the product catalog using full-text search across
+ * product names, descriptions, and SKUs.
+ *
+ * @param query - Search query (1-100 characters)
+ * @param category - Optional category filter
+ * @param minPrice - Optional minimum price in USD
+ * @param maxPrice - Optional maximum price in USD
+ * @param limit - Results per page (1-100, default: 10)
+ *
+ * @returns Array of products with name, price, stock status, and URLs
+ *
+ * @example
+ * // Search for laptops under $1000
+ * products_search({
+ *   query: "laptop",
+ *   maxPrice: 1000,
+ *   limit: 20
+ * })
+ */
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  // ...
+});
+```
+
+### Create Tool Catalog
+
+Maintain a reference document:
+
+```markdown
+# WebMCP Tools Catalog
+
+## Product Tools
+
+### products_search
+**Description:** Search products by name, category, or SKU
+**Inputs:**
+- `query` (string, required): Search terms
+- `category` (string, optional): Filter by category
+- `limit` (number, optional): Results per page (default: 10)
+
+**Returns:** Array of products with pricing and availability
+
+**Example:** Find laptops under $1000
+```
+
+### Use OpenAPI/JSON Schema
+
+Export tool schemas for documentation:
+
+```typescript
+export const toolSchemas = {
+  products_search: {
+    name: 'products_search',
+    description: 'Search products',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query'
+        }
+      },
+      required: ['query']
+    }
+  }
+};
+```
+
+## Monitoring & Analytics
+
+### Log Tool Usage
+
+Track which tools are being called:
+
+```javascript
+async execute(params) {
+  const startTime = Date.now();
+
+  try {
+    const result = await performSearch(params.query);
+
+    // Log successful execution
+    analytics.track('tool_executed', {
+      toolName: 'products_search',
+      duration: Date.now() - startTime,
+      resultCount: result.length,
+      userId: getCurrentUser()?.id
+    });
+
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  } catch (error) {
+    // Log errors
+    analytics.track('tool_error', {
+      toolName: 'products_search',
+      error: error.message,
+      duration: Date.now() - startTime
+    });
+
+    throw error;
+  }
+}
+```
+
+### Monitor Performance
+
+Track tool execution time:
+
+```javascript
+class ToolMetrics {
+  private metrics = new Map<string, number[]>();
+
+  record(toolName: string, duration: number) {
+    if (!this.metrics.has(toolName)) {
+      this.metrics.set(toolName, []);
+    }
+    this.metrics.get(toolName)!.push(duration);
+  }
+
+  getStats(toolName: string) {
+    const durations = this.metrics.get(toolName) || [];
+    return {
+      count: durations.length,
+      avg: durations.reduce((a, b) => a + b, 0) / durations.length,
+      max: Math.max(...durations),
+      min: Math.min(...durations)
+    };
+  }
+}
+
+const metrics = new ToolMetrics();
+
+async execute(params) {
+  const start = Date.now();
+  try {
+    const result = await performOperation(params);
+    return result;
+  } finally {
+    metrics.record('products_search', Date.now() - start);
+  }
+}
+```
+
+## Version Management
+
+### Version Your Tools
+
+Include version info in tool names or metadata:
+
+```javascript
+// Option 1: Include version in name for breaking changes
+navigator.modelContext.registerTool({
+  name: 'products_search_v2',
+  description: 'Search products (v2 - new schema)',
+  // ...
+});
+
+// Option 2: Include version in response metadata
+async execute(params) {
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        version: '2.0.0',
+        data: results
+      })
+    }]
+  };
+}
+```
+
+### Deprecate Gracefully
+
+Warn when tools will be removed:
+
+```javascript
+navigator.modelContext.registerTool({
+  name: 'legacy_search',
+  description: '⚠️ DEPRECATED: Use products_search instead. This tool will be removed in v3.0.',
+  async execute(params) {
+    console.warn('legacy_search is deprecated, use products_search');
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          warning: 'This tool is deprecated. Please use products_search.',
+          data: await legacySearch(params)
+        })
+      }]
+    };
+  }
+});
+```
+
+## Quick Reference
+
+<AccordionGroup>
+  <Accordion title="Tool naming">
+    - Use `domain_verb_noun` pattern
+    - Be specific and descriptive
+    - Use consistent prefixes for related tools
+  </Accordion>
+
+  <Accordion title="Input validation">
+    - Prefer Zod schemas for TypeScript projects
+    - Validate both types and business logic
+    - Provide helpful error messages
+  </Accordion>
+
+  <Accordion title="Response format">
+    - Return structured, consistent JSON
+    - Include metadata (pagination, timestamps)
+    - Always handle errors gracefully
+  </Accordion>
+
+  <Accordion title="Security">
+    - Validate user authentication
+    - Check authorization for protected resources
+    - Sanitize all inputs
+    - Rate limit tool calls
+    - Never expose sensitive data
+  </Accordion>
+
+  <Accordion title="Performance">
+    - Use async operations
+    - Implement timeouts
+    - Cache expensive operations
+    - Limit response sizes
+  </Accordion>
+
+  <Accordion title="Testing">
+    - Unit test registration and execution
+    - Test error handling
+    - Test with real AI agents
+  </Accordion>
+</AccordionGroup>
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card
+    title="Core Concepts"
+    icon="diagram-project"
+    href="/concepts"
+  >
+    Learn about WebMCP architecture and design
+  </Card>
+
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get started with your first tool
+  </Card>
+
+  <Card
+    title="Security Guide"
+    icon="shield"
+    href="/security"
+  >
+    Security best practices and guidelines
+  </Card>
+
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/packages/global"
+  >
+    Complete API documentation
+  </Card>
+
+  <Card
+    title="React Integration"
+    icon="react"
+    href="/packages/react-webmcp"
+  >
+    Using WebMCP with React
+  </Card>
+
+  <Card
+    title="Examples Repository"
+    icon="github"
+    href="https://github.com/WebMCP-org/examples"
+  >
+    See real-world implementations
+  </Card>
+</CardGroup>
