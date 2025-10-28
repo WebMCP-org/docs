@@ -1,0 +1,501 @@
+---
+title: 'MCP-UI + WebMCP ❤️'
+description: 'How MCP-UI iframes can host WebMCP servers for automatic tool discovery'
+icon: 'heart'
+---
+
+<Note>
+**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain WebMCP servers. When the parent has a tab transport client, it **automatically discovers** all tools inside the iframe - no manual bridging needed!
+</Note>
+
+## The Simple Idea
+
+Here's the entire concept:
+
+```mermaid
+graph TB
+    subgraph "MCP-UI Server"
+        A[Returns UIResource<br/>HTML with WebMCP tools]
+    end
+
+    subgraph "Parent App Host"
+        B[Has: TabClientTransport]
+
+        subgraph "Iframe"
+            C[HTML UI<br/>+<br/>navigator.modelContext tools<br/>✨ Automatically discovered]
+        end
+
+        B -.->|connects to| C
+    end
+
+    A -->|UIResource| B
+
+    style A fill:#9B59B6,color:#fff
+    style B fill:#4B7BFF,color:#fff
+    style C fill:#50C878,color:#fff
+```
+
+**That's it.** The tab transport automatically picks up any WebMCP tools registered inside the iframe using `navigator.modelContext.registerTool()`.
+
+## How It Works
+
+### Step 1: MCP-UI Server Returns HTML with WebMCP
+
+```typescript
+import { createUIResource } from '@mcp-ui/server';
+
+// MCP server returns a UIResource
+const uiResource = createUIResource({
+  uri: 'ui://shopping/cart',
+  content: {
+    type: 'rawHtml',
+    htmlString: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <script src="https://unpkg.com/@mcp-b/global"></script>
+        </head>
+        <body>
+          <h1>Shopping Cart</h1>
+          <div id="cart-items">Cart is empty</div>
+
+          <script>
+            // Register WebMCP tools in the iframe
+            navigator.modelContext.registerTool({
+              name: "add_to_cart",
+              description: "Add product to shopping cart",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  productId: { type: "string" },
+                  quantity: { type: "number" }
+                }
+              },
+              async execute({ productId, quantity }) {
+                // Add to cart logic
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                cart.push({ productId, quantity });
+                localStorage.setItem('cart', JSON.stringify(cart));
+
+                // Update UI
+                document.getElementById('cart-items').innerHTML =
+                  cart.map(item => \`<div>\${item.productId} x\${item.quantity}</div>\`).join('');
+
+                return {
+                  content: [{
+                    type: "text",
+                    text: JSON.stringify({ success: true, cartSize: cart.length })
+                  }]
+                };
+              }
+            });
+
+            navigator.modelContext.registerTool({
+              name: "get_cart_contents",
+              description: "Get current shopping cart contents",
+              async execute() {
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                return {
+                  content: [{
+                    type: "text",
+                    text: JSON.stringify({ items: cart, total: cart.length })
+                  }]
+                };
+              }
+            });
+          </script>
+        </body>
+      </html>
+    `
+  }
+});
+
+// Return in MCP response
+return { content: [uiResource] };
+```
+
+### Step 2: Parent Uses Tab Transport
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { UIResourceRenderer } from '@mcp-ui/client';
+
+function ShoppingApp({ mcpResponse }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [tools, setTools] = useState([]);
+
+  useEffect(() => {
+    async function connectToIframe() {
+      // Create MCP client with tab transport
+      const client = new Client(
+        { name: 'host-app', version: '1.0.0' },
+        { capabilities: {} }
+      );
+
+      const transport = new TabClientTransport({
+        targetOrigin: window.location.origin
+      });
+
+      await client.connect(transport);
+
+      // ✨ Automatically discover tools from iframe
+      const { tools } = await client.listTools();
+      setTools(tools);
+
+      console.log('Found tools:', tools);
+      // Output: [
+      //   { name: 'add_to_cart', description: '...' },
+      //   { name: 'get_cart_contents', description: '...' }
+      // ]
+    }
+
+    if (iframeRef.current) {
+      // Wait for iframe to load
+      iframeRef.current.addEventListener('load', () => {
+        setTimeout(connectToIframe, 300);
+      });
+    }
+  }, []);
+
+  return (
+    <div>
+      <h2>Shopping Cart</h2>
+      <p>Discovered {tools.length} tools from iframe</p>
+
+      <UIResourceRenderer
+        ref={iframeRef}
+        resource={mcpResponse.content[0].resource}
+      />
+    </div>
+  );
+}
+```
+
+### That's It!
+
+The parent now has full access to all tools registered in the iframe via standard MCP calls:
+
+```typescript
+// Call tools from the iframe
+const result = await client.callTool({
+  name: 'add_to_cart',
+  arguments: { productId: 'laptop-123', quantity: 1 }
+});
+
+console.log(result); // { success: true, cartSize: 1 }
+```
+
+## Why This Is Powerful
+
+<CardGroup cols={2}>
+  <Card title="Zero Manual Bridging" icon="magic-wand-sparkles">
+    Tab transport handles all communication automatically
+  </Card>
+
+  <Card title="Standard MCP Protocol" icon="file-contract">
+    Use `tools/list`, `tools/call` - everything just works
+  </Card>
+
+  <Card title="Visual + Functional" icon="window">
+    Iframe provides UI while exposing callable tools
+  </Card>
+
+  <Card title="Auto-Discovery" icon="magnifying-glass">
+    Parent instantly sees all tools registered in iframe
+  </Card>
+</CardGroup>
+
+## The Magic: Tab Transport
+
+The `@mcp-b/transports` package provides `TabClientTransport` and `TabServerTransport`.
+
+**How it works:**
+1. WebMCP's `@mcp-b/global` polyfill automatically creates an MCP server in any context with `navigator.modelContext`
+2. When you register tools via `navigator.modelContext.registerTool()`, they're added to that MCP server
+3. Tab transport bridges `window.postMessage` events to MCP protocol
+4. Parent's MCP client can discover and call those tools
+
+```
+Parent: client.listTools()
+   ↓ (Tab Transport)
+Iframe: MCP server receives tools/list
+   ↓ (Checks navigator.modelContext)
+Iframe: Returns registered tools
+   ↓ (Tab Transport)
+Parent: Receives tool list
+```
+
+## More Examples
+
+### Analytics Dashboard
+
+```typescript
+const dashboardHTML = `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <script src="https://unpkg.com/@mcp-b/global"></script>
+    </head>
+    <body>
+      <h2>Sales Dashboard</h2>
+      <canvas id="chart"></canvas>
+
+      <script>
+        navigator.modelContext.registerTool({
+          name: "get_sales_data",
+          description: "Get sales data for date range",
+          inputSchema: {
+            type: "object",
+            properties: {
+              startDate: { type: "string" },
+              endDate: { type: "string" }
+            }
+          },
+          async execute({ startDate, endDate }) {
+            const res = await fetch(\`/api/sales?start=\${startDate}&end=\${endDate}\`);
+            const data = await res.json();
+            updateChart(data); // Update the canvas chart
+            return {
+              content: [{ type: "text", text: JSON.stringify(data) }]
+            };
+          }
+        });
+
+        function updateChart(data) {
+          // Chart.js or similar to render data
+        }
+      </script>
+    </body>
+  </html>
+`;
+
+const uiResource = createUIResource({
+  uri: 'ui://analytics/dashboard',
+  content: { type: 'rawHtml', htmlString: dashboardHTML }
+});
+```
+
+### Form with Validation
+
+```typescript
+const formHTML = `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <script src="https://unpkg.com/@mcp-b/global"></script>
+    </head>
+    <body>
+      <form id="checkout-form">
+        <input name="address" placeholder="Address" />
+        <input name="city" placeholder="City" />
+        <button type="submit">Submit</button>
+      </form>
+      <div id="errors"></div>
+
+      <script>
+        navigator.modelContext.registerTool({
+          name: "validate_address",
+          description: "Validate shipping address",
+          inputSchema: {
+            type: "object",
+            properties: {
+              address: { type: "string" },
+              city: { type: "string" }
+            }
+          },
+          async execute({ address, city }) {
+            const res = await fetch('/api/validate-address', {
+              method: 'POST',
+              body: JSON.stringify({ address, city })
+            });
+            const validation = await res.json();
+
+            if (!validation.valid) {
+              document.getElementById('errors').innerHTML =
+                validation.errors.join('<br>');
+            }
+
+            return {
+              content: [{ type: "text", text: JSON.stringify(validation) }]
+            };
+          }
+        });
+
+        document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          // Could call the tool internally or let parent call it
+        });
+      </script>
+    </body>
+  </html>
+`;
+```
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Interactive Dashboards">
+    Serve analytics dashboards that expose data retrieval and export tools to the parent app
+  </Accordion>
+
+  <Accordion title="Form Widgets">
+    Embed forms with validation tools that the parent can call programmatically
+  </Accordion>
+
+  <Accordion title="Mini Applications">
+    Full mini-apps (shopping cart, calendar, task list) with both UI and API surface
+  </Accordion>
+
+  <Accordion title="Third-Party Widgets">
+    Embed external widgets (Stripe checkout, calendar booking) that expose tools for integration
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Loading State
+
+```typescript
+const [isConnected, setIsConnected] = useState(false);
+
+useEffect(() => {
+  if (iframeRef.current) {
+    const handleLoad = async () => {
+      const transport = new TabClientTransport({
+        targetOrigin: window.location.origin
+      });
+      await client.connect(transport);
+      setIsConnected(true);
+    };
+
+    iframeRef.current.addEventListener('load', handleLoad);
+  }
+}, []);
+
+return isConnected ? <div>Tools ready!</div> : <div>Loading...</div>;
+```
+
+### Error Handling
+
+```typescript
+async function connectToIframe() {
+  try {
+    const client = new Client({ name: 'host' }, { capabilities: {} });
+    const transport = new TabClientTransport({
+      targetOrigin: window.location.origin
+    });
+    await client.connect(transport);
+  } catch (error) {
+    console.error('Failed to connect:', error);
+    // Show error UI
+  }
+}
+```
+
+### Tool Calling with Feedback
+
+```typescript
+const [status, setStatus] = useState('');
+
+async function addToCart(productId) {
+  setStatus('Adding to cart...');
+
+  try {
+    const result = await client.callTool({
+      name: 'add_to_cart',
+      arguments: { productId, quantity: 1 }
+    });
+    setStatus('Added successfully!');
+  } catch (error) {
+    setStatus(`Error: ${error.message}`);
+  }
+}
+```
+
+## Security Notes
+
+<Warning>
+**Important**:
+- Use specific `targetOrigin` in production (not `'*'`)
+- Validate all tool inputs in both iframe and parent
+- Be aware the iframe can register any tools it wants
+- Don't expose sensitive operations without authentication checks
+</Warning>
+
+```typescript
+// Good - specific origin
+const transport = new TabClientTransport({
+  targetOrigin: 'https://myapp.com'
+});
+
+// Bad - allows any origin (dev only!)
+const transport = new TabClientTransport({
+  targetOrigin: '*'
+});
+```
+
+## FAQs
+
+<AccordionGroup>
+  <Accordion title="Do I need to use WebMCP in the iframe?">
+    Yes! The iframe must use `navigator.modelContext.registerTool()` (via `@mcp-b/global`) for this pattern to work. That's what makes the tools discoverable via tab transport.
+  </Accordion>
+
+  <Accordion title="Can the iframe be on a different domain?">
+    Yes, but you need to set `targetOrigin` correctly for security. Tab transport works cross-origin.
+  </Accordion>
+
+  <Accordion title="What if tools change dynamically?">
+    The parent can call `client.listTools()` again to refresh. Or implement an event system where the iframe notifies the parent.
+  </Accordion>
+
+  <Accordion title="Can I use React/Vue inside the iframe?">
+    Absolutely! The iframe is just HTML. Use any framework and register tools when your components mount.
+  </Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="WebMCP Concepts" icon="book" href="/concepts">
+    Learn about WebMCP's architecture and `navigator.modelContext`
+  </Card>
+
+  <Card title="MCP-UI Docs" icon="window" href="https://docs.mcp-ui.org">
+    Complete MCP-UI documentation and UIResourceRenderer reference
+  </Card>
+
+  <Card title="Tab Transport" icon="arrow-right-arrow-left" href="/packages/transports">
+    Deep dive into `@mcp-b/transports` and how tab transport works
+  </Card>
+
+  <Card title="Security Guide" icon="shield" href="/security">
+    Security best practices for WebMCP integrations
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Steps>
+  <Step title="Set up MCP-UI">
+    Install `@mcp-ui/server` and create your first UIResource
+  </Step>
+
+  <Step title="Add WebMCP to iframe">
+    Include `@mcp-b/global` and register tools with `navigator.modelContext`
+  </Step>
+
+  <Step title="Connect from parent">
+    Use `TabClientTransport` to discover and call iframe tools
+  </Step>
+
+  <Step title="Build something cool">
+    Create interactive dashboards, forms, or mini-apps with this pattern!
+  </Step>
+</Steps>
+
+<Tip>
+Join the [WebMCP Discord](https://discord.gg/ZnHG4csJRB) to share what you build with this integration pattern!
+</Tip>
