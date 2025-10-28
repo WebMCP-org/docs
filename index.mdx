@@ -11,9 +11,15 @@ Using WebMCP, AI assistants like Claude or ChatGPT can interact with your websit
 
 Think of WebMCP like a **USB-C port for websites**. Just as USB-C provides a standardized way to connect devices, WebMCP provides a standardized way for AI agents to connect to your website's features.
 
-<Frame>
-  <img src="/images/webmcp-diagram.png" alt="WebMCP connects AI agents to website tools" />
-</Frame>
+```mermaid
+graph LR
+    A[AI Assistants<br/>Claude, ChatGPT, etc.] -->|connect via| B[WebMCP Protocol<br/>navigator.modelContext]
+    B -->|exposes tools from| C[Your Website<br/>Functions & Features]
+
+    style A fill:#e1f5ff,stroke:#0066cc
+    style B fill:#fff4e6,stroke:#ff9900
+    style C fill:#e8f5e9,stroke:#00aa44
+```
 
 ## What can WebMCP enable?
 
