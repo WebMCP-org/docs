@@ -54,17 +54,33 @@ navigator.modelContext.registerTool({
 
 ### Provide Detailed Descriptions
 
-Help AI agents understand **when** and **how** to use your tools:
+<Warning>
+Tool names, descriptions, and input schemas are sent directly to the AI model's context. This is the ONLY information the model has about your tools. Make these as detailed and informative as possible.
+</Warning>
+
+Help AI agents understand **when** and **how** to use your tools by including everything they need to know in the description:
 
 ```javascript
-// ✅ Detailed, actionable description
+// ✅ Comprehensive description with all context
 navigator.modelContext.registerTool({
   name: 'products_search',
-  description: 'Search products by name, category, or SKU. Returns paginated results with title, price, stock status, and product URLs. Use this when users ask about product availability or pricing.',
+  description: `Search products by name, category, or SKU.
+
+Returns paginated results with title, price, stock status, and product URLs.
+Use this when users ask about product availability or pricing.
+
+If searching by price range, use the minPrice and maxPrice parameters.
+Results are sorted by relevance by default.`,
+  inputSchema: {
+    query: z.string().min(1).describe('Product name, category, or SKU to search for'),
+    minPrice: z.number().positive().optional().describe('Minimum price filter in USD'),
+    maxPrice: z.number().positive().optional().describe('Maximum price filter in USD'),
+    limit: z.number().int().min(1).max(100).default(10).describe('Number of results (max 100)')
+  }
   // ...
 });
 
-// ❌ Vague description
+// ❌ Vague description - model doesn't know what to do
 navigator.modelContext.registerTool({
   name: 'products_search',
   description: 'Searches for products',
@@ -73,20 +89,37 @@ navigator.modelContext.registerTool({
 ```
 
 **Include in descriptions:**
-- What the tool does
-- What parameters it accepts
-- What data it returns
+- What the tool does and when to use it
+- What data it returns and in what format
 - When to use it vs similar tools
 - Any important limitations or constraints
+- Prerequisites or dependencies on other tools
+- If this tool will modify the available tool list
 
-### Design Atomic, Focused Tools
+### Design Powerful, Consolidated Tools
 
-Create single-purpose tools rather than monolithic multi-function tools:
+Create consolidated tools that handle related operations rather than many single-purpose tools:
 
 <Tabs>
-  <Tab title="Good: Atomic Tools">
+  <Tab title="Good: Consolidated Tools">
     ```javascript
-    // ✅ Separate, focused tools
+    // ✅ Powerful tool handling related operations
+    navigator.modelContext.registerTool({
+      name: 'cart_manager',
+      description: 'Manage all cart operations including add, remove, view, clear, and update quantity. Use action parameter to specify the operation.',
+      inputSchema: {
+        action: z.enum(['add', 'remove', 'view', 'clear', 'update']).describe('The cart operation to perform'),
+        productId: z.string().optional().describe('Product ID (required for add, remove, update)'),
+        quantity: z.number().positive().optional().describe('Quantity (required for add and update)')
+      },
+      // ...
+    });
+    ```
+  </Tab>
+
+  <Tab title="Avoid: Too Many Single-Purpose Tools">
+    ```javascript
+    // ❌ Multiple tools consuming unnecessary context
     navigator.modelContext.registerTool({
       name: 'cart_add_item',
       description: 'Add a single product to cart',
@@ -106,36 +139,24 @@ Create single-purpose tools rather than monolithic multi-function tools:
     });
     ```
   </Tab>
-
-  <Tab title="Avoid: Monolithic Tools">
-    ```javascript
-    // ❌ One tool trying to do too much
-    navigator.modelContext.registerTool({
-      name: 'cart_manager',
-      description: 'Manage cart operations',
-      inputSchema: {
-        action: z.enum(['add', 'remove', 'view', 'clear', 'update']),
-        productId: z.string().optional(),
-        quantity: z.number().optional()
-      },
-      // ...
-    });
-    ```
-  </Tab>
 </Tabs>
 
-**Benefits of atomic tools:**
-- Easier for AI to select the right tool
-- Simpler input schemas
-- Better error handling
-- More testable
-- Clearer documentation
+**Benefits of consolidated tools:**
+- Reduces context consumption (fewer tool definitions)
+- Modern AI models handle complex tools effectively
+- Fewer tools to maintain and document
+- Simpler tool discovery for AI agents
+- More efficient use of available context window
 
 ## Input Validation
 
 ### Use Zod for Type-Safe Validation
 
-Zod provides excellent TypeScript integration and runtime validation:
+<Info>
+Parameter descriptions (via `.describe()`) are sent to the AI model's context. Be detailed and specific!
+</Info>
+
+Zod provides excellent TypeScript integration and runtime validation. Use `.describe()` on every parameter to tell the model exactly what it needs to know:
 
 ```typescript
 import { z } from 'zod';
@@ -147,28 +168,28 @@ navigator.modelContext.registerTool({
     query: z.string()
       .min(1, 'Search query cannot be empty')
       .max(100, 'Search query too long')
-      .describe('Product name, category, or SKU to search for'),
+      .describe('Product name, category, or SKU to search for. Examples: "laptop", "running shoes", "SKU-12345"'),
 
     minPrice: z.number()
       .positive()
       .optional()
-      .describe('Minimum price filter in USD'),
+      .describe('Minimum price filter in USD. Use with maxPrice to filter by price range.'),
 
     maxPrice: z.number()
       .positive()
       .optional()
-      .describe('Maximum price filter in USD'),
+      .describe('Maximum price filter in USD. Use with minPrice to filter by price range.'),
 
     category: z.enum(['electronics', 'clothing', 'home', 'sports'])
       .optional()
-      .describe('Product category filter'),
+      .describe('Product category filter. Choose from: electronics, clothing, home, or sports.'),
 
     limit: z.number()
       .int()
       .min(1)
       .max(100)
       .default(10)
-      .describe('Number of results to return')
+      .describe('Number of results to return (1-100, default: 10). Use higher values for broader searches.')
   },
   async execute({ query, minPrice, maxPrice, category, limit }) {
     // TypeScript knows the exact types here
@@ -231,75 +252,119 @@ async execute({ productId, quantity }) {
 
 ## Response Format
 
-### Return Structured, Consistent Data
+### Use Markdown Instead of JSON
 
-Use a consistent response format across all your tools:
+<Info>
+AI models work better with markdown-formatted responses than JSON. Markdown is more readable and easier for models to incorporate into natural language responses.
+</Info>
 
-```javascript
-// ✅ Structured response format
-async execute({ query }) {
-  try {
-    const results = await searchProducts(query);
+Return data as markdown strings rather than JSON objects:
 
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: true,
-          data: results,
-          meta: {
-            total: results.length,
-            query: query,
-            timestamp: new Date().toISOString()
-          }
-        }, null, 2)
-      }]
-    };
-  } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: false,
-          error: error.message,
-          errorCode: error.code
-        }, null, 2)
-      }],
-      isError: true
-    };
-  }
-}
-```
+<Tabs>
+  <Tab title="Good: Markdown">
+    ```javascript
+    // ✅ Markdown formatted response
+    async execute({ query }) {
+      try {
+        const results = await searchProducts(query);
 
-### Include Metadata in Responses
+        const markdown = `# Search Results for "${query}"
 
-Provide context that helps AI agents understand the results:
+Found ${results.length} products:
 
-```javascript
-return {
-  content: [{
-    type: "text",
-    text: JSON.stringify({
-      products: results,
-      pagination: {
-        page: 1,
-        limit: 10,
-        total: 156,
-        hasMore: true
-      },
-      filters: {
-        category: 'electronics',
-        priceRange: { min: 0, max: 1000 }
-      },
-      searchInfo: {
-        query: query,
-        resultsFound: results.length,
-        searchTime: '45ms'
+${results.map((p, i) => `
+${i + 1}. **${p.name}** - $${p.price}
+   - SKU: ${p.sku}
+   - Stock: ${p.inStock ? '✓ In Stock' : '✗ Out of Stock'}
+   - [View Product](${p.url})
+`).join('\n')}
+
+---
+*Showing ${results.length} of ${results.total} total results*`;
+
+        return {
+          content: [{
+            type: "text",
+            text: markdown
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{
+            type: "text",
+            text: `**Error searching products:** ${error.message}`
+          }],
+          isError: true
+        };
       }
-    }, null, 2)
-  }]
-};
-```
+    }
+    ```
+  </Tab>
+
+  <Tab title="Avoid: JSON">
+    ```javascript
+    // ❌ JSON is harder for models to parse and present
+    async execute({ query }) {
+      const results = await searchProducts(query);
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: true,
+            data: results,
+            meta: {
+              total: results.length,
+              query: query
+            }
+          }, null, 2)
+        }]
+      };
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits of markdown responses:**
+- More natural for AI to read and present to users
+- Better formatting in chat interfaces
+- Easier for models to extract specific information
+- More human-readable in logs and debugging
+
+### Include Helpful Context in Responses
+
+Provide information that helps the AI understand and present the results:
+
+```javascript
+async execute({ orderId }) {
+  const order = await getOrder(orderId);
+
+  // ✅ Rich markdown with context
+  return {
+    content: [{
+      type: "text",
+      text: `# Order #${order.id}
+
+**Status:** ${order.status}
+**Placed:** ${new Date(order.createdAt).toLocaleDateString()}
+**Total:** $${order.total.toFixed(2)}
+
+## Items
+${order.items.map(item => `
+- **${item.name}** x${item.quantity} - $${item.price * item.quantity}
+`).join('\n')}
+
+## Shipping
+${order.shippingAddress.street}
+${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zip}
+
+${order.trackingNumber ? `**Tracking:** ${order.trackingNumber}` : '*Tracking number not yet available*'}
+
+---
+*Order placed on ${new Date(order.createdAt).toLocaleString()}*`
+    }]
+  };
+}
 
 ## Error Handling
 
@@ -346,8 +411,17 @@ async execute({ userId }) {
       };
     }
 
+    // Return as markdown for better readability
     return {
-      content: [{ type: "text", text: JSON.stringify(profile) }]
+      content: [{
+        type: "text",
+        text: `# User Profile
+
+**Name:** ${profile.name}
+**Email:** ${profile.email}
+**Member since:** ${new Date(profile.createdAt).toLocaleDateString()}
+**Account type:** ${profile.accountType}`
+      }]
     };
 
   } catch (error) {
@@ -364,9 +438,9 @@ async execute({ userId }) {
 }
 ```
 
-### Use Specific Error Codes
+### Use Specific Error Messages
 
-Help AI agents understand what went wrong:
+Help AI agents understand what went wrong with clear, formatted error messages:
 
 ```typescript
 enum ErrorCode {
@@ -377,16 +451,11 @@ enum ErrorCode {
   SERVER_ERROR = 'SERVER_ERROR'
 }
 
-function formatError(code: ErrorCode, message: string, details?: any) {
+function formatError(code: ErrorCode, message: string, details?: string) {
   return {
     content: [{
       type: "text",
-      text: JSON.stringify({
-        success: false,
-        errorCode: code,
-        message,
-        details
-      }, null, 2)
+      text: `**Error (${code}):** ${message}${details ? `\n\n${details}` : ''}`
     }],
     isError: true
   };
@@ -396,8 +465,8 @@ function formatError(code: ErrorCode, message: string, details?: any) {
 if (rateLimitExceeded) {
   return formatError(
     ErrorCode.RATE_LIMIT,
-    'Too many requests. Please try again in 60 seconds.',
-    { retryAfter: 60 }
+    'Too many requests.',
+    'Please try again in 60 seconds.'
   );
 }
 ```
@@ -498,25 +567,25 @@ navigator.modelContext.registerTool({
 Be careful what data you include in responses:
 
 ```javascript
-// ✅ Safe: Only expose necessary data
+// ✅ Safe: Only expose necessary data, formatted as markdown
 async execute({ userId }) {
   const user = await getUser(userId);
 
+  // ✅ Only include safe fields in response
   return {
     content: [{
       type: "text",
-      text: JSON.stringify({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        createdAt: user.createdAt
-        // ✅ NOT including: password hash, internal IDs, private notes
-      })
+      text: `# User Information
+
+**Name:** ${user.name}
+**Email:** ${user.email}
+**Member since:** ${new Date(user.createdAt).toLocaleDateString()}`
     }]
   };
+  // ✅ NOT including: password hash, internal IDs, private notes, session tokens
 }
 
-// ❌ Dangerous: Exposing everything
+// ❌ Dangerous: Blindly converting entire object
 async execute({ userId }) {
   const user = await getUser(userId);
 
@@ -536,7 +605,7 @@ async execute({ userId }) {
 All tool execution should be non-blocking:
 
 ```javascript
-// ✅ Async with proper error handling
+// ✅ Async with proper error handling, markdown formatted
 async execute({ query }) {
   try {
     const [products, categories, suggestions] = await Promise.all([
@@ -548,7 +617,16 @@ async execute({ query }) {
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ products, categories, suggestions })
+        text: `# Search Results
+
+## Products
+${products.map(p => `- **${p.name}** - $${p.price}`).join('\n')}
+
+## Available Categories
+${categories.join(', ')}
+
+## Did you mean?
+${suggestions.join(', ')}`
       }]
     };
   } catch (error) {
@@ -566,14 +644,21 @@ const TIMEOUT = 5000; // 5 seconds
 
 async execute({ query }) {
   try {
-    const result = await Promise.race([
+    const results = await Promise.race([
       performSearch(query),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Timeout')), TIMEOUT)
       )
     ]);
 
-    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    return {
+      content: [{
+        type: "text",
+        text: `# Search Results for "${query}"
+
+${results.map((r, i) => `${i + 1}. ${r.title}`).join('\n')}`
+      }]
+    };
   } catch (error) {
     if (error.message === 'Timeout') {
       return formatError(
@@ -586,33 +671,87 @@ async execute({ query }) {
 }
 ```
 
-### Cache Expensive Operations
+### Use Optimistic Updates for Voice Models
 
-Use caching to improve performance:
+Voice models and real-time interactions work best with instant tool responses. Implement optimistic updates by operating on in-app state rather than waiting for async API calls:
 
-```javascript
-import { LRUCache } from 'lru-cache';
+<Tabs>
+  <Tab title="Good: Optimistic Update">
+    ```javascript
+    // ✅ Update local state immediately, sync in background
+    navigator.modelContext.registerTool({
+      name: 'cart_add_item',
+      description: 'Add product to cart',
+      inputSchema: {
+        productId: z.string(),
+        quantity: z.number().positive()
+      },
+      async execute({ productId, quantity }) {
+        // Update in-app state immediately
+        const cartState = getCartState();
+        const product = cartState.addItem({ productId, quantity });
 
-const cache = new LRUCache({
-  max: 500,
-  ttl: 1000 * 60 * 5 // 5 minutes
-});
+        // Return success instantly as markdown
+        const cartItems = cartState.getItems();
+        const markdown = `**Added to cart!**
 
-async execute({ productId }) {
-  const cacheKey = `product:${productId}`;
+${product.name} x${quantity}
 
-  // Check cache first
-  let product = cache.get(cacheKey);
+## Current Cart (${cartItems.length} items)
+${cartItems.map(item => `- ${item.name} x${item.quantity} - $${item.price * item.quantity}`).join('\n')}
 
-  if (!product) {
-    // Cache miss - fetch from database
-    product = await db.getProduct(productId);
-    cache.set(cacheKey, product);
-  }
+**Total:** $${cartState.getTotal()}`;
 
-  return { content: [{ type: "text", text: JSON.stringify(product) }] };
-}
-```
+        // Sync to backend in background (don't await)
+        syncCartToBackend(cartState).catch(err => {
+          console.error('Background sync failed:', err);
+          // Handle sync errors appropriately
+        });
+
+        return {
+          content: [{ type: "text", text: markdown }]
+        };
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab title="Avoid: Blocking on API">
+    ```javascript
+    // ❌ Slow - waits for API before responding
+    navigator.modelContext.registerTool({
+      name: 'cart_add_item',
+      description: 'Add product to cart',
+      async execute({ productId, quantity }) {
+        // Blocks until API responds (could take seconds)
+        const result = await fetch('/api/cart/add', {
+          method: 'POST',
+          body: JSON.stringify({ productId, quantity })
+        });
+
+        const data = await result.json();
+
+        // Even with markdown, waiting for API is still slow
+        return {
+          content: [{ type: "text", text: `Added ${data.productName} to cart` }]
+        };
+      }
+    });
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits of optimistic updates:**
+- Instant tool responses for voice and real-time interactions
+- Better user experience with immediate feedback
+- Voice models can chain multiple operations smoothly
+- Reduced latency in multi-step workflows
+
+**Implementation tips:**
+- Maintain local application state (Redux, Zustand, React Context)
+- Update state synchronously before returning from tool
+- Queue background sync operations
+- Handle sync failures gracefully with retry logic
 
 ### Limit Response Size
 
@@ -626,16 +765,21 @@ async execute({ query, limit = 10 }) {
   const safLimit = Math.min(limit, MAX_RESULTS);
   const results = await search(query, safLimit);
 
-  const response = JSON.stringify(results);
+  // Format as markdown
+  const markdown = `# Search Results for "${query}"
 
-  if (response.length > MAX_RESPONSE_SIZE) {
+Found ${results.length} results:
+
+${results.map((r, i) => `${i + 1}. **${r.title}**\n   ${r.description}`).join('\n\n')}`;
+
+  if (markdown.length > MAX_RESPONSE_SIZE) {
     return formatError(
       'RESPONSE_TOO_LARGE',
       `Response exceeds maximum size. Try reducing limit (current: ${safLimit}).`
     );
   }
 
-  return { content: [{ type: "text", text: response }] };
+  return { content: [{ type: "text", text: markdown }] };
 }
 ```
 
@@ -797,26 +941,62 @@ orders_get_status
 orders_list_recent
 ```
 
-### Document Tool Dependencies
+### Reference Related Tools in Descriptions
 
-Make it clear when tools depend on each other:
+<Info>
+Remember: Tool descriptions go into the model's context. Reference other tools by name to help the model understand workflows and dependencies.
+</Info>
+
+Make it clear when tools should be called in sequence or when one tool depends on another:
 
 ```typescript
+// ✅ References other tools and explains workflow
 navigator.modelContext.registerTool({
   name: 'cart_checkout',
-  description: `
-    Proceed to checkout with current cart contents.
+  description: `Proceed to checkout with current cart contents.
 
-    Prerequisites:
-    - User must be authenticated
-    - Cart must contain at least one item (use cart_get_contents to verify)
-    - Shipping address must be set (use user_set_shipping_address)
+Prerequisites:
+- User must be authenticated
+- Cart must contain at least one item (call cart_get_contents to verify)
+- Shipping address must be set (call user_set_shipping_address if needed)
 
-    Returns a checkout URL where user can complete payment.
-  `,
+Returns a checkout URL where user can complete payment.`,
+  // ...
+});
+
+// ✅ Mentions tool list changes
+navigator.modelContext.registerTool({
+  name: 'user_login',
+  description: `Authenticate user with email and password.
+
+After successful login, additional tools will become available:
+- orders_list_recent
+- user_get_profile
+- user_update_settings
+
+Call this tool first if user wants to access account features.`,
+  // ...
+});
+
+// ✅ References prerequisite tool
+navigator.modelContext.registerTool({
+  name: 'order_track_shipment',
+  description: `Get real-time tracking information for an order shipment.
+
+Prerequisite: Call orders_get_details first to get the tracking number.
+Requires the trackingNumber from that response.`,
+  inputSchema: {
+    trackingNumber: z.string().describe('Tracking number from orders_get_details')
+  }
   // ...
 });
 ```
+
+**When to reference other tools:**
+- A tool should be called before this one
+- This tool's execution will register/unregister other tools
+- Data from another tool is needed as input
+- Multiple tools work together in a common workflow
 
 ## Framework Integration
 
@@ -841,8 +1021,16 @@ function ProductSearch() {
       const data = await searchProducts(query);
       setResults(data); // Update UI
 
+      // Return markdown formatted results
       return {
-        content: [{ type: "text", text: JSON.stringify(data) }]
+        content: [{
+          type: "text",
+          text: `# Search Results
+
+Found ${data.length} products matching "${query}":
+
+${data.map(p => `- **${p.name}** - $${p.price}`).join('\n')}`
+        }]
       };
     }
   });
@@ -876,8 +1064,16 @@ export function useProductSearch() {
         const data = await searchProducts(query);
         results.value = data;
 
+        // Return markdown formatted results
         return {
-          content: [{ type: "text", text: JSON.stringify(data) }]
+          content: [{
+            type: "text",
+            text: `# Search Results
+
+Found ${data.length} products:
+
+${data.map(p => `- **${p.name}** - $${p.price}`).join('\n')}`
+          }]
         };
       }
     });
@@ -910,10 +1106,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Update DOM
       document.getElementById('results').innerHTML =
-        results.map(p => `<div>${p.name}</div>`).join('');
+        results.map(p => `<div>${p.name} - $${p.price}</div>`).join('');
 
+      // Return markdown formatted results
       return {
-        content: [{ type: "text", text: JSON.stringify(results) }]
+        content: [{
+          type: "text",
+          text: `# Search Results
+
+Found ${results.length} products:
+
+${results.map(p => `- **${p.name}** - $${p.price}`).join('\n')}`
+        }]
       };
     }
   });
@@ -927,42 +1131,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ## Documentation
 
-### Document Your Tools
+### Write for the Model, Not Developers
 
-Create clear documentation for developers and AI:
+<Warning>
+JSDoc comments and code documentation do NOT go into the model's context. Only the tool name, description, and input schema are sent to the AI.
+</Warning>
+
+Put all important information in the tool description and parameter descriptions:
 
 ```typescript
+// ❌ JSDoc won't help the model
 /**
- * Product Search Tool
- *
- * Searches the product catalog using full-text search across
- * product names, descriptions, and SKUs.
- *
- * @param query - Search query (1-100 characters)
- * @param category - Optional category filter
- * @param minPrice - Optional minimum price in USD
- * @param maxPrice - Optional maximum price in USD
- * @param limit - Results per page (1-100, default: 10)
- *
- * @returns Array of products with name, price, stock status, and URLs
- *
- * @example
- * // Search for laptops under $1000
- * products_search({
- *   query: "laptop",
- *   maxPrice: 1000,
- *   limit: 20
- * })
+ * @param query - Search query
+ * @param maxPrice - Maximum price
  */
 navigator.modelContext.registerTool({
   name: 'products_search',
+  description: 'Search products',
   // ...
+});
+
+// ✅ Everything in the description and schema
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: `Search the product catalog using full-text search across names, descriptions, and SKUs.
+
+Returns paginated array of products with name, price, stock status, and URLs.
+Useful when users ask "what products do you have" or "find me a laptop under $1000".`,
+  inputSchema: {
+    query: z.string()
+      .min(1)
+      .max(100)
+      .describe('Search query (1-100 characters). Can be product name, category, or SKU.'),
+    category: z.enum(['electronics', 'clothing', 'home'])
+      .optional()
+      .describe('Optional category filter'),
+    maxPrice: z.number()
+      .positive()
+      .optional()
+      .describe('Optional maximum price filter in USD'),
+    limit: z.number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(10)
+      .describe('Results per page (1-100, default: 10)')
+  }
 });
 ```
 
-### Create Tool Catalog
+### Create Tool Catalog for Developers
 
-Maintain a reference document:
+Maintain a reference document for your development team:
 
 ```markdown
 # WebMCP Tools Catalog
@@ -1015,17 +1235,27 @@ async execute(params) {
   const startTime = Date.now();
 
   try {
-    const result = await performSearch(params.query);
+    const results = await performSearch(params.query);
 
     // Log successful execution
     analytics.track('tool_executed', {
       toolName: 'products_search',
       duration: Date.now() - startTime,
-      resultCount: result.length,
+      resultCount: results.length,
       userId: getCurrentUser()?.id
     });
 
-    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    // Return markdown formatted results
+    return {
+      content: [{
+        type: "text",
+        text: `# Search Results
+
+Found ${results.length} products matching "${params.query}":
+
+${results.map((r, i) => `${i + 1}. **${r.name}** - $${r.price}`).join('\n')}`
+      }]
+    };
   } catch (error) {
     // Log errors
     analytics.track('tool_error', {
@@ -1094,13 +1324,17 @@ navigator.modelContext.registerTool({
 
 // Option 2: Include version in response metadata
 async execute(params) {
+  const results = await performSearch(params);
+
   return {
     content: [{
       type: "text",
-      text: JSON.stringify({
-        version: '2.0.0',
-        data: results
-      })
+      text: `# Search Results (API v2.0.0)
+
+${results.map(r => `- ${r.title}`).join('\n')}
+
+---
+*Using API version 2.0.0*`
     }]
   };
 }
@@ -1116,14 +1350,21 @@ navigator.modelContext.registerTool({
   description: '⚠️ DEPRECATED: Use products_search instead. This tool will be removed in v3.0.',
   async execute(params) {
     console.warn('legacy_search is deprecated, use products_search');
+    const results = await legacySearch(params);
 
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({
-          warning: 'This tool is deprecated. Please use products_search.',
-          data: await legacySearch(params)
-        })
+        text: `⚠️ **DEPRECATION WARNING**
+
+This tool is deprecated and will be removed in v3.0.
+Please use \`products_search\` instead.
+
+---
+
+# Search Results
+
+${results.map(r => `- ${r.title}`).join('\n')}`
       }]
     };
   }
@@ -1133,22 +1374,48 @@ navigator.modelContext.registerTool({
 ## Quick Reference
 
 <AccordionGroup>
-  <Accordion title="Tool naming">
-    - Use `domain_verb_noun` pattern
-    - Be specific and descriptive
-    - Use consistent prefixes for related tools
+  <Accordion title="What goes into model context">
+    - Tool name, description, and input schema ONLY
+    - JSDoc and code comments are NOT sent to the model
+    - Use detailed descriptions and parameter `.describe()` methods
+    - Reference other tools by name in descriptions
+    - Mention if tool execution changes the tool list
+  </Accordion>
+
+  <Accordion title="Tool design">
+    - Prefer consolidated tools over many single-purpose tools
+    - Reduces context consumption
+    - Use `domain_verb_noun` naming pattern
+    - Be specific and descriptive in all metadata
+  </Accordion>
+
+  <Accordion title="Tool descriptions">
+    - Include what the tool does and when to use it
+    - Describe return data format
+    - List prerequisites and dependencies on other tools
+    - Mention if this tool registers/unregisters other tools
+    - Use parameter `.describe()` for detailed parameter info
+  </Accordion>
+
+  <Accordion title="Performance for voice models">
+    - Use optimistic updates - update local state first
+    - Return instantly, sync to backend in background
+    - Don't block on async API calls
+    - Maintain in-app state for fast operations
+  </Accordion>
+
+  <Accordion title="Response format">
+    - Return markdown strings instead of JSON objects
+    - Markdown is more readable for AI models
+    - Better for natural language presentation
+    - Include helpful context and formatting
   </Accordion>
 
   <Accordion title="Input validation">
     - Prefer Zod schemas for TypeScript projects
+    - Use `.describe()` on every parameter (goes to model)
     - Validate both types and business logic
     - Provide helpful error messages
-  </Accordion>
-
-  <Accordion title="Response format">
-    - Return structured, consistent JSON
-    - Include metadata (pagination, timestamps)
-    - Always handle errors gracefully
   </Accordion>
 
   <Accordion title="Security">
@@ -1159,17 +1426,10 @@ navigator.modelContext.registerTool({
     - Never expose sensitive data
   </Accordion>
 
-  <Accordion title="Performance">
-    - Use async operations
-    - Implement timeouts
-    - Cache expensive operations
-    - Limit response sizes
-  </Accordion>
-
   <Accordion title="Testing">
     - Unit test registration and execution
     - Test error handling
-    - Test with real AI agents
+    - Test with real AI agents using MCP-B Extension
   </Accordion>
 </AccordionGroup>
 
