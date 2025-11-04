@@ -5,7 +5,7 @@ icon: 'heart'
 ---
 
 <Note>
-**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain WebMCP servers. When the parent has a tab transport client, it **automatically discovers** all tools inside the iframe - no manual bridging needed!
+**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain MCP servers. The parent page can connect using either **IframeParentTransport** (for cross-origin) or **TabClientTransport** (for same-origin), and it **automatically discovers** all tools inside the iframe - no manual bridging needed!
 </Note>
 
 ## The Simple Idea
@@ -15,14 +15,14 @@ Here's the entire concept:
 ```mermaid
 graph TB
     subgraph "MCP-UI Server"
-        A[Returns UIResource<br/>HTML with WebMCP tools]
+        A[Returns UIResource<br/>HTML with MCP server]
     end
 
     subgraph "Parent App Host"
-        B[Has: TabClientTransport]
+        B[Has: IframeParentTransport<br/>or TabClientTransport]
 
         subgraph "Iframe"
-            C[HTML UI<br/>+<br/>navigator.modelContext tools<br/>✨ Automatically discovered]
+            C[HTML UI<br/>+<br/>MCP Server with tools<br/>✨ Automatically discovered]
         end
 
         B -.->|connects to| C
@@ -35,7 +35,7 @@ graph TB
     style C fill:#50C878,color:#fff
 ```
 
-**That's it.** The tab transport automatically picks up any WebMCP tools registered inside the iframe using `navigator.modelContext.registerTool()`.
+**That's it.** The parent transport (either `IframeParentTransport` for cross-origin or `TabClientTransport` for same-origin) automatically discovers and connects to the MCP server inside the iframe.
 
 ## How It Works
 
@@ -225,6 +225,222 @@ Iframe: Returns registered tools
    ↓ (Tab Transport)
 Parent: Receives tool list
 ```
+
+## Using Iframe Transports for Cross-Origin
+
+When your MCP-UI iframe is hosted on a different origin than the parent page, use `IframeParentTransport` and `IframeChildTransport` instead of Tab transports. These provide proper cross-origin security and handle iframe loading timing automatically.
+
+### Step 1: MCP-UI Server Returns HTML with IframeChildTransport
+
+```typescript
+import { createUIResource } from '@mcp-ui/server';
+
+// MCP server returns a UIResource with iframe transport
+const uiResource = createUIResource({
+  uri: 'ui://shopping/cart',
+  content: {
+    type: 'rawHtml',
+    htmlString: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <script type="module">
+            import { IframeChildTransport } from 'https://esm.sh/@mcp-b/transports';
+            import { Server } from 'https://esm.sh/@modelcontextprotocol/sdk/server/index.js';
+
+            // Create MCP server
+            const server = new Server(
+              { name: 'ShoppingCart', version: '1.0.0' },
+              { capabilities: { tools: {} } }
+            );
+
+            // Register tool handlers
+            server.setRequestHandler('tools/list', async () => {
+              return {
+                tools: [
+                  {
+                    name: 'add_to_cart',
+                    description: 'Add product to shopping cart',
+                    inputSchema: {
+                      type: 'object',
+                      properties: {
+                        productId: { type: 'string' },
+                        quantity: { type: 'number' }
+                      },
+                      required: ['productId', 'quantity']
+                    }
+                  },
+                  {
+                    name: 'get_cart_contents',
+                    description: 'Get current shopping cart contents',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              };
+            });
+
+            server.setRequestHandler('tools/call', async (request) => {
+              const { name, arguments: args } = request.params;
+
+              if (name === 'add_to_cart') {
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                cart.push({ productId: args.productId, quantity: args.quantity });
+                localStorage.setItem('cart', JSON.stringify(cart));
+
+                // Update UI
+                document.getElementById('cart-items').innerHTML =
+                  cart.map(item => \`<div>\${item.productId} x\${item.quantity}</div>\`).join('');
+
+                return {
+                  content: [{
+                    type: 'text',
+                    text: JSON.stringify({ success: true, cartSize: cart.length })
+                  }]
+                };
+              }
+
+              if (name === 'get_cart_contents') {
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                return {
+                  content: [{
+                    type: 'text',
+                    text: JSON.stringify({ items: cart, total: cart.length })
+                  }]
+                };
+              }
+
+              throw new Error(\`Unknown tool: \${name}\`);
+            });
+
+            // Connect with iframe child transport
+            const transport = new IframeChildTransport({
+              allowedOrigins: ['https://your-app.com'], // Parent origin
+            });
+
+            await server.connect(transport);
+          </script>
+        </head>
+        <body>
+          <h1>Shopping Cart</h1>
+          <div id="cart-items">Cart is empty</div>
+        </body>
+      </html>
+    `
+  }
+});
+```
+
+### Step 2: Parent Uses IframeParentTransport
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { IframeParentTransport } from '@mcp-b/transports';
+import { UIResourceRenderer } from '@mcp-ui/client';
+
+function ShoppingApp({ mcpResponse }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [tools, setTools] = useState([]);
+  const [client, setClient] = useState<Client | null>(null);
+
+  useEffect(() => {
+    async function connectToIframe() {
+      if (!iframeRef.current) return;
+
+      // Create MCP client with iframe parent transport
+      const mcpClient = new Client(
+        { name: 'host-app', version: '1.0.0' },
+        { capabilities: {} }
+      );
+
+      const transport = new IframeParentTransport({
+        iframe: iframeRef.current,
+        targetOrigin: 'https://iframe-origin.com' // Iframe's origin
+      });
+
+      await mcpClient.connect(transport);
+
+      // ✨ Automatically discover tools from iframe
+      const { tools } = await mcpClient.listTools();
+      setTools(tools);
+      setClient(mcpClient);
+
+      console.log('Found tools:', tools);
+    }
+
+    if (iframeRef.current) {
+      // Wait for iframe to load
+      iframeRef.current.addEventListener('load', () => {
+        // Small delay to ensure iframe is fully initialized
+        setTimeout(connectToIframe, 300);
+      });
+    }
+
+    return () => {
+      client?.close();
+    };
+  }, []);
+
+  const handleAddToCart = async (productId: string) => {
+    if (!client) return;
+
+    const result = await client.callTool({
+      name: 'add_to_cart',
+      arguments: { productId, quantity: 1 }
+    });
+
+    console.log('Added to cart:', result);
+  };
+
+  return (
+    <div>
+      <h2>Shopping Cart</h2>
+      <p>Discovered {tools.length} tools from iframe</p>
+
+      <button onClick={() => handleAddToCart('laptop-123')}>
+        Add Laptop to Cart
+      </button>
+
+      <UIResourceRenderer
+        ref={iframeRef}
+        resource={mcpResponse.content[0].resource}
+      />
+    </div>
+  );
+}
+```
+
+### Benefits of Iframe Transports
+
+<CardGroup cols={2}>
+  <Card title="Cross-Origin Security" icon="shield">
+    Proper origin validation on both parent and child sides
+  </Card>
+
+  <Card title="Automatic Ready Handshake" icon="handshake">
+    Built-in retry mechanism handles iframe loading timing
+  </Card>
+
+  <Card title="Isolated Communication" icon="diagram-project">
+    Dedicated channel prevents interference with other postMessage usage
+  </Card>
+
+  <Card title="Production Ready" icon="check-circle">
+    Designed specifically for parent-child iframe scenarios
+  </Card>
+</CardGroup>
+
+## Choosing Between Tab and Iframe Transports
+
+**Use Tab Transports when:**
+- Parent and iframe are on the same origin
+- You want automatic server discovery
+- You're working with multiple servers in the same context
+
+**Use Iframe Transports when:**
+- Parent and iframe are on different origins
+- You need explicit parent-child communication
+- You want dedicated channel isolation
+- You need robust iframe loading handling
 
 ## More Examples
 
@@ -418,12 +634,15 @@ async function addToCart(productId) {
 
 <Warning>
 **Important**:
-- Use specific `targetOrigin` in production (not `'*'`)
+- Use specific `targetOrigin` in production (never `'*'`)
+- Configure `allowedOrigins` to whitelist only trusted domains
 - Validate all tool inputs in both iframe and parent
 - Be aware the iframe can register any tools it wants
 - Don't expose sensitive operations without authentication checks
+- For cross-origin scenarios, always use Iframe transports over Tab transports
 </Warning>
 
+**Tab Transport (same-origin):**
 ```typescript
 // Good - specific origin
 const transport = new TabClientTransport({
@@ -433,6 +652,25 @@ const transport = new TabClientTransport({
 // Bad - allows any origin (dev only!)
 const transport = new TabClientTransport({
   targetOrigin: '*'
+});
+```
+
+**Iframe Transport (cross-origin):**
+```typescript
+// Parent side - Good
+const transport = new IframeParentTransport({
+  iframe: iframeElement,
+  targetOrigin: 'https://iframe-app.com' // Specific iframe origin
+});
+
+// Child side - Good
+const transport = new IframeChildTransport({
+  allowedOrigins: ['https://parent-app.com'] // Whitelist parent origins
+});
+
+// Bad - allows any origin (never use in production!)
+const transport = new IframeChildTransport({
+  allowedOrigins: ['*']
 });
 ```
 
@@ -453,6 +691,14 @@ const transport = new TabClientTransport({
 
   <Accordion title="Can I use React/Vue inside the iframe?">
     Absolutely! The iframe is just HTML. Use any framework and register tools when your components mount.
+  </Accordion>
+
+  <Accordion title="Should I use Tab transports or Iframe transports?">
+    Use **Iframe transports** (`IframeParentTransport`/`IframeChildTransport`) when your iframe is on a different origin than the parent page. Use **Tab transports** when they're on the same origin. Iframe transports provide better cross-origin security and handle iframe loading timing automatically.
+  </Accordion>
+
+  <Accordion title="How do Iframe transports differ from Tab transports?">
+    Iframe transports are specifically designed for parent-child iframe communication with dedicated channels, ready handshake protocols, and explicit origin targeting. Tab transports work for same-context scenarios and support server discovery. Both use `postMessage` but with different messaging patterns.
   </Accordion>
 </AccordionGroup>
 
