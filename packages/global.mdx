@@ -94,6 +94,11 @@ navigator.modelContext.registerTool({
 
 This package implements the [W3C Web Model Context API](https://github.com/webmachinelearning/webmcp) specification, adding `navigator.modelContext` to your website. Your JavaScript functions become tools that AI agents can discover and call.
 
+**Key Features:**
+- **Automatic dual-server mode** - Tools accessible from both same-window clients AND parent pages (when in iframe)
+- **Zero configuration** - Works out of the box, detects iframe context automatically
+- **Production-ready** - Used in [real-world examples](/mcpui-webmcp-integration) like the TicTacToe mini-app
+
 ## Tool Registration
 
 ### The Default: `registerTool()`
@@ -448,6 +453,250 @@ window.navigator.modelContext.addEventListener('toolcall', async (event) => {
 });
 ```
 
+## Advanced Configuration
+
+### Dual-Server Mode (Tab + Iframe)
+
+By default, `@mcp-b/global` runs **two MCP servers** that share the same tool registry:
+
+1. **Tab Server** (`TabServerTransport`) - For same-window communication (e.g., browser extensions)
+2. **Iframe Server** (`IframeChildTransport`) - Auto-enabled when running in an iframe (`window.parent !== window`)
+
+Both servers expose the same tools, allowing your tools to be accessed from:
+- Same-window clients (e.g., browser extension content scripts)
+- Parent pages (when your app runs in an iframe)
+
+<Info>
+This dual-server architecture is **automatic** - no configuration needed for basic usage. The package detects when it's running in an iframe and enables both servers automatically.
+</Info>
+
+### How It Works
+
+When you register tools via `registerTool()` or `provideContext()`, they become available on **both servers simultaneously**:
+
+```typescript
+import '@mcp-b/global';
+
+// Register a tool - automatically available on both servers!
+navigator.modelContext.registerTool({
+  name: "get_data",
+  description: "Get application data",
+  inputSchema: { type: "object", properties: {} },
+  async execute() {
+    return {
+      content: [{ type: "text", text: "Data from iframe!" }]
+    };
+  }
+});
+
+// This tool is now accessible via:
+// 1. TabServerTransport (same-window clients)
+// 2. IframeChildTransport (parent page via IframeParentTransport)
+```
+
+### Usage in Iframes
+
+When your application runs inside an iframe (like in the [MCP-UI integration pattern](/mcpui-webmcp-integration)), the iframe server automatically enables:
+
+**In the iframe (your app):**
+
+```typescript
+import { initializeWebModelContext } from '@mcp-b/global';
+
+// Initialize with default dual-server mode
+initializeWebModelContext({
+  transport: {
+    tabServer: {
+      allowedOrigins: ['*'], // Allow connections from same window
+    },
+    // iframeServer auto-enabled when window.parent !== window
+  },
+});
+
+// Now register your tools
+navigator.modelContext.registerTool({
+  name: "tictactoe_get_state",
+  description: "Get current game state",
+  inputSchema: { type: "object", properties: {} },
+  async execute() {
+    // Your game logic here
+    return {
+      content: [{ type: "text", text: "Game state: X's turn" }]
+    };
+  }
+});
+```
+
+**In the parent page:**
+
+```typescript
+import { IframeParentTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+const iframe = document.querySelector('iframe');
+
+// Connect to iframe's MCP server
+const client = new Client({ name: 'parent', version: '1.0.0' });
+const transport = new IframeParentTransport({
+  iframe: iframe,
+  targetOrigin: 'https://iframe-app.com',
+});
+
+await client.connect(transport);
+
+// Discover tools from iframe
+const { tools } = await client.listTools();
+console.log('Tools from iframe:', tools);
+// Output: [{ name: 'tictactoe_get_state', ... }]
+```
+
+### Configuration Options
+
+Use `initializeWebModelContext(options)` to customize transport behavior:
+
+```typescript
+import { initializeWebModelContext } from '@mcp-b/global';
+
+initializeWebModelContext({
+  transport: {
+    // Tab server options (for same-window communication)
+    tabServer: {
+      allowedOrigins: ['https://your-app.com'],
+      channelId: 'custom-channel', // Default: 'mcp-tab'
+    },
+
+    // Iframe server options (for parent-child communication)
+    iframeServer: {
+      allowedOrigins: ['https://parent-app.com'], // Only allow specific parent
+      channelId: 'custom-iframe-channel', // Default: 'mcp-iframe'
+    },
+  },
+});
+```
+
+**Disable Tab Server (iframe-only mode):**
+
+```typescript
+initializeWebModelContext({
+  transport: {
+    tabServer: false, // Disable tab server
+    iframeServer: {
+      allowedOrigins: ['https://parent-app.com'],
+    },
+  },
+});
+```
+
+**Disable Iframe Server (tab-only mode):**
+
+```typescript
+initializeWebModelContext({
+  transport: {
+    tabServer: {
+      allowedOrigins: ['*'],
+    },
+    iframeServer: false, // Disable iframe server
+  },
+});
+```
+
+**Custom Transport (advanced):**
+
+```typescript
+import { CustomTransport } from './my-transport';
+
+initializeWebModelContext({
+  transport: {
+    create: () => new CustomTransport(), // Replaces both servers
+  },
+});
+```
+
+### Data Attribute Configuration
+
+When using the IIFE script tag, configure via data attributes:
+
+```html
+<script
+  src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"
+  data-webmcp-allowed-origins="https://trusted-parent.com"
+  data-webmcp-channel-id="my-channel"
+></script>
+```
+
+Or use JSON for advanced configuration:
+
+```html
+<script
+  src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"
+  data-webmcp-options='{"transport":{"iframeServer":{"allowedOrigins":["https://parent.com"]}}}'
+></script>
+```
+
+### Real-World Example: TicTacToe Mini-App
+
+The [TicTacToe example](/mcpui-webmcp-integration#real-world-example-tictactoe-game-with-webmcp) demonstrates dual-server mode in production:
+
+```typescript
+// mini-apps/tictactoe/main.tsx
+import { initializeWebModelContext } from '@mcp-b/global';
+import { TicTacToeWithWebMCP } from './TicTacToeWithWebMCP';
+
+// CRITICAL: Initialize BEFORE rendering React
+initializeWebModelContext({
+  transport: {
+    tabServer: {
+      allowedOrigins: ['*'], // Allow parent to connect
+    },
+    // iframeServer auto-enabled when in iframe
+  },
+});
+
+// Render app
+createRoot(document.getElementById('root')!).render(
+  <TicTacToeWithWebMCP />
+);
+```
+
+The game component registers three tools that become available to both:
+- **Tab clients** (browser extensions in the same window)
+- **Parent page** (chat UI via IframeParentTransport)
+
+See the [complete TicTacToe example](/mcpui-webmcp-integration#real-world-example-tictactoe-game-with-webmcp) for the full implementation.
+
+### Security Best Practices
+
+<Warning>
+**Production Security:**
+- **Never use `allowedOrigins: ['*']` in production** for iframe server
+- Always specify explicit parent origins: `allowedOrigins: ['https://trusted-parent.com']`
+- Tab server can use `['*']` for same-window clients (less risky)
+- Validate all tool inputs regardless of origin
+</Warning>
+
+```typescript
+// ✅ Good - Explicit origins for iframe server
+initializeWebModelContext({
+  transport: {
+    tabServer: {
+      allowedOrigins: ['*'], // OK for same-window
+    },
+    iframeServer: {
+      allowedOrigins: ['https://parent-app.com'], // Explicit for cross-origin
+    },
+  },
+});
+
+// ❌ Bad - Wildcard for iframe server
+initializeWebModelContext({
+  transport: {
+    iframeServer: {
+      allowedOrigins: ['*'], // DANGER: Any parent can connect!
+    },
+  },
+});
+```
+
 ## Feature Detection
 
 Check if the API is available:
@@ -477,7 +726,9 @@ if (window.__mcpBridge) {
 - **Web Model Context API** - Standard `window.navigator.modelContext` interface
 - **Dynamic Tool Registration** - `registerTool()` with `unregister()` function
 - **MCP Bridge** - Automatic bridging to Model Context Protocol
-- **Tab Transport** - Communication layer for browser contexts
+- **Dual-Server Mode** - Tab + Iframe servers sharing the same tool registry
+- **Tab Transport** - Communication layer for same-window contexts
+- **Iframe Transport** - Cross-origin parent-child communication (auto-enabled in iframes)
 - **Event System** - Hybrid tool call handling
 - **TypeScript Types** - Full type definitions included
 
