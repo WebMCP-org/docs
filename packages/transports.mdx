@@ -27,6 +27,10 @@ npm install @mcp-b/transports @modelcontextprotocol/sdk
 
 Use `TabServerTransport` and `TabClientTransport` when your MCP server and client are running in the same browser tab. The transport uses `window.postMessage` for secure communication with origin validation.
 
+### Iframe Transports (Parent-Child Communication)
+
+Use `IframeParentTransport` and `IframeChildTransport` for cross-origin communication between a parent page and an iframe. These transports are specifically designed for iframe scenarios and support cross-origin messaging.
+
 ### Extension Transports (Cross-Context Communication)
 
 Use `ExtensionClientTransport` and `ExtensionServerTransport` for communication between browser extension components (sidebar, popup, background) and web pages with MCP servers.
@@ -112,6 +116,118 @@ await client.connect(transport);
 const result = await client.callTool({
   name: "createTodo",
   arguments: { todoText: "Buy groceries" },
+});
+```
+
+## Iframe Transport Examples
+
+### Server Setup (Inside Iframe)
+
+Create an MCP server inside an iframe that can be accessed by the parent page:
+
+```typescript
+import { IframeChildTransport } from "@mcp-b/transports";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { z } from "zod";
+
+// Create MCP server
+const server = new Server(
+  {
+    name: "IframeApp",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
+
+// Register tools
+server.setRequestHandler('tools/list', async () => {
+  return {
+    tools: [
+      {
+        name: "getIframeData",
+        description: "Get data from the iframe application",
+        inputSchema: {
+          type: "object",
+          properties: {
+            key: { type: "string", description: "Data key to retrieve" }
+          },
+          required: ["key"]
+        }
+      }
+    ]
+  };
+});
+
+server.setRequestHandler('tools/call', async (request) => {
+  if (request.params.name === "getIframeData") {
+    const { key } = request.params.arguments;
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Retrieved: ${key}`,
+        },
+      ],
+    };
+  }
+  throw new Error(`Unknown tool: ${request.params.name}`);
+});
+
+// Connect to iframe transport
+const transport = new IframeChildTransport({
+  allowedOrigins: ["https://parent-app.com"], // Parent page origin
+  // or use ['*'] to allow any origin (less secure)
+});
+
+await server.connect(transport);
+```
+
+### Client Setup (Parent Page)
+
+Connect from the parent page to the iframe's MCP server:
+
+```typescript
+import { IframeParentTransport } from "@mcp-b/transports";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
+// Get reference to iframe element
+const iframe = document.querySelector('iframe');
+
+// Wait for iframe to load
+iframe.addEventListener('load', async () => {
+  // Create transport targeting the iframe
+  const transport = new IframeParentTransport({
+    iframe: iframe,
+    targetOrigin: 'https://iframe-app.com', // Iframe page origin
+  });
+
+  // Create MCP client
+  const client = new Client(
+    {
+      name: "ParentPage",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {}
+    }
+  );
+
+  // Connect and use
+  await client.connect(transport);
+
+  // List available tools from iframe
+  const tools = await client.listTools();
+  console.log("Tools from iframe:", tools.tools);
+
+  // Call a tool from the iframe
+  const result = await client.callTool({
+    name: "getIframeData",
+    arguments: { key: "user-preferences" },
+  });
 });
 ```
 
@@ -269,10 +385,29 @@ const result = await client.callTool({
 |--------|------|----------|-------------|
 | `targetOrigin` | `string` | Yes | Origin of the target window |
 
+### IframeParentTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `iframe` | `HTMLIFrameElement` | Yes | Reference to the iframe element |
+| `targetOrigin` | `string` | Yes | Expected origin of the iframe (for security) |
+| `channelId` | `string` | No | Channel identifier (default: 'mcp-iframe') |
+| `checkReadyRetryMs` | `number` | No | Retry interval for ready handshake in ms (default: 250) |
+
+### IframeChildTransport Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `allowedOrigins` | `string[]` | Yes | Whitelist of parent origins allowed to connect |
+| `channelId` | `string` | No | Channel identifier (default: 'mcp-iframe') |
+| `serverReadyRetryMs` | `number` | No | Retry interval for broadcasting ready signal in ms (default: 250) |
+
 ## Key Features
 
 - **Automatic Server Discovery**: Tab clients can discover available servers
-- **Cross-Origin Support**: Configure CORS for tab transports
+- **Cross-Origin Support**: Configure CORS for tab and iframe transports
+- **Parent-Child Communication**: Iframe transports enable secure cross-origin iframe communication
+- **Ready Handshake Protocol**: Iframe transports handle iframe loading timing issues automatically
 - **Cross-Extension Communication**: Extensions can expose APIs to other extensions
 - **Tool Namespacing**: Extension hub prefixes tools to avoid conflicts
 - **Connection Management**: Automatic cleanup when tabs close
@@ -281,12 +416,16 @@ const result = await client.callTool({
 
 ## Security Considerations
 
-- Tab transports respect origin restrictions
-- Extension transports use Chrome's secure message passing
-- External extension transports require `externally_connectable` manifest configuration
+- **Tab transports** respect origin restrictions
+- **Iframe transports** validate origins on both parent and child sides
+  - Always specify explicit `targetOrigin` (never use `'*'` in production)
+  - Configure `allowedOrigins` to whitelist only trusted parent domains
+  - Use `postMessage` API for secure cross-origin communication
+- **Extension transports** use Chrome's secure message passing
+- **External extension transports** require `externally_connectable` manifest configuration
 - Server extensions should validate incoming connections from other extensions
 - Configure `allowedOrigins` appropriately for your use case
-- Tools execute in their original context (web page or extension)
+- Tools execute in their original context (web page, iframe, or extension)
 
 ## Related Documentation
 
