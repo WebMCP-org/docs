@@ -442,6 +442,297 @@ function ShoppingApp({ mcpResponse }) {
 - You want dedicated channel isolation
 - You need robust iframe loading handling
 
+## Real-World Example: TicTacToe Game with WebMCP
+
+Here's a complete production example from the WebMCP e2e test suite showing how to build an interactive game that works with AI assistants.
+
+### Architecture Overview
+
+1. **MCP Server** returns a UIResource pointing to the game
+2. **Game iframe** registers tools using `useWebMCP` hook
+3. **Chat UI** connects to iframe with `IframeParentTransport`
+4. **AI** can call game tools to play
+
+### Part 1: MCP Server Returns the UI Resource
+
+```typescript
+import { createUIResource } from '@mcp-ui/server';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+export class MyMCP {
+  server = new McpServer({
+    name: 'mcp-ui-webmcp-server',
+    version: '1.0.0',
+  });
+
+  async init() {
+    // Register tool that shows the game
+    this.server.tool(
+      'showTicTacToeGame',
+      `Displays an interactive Tic-Tac-Toe game where you (AI) can play as player O.
+
+After calling this tool, the game UI will appear. The game registers WebMCP tools:
+- tictactoe_get_state: Check current board state and whose turn it is
+- tictactoe_ai_move: Make a move as player O (call this when it's your turn)
+- tictactoe_reset: Start a new game`,
+      {},
+      async () => {
+        const iframeUrl = `${this.env.APP_URL}/mini-apps/tictactoe/`;
+
+        const uiResource = createUIResource({
+          uri: 'ui://tictactoe-game',
+          content: {
+            type: 'externalUrl',
+            iframeUrl: iframeUrl,
+          },
+          encoding: 'blob',
+        });
+
+        return {
+          content: [uiResource],
+        };
+      }
+    );
+  }
+}
+```
+
+### Part 2: Game Iframe Registers WebMCP Tools
+
+**main.tsx** - Initialize WebMCP transport:
+
+```typescript
+import { initializeWebModelContext } from '@mcp-b/global';
+import { createRoot } from 'react-dom/client';
+import { TicTacToeWithWebMCP } from './TicTacToeWithWebMCP';
+
+// CRITICAL: Initialize WebMCP BEFORE rendering React
+initializeWebModelContext({
+  transport: {
+    tabServer: {
+      allowedOrigins: ['*'], // Allow parent to connect
+    },
+  },
+});
+
+createRoot(document.getElementById('root')!).render(
+  <TicTacToeWithWebMCP />
+);
+```
+
+**TicTacToeWithWebMCP.tsx** - Register tools with `useWebMCP`:
+
+```typescript
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useState, useCallback } from 'react';
+import { z } from 'zod';
+
+export const TicTacToeWithWebMCP = () => {
+  const [board, setBoard] = useState(Array(9).fill(null));
+  const [currentPlayer, setCurrentPlayer] = useState<'X' | 'O'>('X');
+  const [winner, setWinner] = useState<'X' | 'O' | 'Draw' | null>(null);
+
+  // Tool 1: Get game state (read-only, idempotent)
+  useWebMCP({
+    name: 'tictactoe_get_state',
+    description: 'Get the current Tic-Tac-Toe state including board layout and game status.',
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
+    handler: async () => {
+      return formatGameStateMarkdown(board, currentPlayer, winner);
+    },
+  });
+
+  // Tool 2: AI makes a move (NOT idempotent)
+  useWebMCP({
+    name: 'tictactoe_ai_move',
+    description: 'Play as player O (AI). Provide a board position (0-8) to place your O.',
+    inputSchema: {
+      position: z
+        .number()
+        .int()
+        .min(0)
+        .max(8)
+        .describe('Cell position (0-8) where AI should move.'),
+    },
+    annotations: {
+      idempotentHint: false, // Making moves changes state!
+    },
+    handler: async ({ position }) => {
+      if (board[position]) {
+        throw new Error(`Cell ${position} is already occupied.`);
+      }
+
+      if (currentPlayer !== 'O') {
+        throw new Error("It's not your turn!");
+      }
+
+      // Make the move
+      const newBoard = [...board];
+      newBoard[position] = 'O';
+      setBoard(newBoard);
+
+      // Evaluate and update state
+      const gameStatus = evaluateBoard(newBoard);
+      setWinner(gameStatus.winner);
+      setCurrentPlayer('X');
+
+      return formatMoveMarkdown('O', position, newBoard, gameStatus);
+    },
+  });
+
+  // Tool 3: Reset game (destructive but idempotent)
+  useWebMCP({
+    name: 'tictactoe_reset',
+    description: 'Reset the board and start a new game.',
+    annotations: {
+      destructiveHint: true,  // Warns: destroys data
+      idempotentHint: true,   // Calling twice = same result
+    },
+    handler: async () => {
+      setBoard(Array(9).fill(null));
+      setWinner(null);
+      setCurrentPlayer('X');
+      return 'Game reset successfully!';
+    },
+  });
+
+  return (
+    <div>
+      <h1>Tic-Tac-Toe</h1>
+      {/* Game UI here */}
+    </div>
+  );
+};
+```
+
+### Part 3: Chat UI Connects to Iframe
+
+```typescript
+import { IframeParentTransport } from '@mcp-b/transports';
+import { UIResourceRenderer } from '@mcp-ui/client';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { useEffect, useRef } from 'react';
+
+function UIResourcePanel({ resource }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    // Unique ID for this iframe instance
+    const sourceId = `webmcp-${resource.uri}`;
+
+    // Wait for iframe to load
+    const handleLoad = async () => {
+      // Create MCP client
+      const client = new Client({
+        name: 'WebMCP Client',
+        version: '1.0.0',
+      });
+
+      // Create iframe parent transport
+      const transport = new IframeParentTransport({
+        targetOrigin: new URL(serverUrl).origin,
+        iframe: iframe,
+      });
+
+      try {
+        // Connect to iframe's MCP server
+        await client.connect(transport);
+
+        // List and register tools from iframe
+        const toolsResponse = await client.listTools();
+        console.log('Discovered tools:', toolsResponse.tools);
+        // Output: [
+        //   { name: 'tictactoe_get_state', ... },
+        //   { name: 'tictactoe_ai_move', ... },
+        //   { name: 'tictactoe_reset', ... }
+        // ]
+
+        // Register with app so AI can call them
+        registerWebMcpTools(toolsResponse.tools, sourceId);
+        registerWebMcpClient(sourceId, client);
+
+        // Listen for dynamic tool changes
+        client.setNotificationHandler('notifications/tools/list_changed', async () => {
+          const updated = await client.listTools();
+          registerWebMcpTools(updated.tools, sourceId);
+        });
+
+        // Cleanup when component unmounts
+        return () => {
+          client.close();
+          transport.close();
+          unregisterWebMcpClient(sourceId);
+        };
+      } catch (error) {
+        console.error('Failed to connect to iframe:', error);
+      }
+    };
+
+    iframe.addEventListener('load', handleLoad);
+    return () => iframe.removeEventListener('load', handleLoad);
+  }, [resource, serverUrl]);
+
+  return (
+    <UIResourceRenderer
+      ref={iframeRef}
+      resource={resource}
+    />
+  );
+}
+```
+
+### Key Implementation Details
+
+**Tool Annotations** provide metadata for better AI interaction:
+- `readOnlyHint`: Tool doesn't modify state (safe to call anytime)
+- `idempotentHint`: Calling multiple times has same effect
+- `destructiveHint`: Operation destroys or significantly modifies data
+
+**Parent-Ready Protocol**: The TicTacToe implementation waits for parent to signal readiness before sending notifications:
+
+```typescript
+useEffect(() => {
+  const handleMessage = (event) => {
+    if (event.data.type === 'parent-ready') {
+      setIsParentReady(true);
+    }
+  };
+
+  window.addEventListener('message', handleMessage);
+  window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+
+  return () => window.removeEventListener('message', handleMessage);
+}, []);
+```
+
+**Notifications**: Games can send updates to the AI:
+
+```typescript
+// Notify parent of game events
+window.parent.postMessage({
+  type: 'notify',
+  payload: {
+    message: '# Move Complete\n\nPlayer O moved to position 4.'
+  }
+}, '*');
+```
+
+### Deployment Architecture
+
+The production setup uses:
+- **Cloudflare Workers** for MCP server (Durable Objects for state)
+- **Vite** for building mini-apps
+- **Static hosting** for game assets
+- **SSE transport** for real-time MCP communication
+
+See the [full example](https://github.com/WebMCP-org/npm-packages/tree/main/e2e/mcp-ui-with-webmcp) in the WebMCP repository.
+
 ## More Examples
 
 ### Analytics Dashboard
