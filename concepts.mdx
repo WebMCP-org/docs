@@ -456,6 +456,393 @@ graph TB
     style G fill:#E74C3C
 ```
 
+## MCP UI + WebMCP: Bidirectional AI Integration
+
+### Overview
+
+**MCP UI + WebMCP** enables a powerful pattern where AI assistants invoke tools that render interactive web applications, and those embedded apps can dynamically register new tools back to the AI in real-time. This creates a bidirectional feedback loop between conversational interfaces and embedded applications.
+
+<Note>
+  This pattern combines **MCP UI resources** (tools that return visual interfaces) with **WebMCP tool registration** (apps registering new tools via `navigator.modelContext`).
+</Note>
+
+### The Core Workflow
+
+```mermaid
+sequenceDiagram
+    participant AI as AI Assistant
+    participant MCP as MCP Server
+    participant Chat as Chat UI
+    participant App as Embedded App
+
+    AI->>MCP: Call tool "showTicTacToeGame"
+    MCP-->>Chat: Return UI resource (iframe URL)
+    Chat->>App: Load iframe & establish transport
+    App->>Chat: Register "tictactoe_move" tool
+    App->>Chat: Register "tictactoe_reset" tool
+    Chat-->>AI: Tools now available
+    AI->>Chat: Call "tictactoe_move" with position
+    Chat->>App: Execute tool via postMessage
+    App-->>Chat: Return game state
+    Chat-->>AI: Tool result with updated state
+```
+
+### Architecture Components
+
+This pattern involves three main components working together:
+
+#### 1. Chat UI (Parent Context)
+
+The parent application that hosts the AI conversation and manages embedded apps:
+
+```mermaid
+graph TB
+    subgraph "Chat UI"
+        A[HTTP MCP Client] -->|Connects to| B[Remote MCP Server]
+        C[WebMCP Manager] -->|Manages| D[Iframe Tools]
+        E[Router] -->|Routes calls| A
+        E -->|Routes calls| C
+        F[Iframe Lifecycle] -->|Establishes| G[IframeParentTransport]
+    end
+
+    style A fill:#4B7BFF
+    style C fill:#50C878
+    style E fill:#FFB84D
+```
+
+**Responsibilities:**
+- Connects to remote MCP servers via HTTP/SSE
+- Manages iframe lifecycle and transport channels
+- Routes tool calls to appropriate clients (HTTP MCP or WebMCP)
+- Displays AI conversation and embedded apps
+
+#### 2. Embedded Apps (Iframe Context)
+
+Mini-applications that run in iframes and register tools dynamically:
+
+```mermaid
+graph TB
+    subgraph "Embedded App (Iframe)"
+        A[React Component] -->|Uses| B[useWebMCP Hook]
+        B -->|Registers via| C[navigator.modelContext]
+        C -->|Polyfilled by| D[MCP-B Core]
+        D -->|Communicates via| E[IframeChildTransport]
+        E <-->|postMessage| F[Parent Window]
+    end
+
+    style A fill:#4B7BFF
+    style B fill:#50C878
+    style D fill:#FFB84D
+```
+
+**Example tool registration:**
+
+```typescript
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function TicTacToeGame() {
+  const [gameState, setGameState] = useState(/* ... */);
+
+  // Register a tool that AI can call
+  useWebMCP({
+    name: "tictactoe_move",
+    description: "Make a move at the specified position (0-8)",
+    schema: z.object({
+      position: z.number().min(0).max(8),
+      player: z.enum(['X', 'O'])
+    }),
+    handler: async ({ position, player }) => {
+      // Update game state
+      const newState = makeMove(gameState, position, player);
+      setGameState(newState);
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: true,
+            board: newState.board,
+            winner: newState.winner
+          })
+        }]
+      };
+    }
+  });
+
+  return <div>{/* Game UI */}</div>;
+}
+```
+
+#### 3. MCP Server
+
+Remote server that exposes initial tools returning UI resources:
+
+```typescript
+// MCP server tool that returns an iframe
+server.registerTool({
+  name: "showTicTacToeGame",
+  description: "Display an interactive TicTacToe game",
+  inputSchema: { type: "object", properties: {} },
+  handler: async () => {
+    return {
+      toolResult: {
+        content: [{
+          type: "resource",
+          resource: {
+            uri: "ui://tictactoe",
+            mimeType: "text/html",
+            metadata: {
+              uiType: "externalUrl",
+              url: "https://example.com/games/tictactoe"
+            }
+          }
+        }]
+      }
+    };
+  }
+});
+```
+
+### Communication Flow
+
+```mermaid
+sequenceDiagram
+    participant A as AI Assistant
+    participant C as Chat UI
+    participant M as MCP Server
+    participant I as Iframe App
+
+    Note over A,I: Initial Tool Call
+    A->>C: Call "showTicTacToeGame"
+    C->>M: Forward via HTTP MCP
+    M-->>C: Return UI resource
+    C->>I: Render iframe with URL
+
+    Note over C,I: WebMCP Transport Setup
+    I->>C: postMessage: "mcp-init"
+    C-->>I: postMessage: "mcp-init-ack"
+
+    Note over I,A: Dynamic Tool Registration
+    I->>C: Register "tictactoe_move" via postMessage
+    I->>C: Register "tictactoe_reset" via postMessage
+    C-->>A: Update available tools
+
+    Note over A,I: Tool Execution
+    A->>C: Call "tictactoe_move"
+    C->>I: postMessage with tool call
+    I->>I: Execute handler
+    I-->>C: postMessage with result
+    C-->>A: Return tool result
+```
+
+### MCP UI Resource Types
+
+The MCP server can return three types of UI resources:
+
+<AccordionGroup>
+  <Accordion title="externalUrl - Iframe Embedding">
+    Load a complete web application in an iframe:
+
+    ```javascript
+    {
+      type: "resource",
+      resource: {
+        uri: "ui://myapp",
+        mimeType: "text/html",
+        metadata: {
+          uiType: "externalUrl",
+          url: "https://example.com/app",
+          // Optional iframe attributes
+          sandbox: "allow-scripts allow-same-origin",
+          allow: "camera; microphone"
+        }
+      }
+    }
+    ```
+
+    **Best for:** Full-featured applications, existing web apps, complex interactions
+  </Accordion>
+
+  <Accordion title="rawHtml - Sanitized Markup">
+    Inject sanitized HTML directly into the page:
+
+    ```javascript
+    {
+      type: "resource",
+      resource: {
+        uri: "ui://widget",
+        mimeType: "text/html",
+        metadata: {
+          uiType: "rawHtml",
+          html: "<div class='widget'>Content</div>",
+          css: ".widget { color: blue; }"
+        }
+      }
+    }
+    ```
+
+    **Best for:** Simple widgets, static content, lightweight components
+  </Accordion>
+
+  <Accordion title="remoteDom - Dynamic Content">
+    Stream dynamic DOM updates to the parent:
+
+    ```javascript
+    {
+      type: "resource",
+      resource: {
+        uri: "ui://dynamic",
+        mimeType: "text/html",
+        metadata: {
+          uiType: "remoteDom",
+          initialHtml: "<div id='root'></div>",
+          updateChannel: "wss://example.com/updates"
+        }
+      }
+    }
+    ```
+
+    **Best for:** Real-time updates, streaming data, live visualizations
+  </Accordion>
+</AccordionGroup>
+
+### WebMCP vs MCP-B
+
+It's important to understand the distinction:
+
+- **WebMCP**: The W3C standard specification defining `navigator.modelContext` API
+- **MCP-B**: Reference implementation providing polyfills and npm packages before native browser support
+
+The MCP-B packages (`@mcp-b/react-webmcp`, `@mcp-b/transports`, `@mcp-b/core`) enable WebMCP functionality today by:
+1. Polyfilling `navigator.modelContext` for current browsers
+2. Providing transport layers (iframe, tab, extension)
+3. Bridging between WebMCP and MCP protocols
+
+### Getting Started
+
+#### Quick Start with Scaffolding
+
+Create a new bidirectional MCP UI + WebMCP project:
+
+```bash
+npx create-webmcp-app
+cd your-project
+pnpm install
+pnpm dev
+```
+
+Choose between:
+- **Vanilla template**: HTML/CSS/JS with no build step
+- **React template**: TypeScript + Vite + React 19
+
+#### Repository & Examples
+
+<CardGroup cols={2}>
+  <Card title="MCP UI WebMCP Repository" icon="github" href="https://github.com/WebMCP-org/mcp-ui-webmcp">
+    Source code, templates, and comprehensive examples
+  </Card>
+
+  <Card title="Live Demo: Chat UI" icon="globe" href="https://mcp-ui.mcp-b.ai">
+    Interactive chat interface with embedded MCP UI apps
+  </Card>
+
+  <Card title="Live Demo: Full App" icon="rocket" href="https://beattheclankers.com">
+    Complete example showcasing bidirectional integration
+  </Card>
+
+  <Card title="Create WebMCP App" icon="terminal" href="https://www.npmjs.com/package/create-webmcp-app">
+    CLI tool for scaffolding new projects
+  </Card>
+</CardGroup>
+
+### Use Cases
+
+This pattern is ideal for:
+
+- **Interactive Games**: AI plays games by calling dynamically registered moves
+- **Data Visualization**: Charts and graphs that expose filtering/manipulation tools
+- **Form Builders**: Dynamic forms that register validation and submission tools
+- **Collaboration Tools**: Whiteboards, document editors with AI-accessible operations
+- **Configuration UIs**: Settings panels that expose configuration tools to AI
+
+### Key Benefits
+
+<AccordionGroup>
+  <Accordion title="Dynamic Tool Discovery">
+    Tools are registered based on app state, user context, or loaded features. The AI automatically discovers new capabilities as they become available.
+  </Accordion>
+
+  <Accordion title="Separation of Concerns">
+    UI logic stays in the embedded app, while the parent manages the conversation. Each component has clear responsibilities.
+  </Accordion>
+
+  <Accordion title="Reusable Components">
+    Apps can be embedded in multiple contexts (chat UIs, extensions, native apps) without modification.
+  </Accordion>
+
+  <Accordion title="Security Isolation">
+    Iframes provide security boundaries while postMessage enables controlled communication.
+  </Accordion>
+
+  <Accordion title="Progressive Enhancement">
+    Apps work as standalone web pages and gain AI capabilities when embedded in supporting contexts.
+  </Accordion>
+</AccordionGroup>
+
+### Best Practices
+
+When building MCP UI + WebMCP applications:
+
+<AccordionGroup>
+  <Accordion title="Keep iframes lightweight">
+    - Minimize bundle size for fast loading
+    - Use code splitting for large applications
+    - Lazy load features as needed
+  </Accordion>
+
+  <Accordion title="Handle transport failures gracefully">
+    - Detect when MCP-B transport is unavailable
+    - Provide fallback UI for standalone usage
+    - Show connection status to users
+  </Accordion>
+
+  <Accordion title="Design tools for AI consumption">
+    - Use clear, descriptive tool names and descriptions
+    - Return structured data (JSON) in tool results
+    - Include success/error states in responses
+  </Accordion>
+
+  <Accordion title="Manage tool lifecycle carefully">
+    - Register tools when features are available
+    - Unregister tools when features are removed
+    - Use React hooks (useWebMCP) for automatic cleanup
+  </Accordion>
+
+  <Accordion title="Test both standalone and embedded modes">
+    - Ensure apps work without MCP-B polyfill
+    - Test iframe communication in different browsers
+    - Verify tool calls work end-to-end
+  </Accordion>
+</AccordionGroup>
+
+### Technical Requirements
+
+**Minimum versions:**
+- Node.js 24.3.0+
+- pnpm 10.14.0+
+
+**Key dependencies:**
+- `@mcp-b/react-webmcp` - React hooks for WebMCP
+- `@mcp-b/transports` - Iframe transport implementation
+- `@mcp-b/core` - Core WebMCP polyfill
+- `@modelcontextprotocol/sdk` - MCP protocol implementation
+
+**Deployment targets:**
+- Cloudflare Workers (MCP server)
+- Cloudflare Pages (Chat UI)
+- Any static hosting (embedded apps)
+
 ## Tool Schema & Validation
 
 ### Input Schema (JSON Schema)
