@@ -17,7 +17,7 @@ Browser-specific MCP `Transport` implementations enabling communication between 
 
 ## Installation
 
-```bash
+```bash icon="npm"
 npm install @mcp-b/transports @modelcontextprotocol/sdk
 ```
 
@@ -41,7 +41,7 @@ Use `ExtensionClientTransport` and `ExtensionServerTransport` for communication 
 
 Create an MCP server in your web page and expose it via `TabServerTransport`:
 
-```typescript
+```typescript "server.ts - Tab server setup" twoslash lines icon="server" expandable highlight={36-39}
 import { TabServerTransport } from "@mcp-b/transports";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -89,7 +89,7 @@ await server.connect(transport);
 
 Connect to the server from within the same page or from an extension content script:
 
-```typescript
+```typescript "client.ts - Tab client setup" twoslash lines icon="plug" highlight={5-7,10-13,20-23}
 import { TabClientTransport } from "@mcp-b/transports";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
@@ -125,7 +125,7 @@ const result = await client.callTool({
 
 Create an MCP server inside an iframe that can be accessed by the parent page:
 
-```typescript
+```typescript "iframe-server.ts - Iframe child setup" twoslash lines icon="window" expandable highlight={52-56}
 import { IframeChildTransport } from "@mcp-b/transports";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
@@ -190,7 +190,7 @@ await server.connect(transport);
 
 Connect from the parent page to the iframe's MCP server:
 
-```typescript
+```typescript "parent-client.ts - Iframe parent setup" twoslash lines icon="window-maximize" expandable highlight={9-13,26-31}
 import { IframeParentTransport } from "@mcp-b/transports";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
@@ -237,7 +237,7 @@ iframe.addEventListener('load', async () => {
 
 The extension background script acts as a hub, aggregating tools from multiple tabs:
 
-```typescript
+```typescript "background.ts - Extension hub" twoslash lines icon="layer-group" expandable highlight={16-23,26-31}
 import { ExtensionServerTransport } from "@mcp-b/transports";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -277,7 +277,7 @@ class McpHub {
 
 Content scripts act as a bridge between the page's MCP server and the extension:
 
-```typescript
+```typescript "content-script.ts - Bridge to background" twoslash lines icon="bridge" expandable highlight={5-7,14-17,20-23,30-42}
 import { TabClientTransport } from "@mcp-b/transports";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
@@ -327,7 +327,7 @@ backgroundPort.onMessage.addListener(async (message) => {
 
 Connect from the extension's sidebar or popup to use tools from all connected pages:
 
-```typescript
+```typescript "sidepanel.ts - Extension UI" twoslash lines icon="sidebar" highlight={5-7,15-17,20-24}
 import { ExtensionClientTransport } from "@mcp-b/transports";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
