@@ -156,18 +156,7 @@ registration.unregister();
 </Accordion>
 
 <Accordion title="Implementation Detail: Two-Bucket Tool Management">
-  This package uses a **two-bucket system** internally:
-
-  - **Bucket A (Base Tools)**: Set via `provideContext()` - replaced each time you call it
-  - **Bucket B (Dynamic Tools)**: Added via `registerTool()` - persist independently
-
-  **Key behaviors:**
-  - ✅ `registerTool()` tools persist across `provideContext()` calls
-  - ✅ Each `registerTool()` returns an `unregister()` function
-  - ✅ Tool name collisions throw an error
-  - ✅ Perfect for component-scoped tools in React/Vue
-
-  **In practice:** Just use `registerTool()` and you don't need to worry about this!
+  WebMCP uses a two-bucket system: base tools (via `provideContext()`) and dynamic tools (via `registerTool()`). Dynamic tools persist independently, making them perfect for component lifecycle management. See [Core Concepts](/concepts#tool-registration) for details.
 </Accordion>
 
 ## API Reference
@@ -286,79 +275,31 @@ Tools must return an object with:
 
 ## Complete Examples
 
-### Todo List Application
+### Simple Todo Example
 
 ```javascript
 let todos = [];
 
-window.navigator.modelContext.provideContext({
-  tools: [
-    {
-      name: "add-todo",
-      description: "Add a new todo item",
-      inputSchema: {
-        type: "object",
-        properties: {
-          text: { type: "string", description: "Todo text" }
-        },
-        required: ["text"]
-      },
-      async execute({ text }) {
-        const todo = { id: Date.now(), text, done: false };
-        todos.push(todo);
-        updateUI();
-        return {
-          content: [{ type: "text", text: `Added: "${text}"` }]
-        };
-      }
+navigator.modelContext.registerTool({
+  name: "add-todo",
+  description: "Add a new todo item",
+  inputSchema: {
+    type: "object",
+    properties: {
+      text: { type: "string" }
     },
-    {
-      name: "list-todos",
-      description: "Get all todo items",
-      inputSchema: { type: "object", properties: {} },
-      async execute() {
-        const list = todos.map(t =>
-          `${t.done ? '✓' : '○'} ${t.text}`
-        ).join('\n');
-        return {
-          content: [{ type: "text", text: list || "No todos" }]
-        };
-      }
-    },
-    {
-      name: "complete-todo",
-      description: "Mark a todo as complete",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: { type: "number", description: "Todo ID" }
-        },
-        required: ["id"]
-      },
-      async execute({ id }) {
-        const todo = todos.find(t => t.id === id);
-        if (!todo) {
-          return {
-            content: [{ type: "text", text: "Todo not found" }],
-            isError: true
-          };
-        }
-        todo.done = true;
-        updateUI();
-        return {
-          content: [{ type: "text", text: `Completed: "${todo.text}"` }]
-        };
-      }
-    }
-  ]
+    required: ["text"]
+  },
+  async execute({ text }) {
+    todos.push({ id: Date.now(), text, done: false });
+    return {
+      content: [{ type: "text", text: `Added: "${text}"` }]
+    };
+  }
 });
-
-function updateUI() {
-  // Update your UI
-  document.getElementById('todo-list').innerHTML =
-    todos.map(t => `<li>${t.done ? '✓' : ''} ${t.text}</li>`).join('');
-}
 ```
+
+For more examples, see the [Examples page](/examples).
 
 ### Dynamic Tool Registration (Component Lifecycle)
 
@@ -392,40 +333,26 @@ function MyComponent() {
 }
 ```
 
-### Persistence Across provideContext() Calls
+### Tool Persistence Example
 
 ```javascript
-// Step 1: Register base tools (Bucket A)
-window.navigator.modelContext.provideContext({
-  tools: [
-    { name: "base-tool-1", description: "Base tool", inputSchema: {}, async execute() {} }
-  ]
+// Base tools via provideContext()
+navigator.modelContext.provideContext({
+  tools: [{ name: "app-info", description: "App info", inputSchema: {}, async execute() {} }]
 });
-// Tools: ["base-tool-1"]
 
-// Step 2: Register dynamic tool (Bucket B)
-const reg = window.navigator.modelContext.registerTool({
-  name: "dynamic-tool",
-  description: "Dynamic tool",
+// Dynamic tool via registerTool() - persists independently
+const reg = navigator.modelContext.registerTool({
+  name: "component-action",
+  description: "Component action",
   inputSchema: { type: "object", properties: {} },
   async execute() {
-    return { content: [{ type: "text", text: "Dynamic!" }] };
+    return { content: [{ type: "text", text: "Done!" }] };
   }
 });
-// Tools: ["base-tool-1", "dynamic-tool"]
 
-// Step 3: Update base tools via provideContext
-window.navigator.modelContext.provideContext({
-  tools: [
-    { name: "base-tool-2", description: "New base tool", inputSchema: {}, async execute() {} }
-  ]
-});
-// Tools: ["base-tool-2", "dynamic-tool"]
-// ✅ "dynamic-tool" persists! Only "base-tool-1" was cleared
-
-// Step 4: Clean up dynamic tool
+// Later: unregister when no longer needed
 reg.unregister();
-// Tools: ["base-tool-2"]
 ```
 
 ## Event-Based Tool Calls (Advanced)
@@ -785,12 +712,15 @@ Always validate inputs in your tool implementations:
   <Card title="Security Guide" icon="shield-halved" href="/security">
     Tool security best practices
   </Card>
-</CardGroup>
 
-**See also:**
-- [Quick Start](/quickstart) - Get started guide
-- [Examples](/examples) - Working implementations
-- [Glossary](/glossary) - API terminology reference
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started guide
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    Working implementations
+  </Card>
+</CardGroup>
 
 ## External Resources
 

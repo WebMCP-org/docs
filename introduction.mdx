@@ -46,12 +46,11 @@ These use cases are explicitly out of scope for WebMCP and should use other solu
 
 ### Key Terms
 
-- **WebMCP**: The W3C Web Model Context API standard - defines how websites expose tools to AI agents in browsers. While related to MCP, WebMCP will diverge as a web-native standard with its own evolution path. [View the W3C specification](https://github.com/webmachinelearning/webmcp).
-- **MCP (Model Context Protocol)**: Anthropic's [open standard](https://modelcontextprotocol.io) for connecting AI systems to external tools and data sources. The original protocol that inspired WebMCP.
-- **MCP-B**: The reference implementation and tooling ecosystem for WebMCP. These packages serve dual purposes:
-  1. **Polyfill** the W3C WebMCP API (`navigator.modelContext`) for current browsers
-  2. **Translation layer** between WebMCP and official MCP, so tools declared in either format work with both protocols
-- **MCP-B Extension**: Browser extension for building, testing, and using WebMCP servers. Collects tools from all open tabs and lets you inject custom servers via userscript.
+For detailed terminology, see the [Glossary](/glossary). Key concepts:
+
+- **WebMCP**: W3C Web Model Context API standard for exposing website tools to AI agents
+- **MCP-B**: Reference implementation that polyfills `navigator.modelContext` and bridges WebMCP with MCP
+- **MCP-B Extension**: Browser extension for building, testing, and using WebMCP servers
 
 <CardGroup cols={2}>
   <Card
@@ -278,9 +277,6 @@ WebMCP builds on the Model Context Protocol (MCP), adapting it for the web platf
   </Card>
 </CardGroup>
 
-<Info>
-**New to MCP?** The Model Context Protocol is Anthropic's open standard for connecting AI assistants to external tools and data. WebMCP is the W3C's web-native adaptation of these concepts, with MCP-B packages providing both the polyfill and translation layer between the two standards.
-</Info>
 
 ## Related Resources
 
