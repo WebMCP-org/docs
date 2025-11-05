@@ -2,17 +2,18 @@
 title: 'Changelog'
 description: 'Version history and breaking changes for WebMCP packages'
 icon: 'clock-rotate-left'
+rss: true
 ---
 
-## Version 1.0.0 - January 2025
+<Update label="January 2025" description="v1.0.0" tags={["Breaking Changes", "Major Release"]}>
 
 <Warning>
   **Breaking Changes**: Version 1.0.0 introduces breaking changes. Please review the migration guide below before upgrading.
 </Warning>
 
-### Major Changes
+## Major Changes
 
-#### Package Renaming
+### Package Renaming
 
 Several packages have been renamed for clarity and consistency:
 
@@ -21,7 +22,7 @@ Several packages have been renamed for clarity and consistency:
 | `@mcp-b/mcp-react-hooks` | `@mcp-b/react-webmcp` | Update import statements |
 | `useMcpServer()` hook | `useWebMCP()` | Replace hook calls |
 
-#### API Changes
+### API Changes
 
 **@mcp-b/react-webmcp**
 
@@ -50,7 +51,7 @@ useWebMCP({
 // Auto-registers and cleans up
 ```
 
-#### navigator.modelContext API
+### navigator.modelContext API
 
 Version 1.0.0 aligns with the W3C Web Model Context API proposal:
 
@@ -58,37 +59,37 @@ Version 1.0.0 aligns with the W3C Web Model Context API proposal:
 - `provideContext()` only for base tools (replaces all base tools)
 - Two-bucket tool management system introduced
 
-### New Features
+## New Features
 
-#### @mcp-b/global
+### @mcp-b/global
 
 - ✨ Two-bucket tool management (base vs dynamic tools)
 - ✨ IIFE build for CDN usage (no build step required)
 - ✨ Event-based tool call handling
 - ✨ Improved TypeScript types
 
-#### @mcp-b/react-webmcp
+### @mcp-b/react-webmcp
 
 - ✨ `useWebMCP()` hook with automatic lifecycle management
 - ✨ `useWebMCPContext()` for read-only tools
 - ✨ Execution state tracking (`isExecuting`, `lastResult`, `error`)
 - ✨ `McpClientProvider` and `useMcpClient()` for consuming tools
 
-#### @mcp-b/transports
+### @mcp-b/transports
 
 - ✨ Enhanced origin validation
 - ✨ Keep-alive support for extension transports
 - ✨ Server discovery for tab clients
 - ✨ Cross-extension communication support
 
-#### @mcp-b/extension-tools
+### @mcp-b/extension-tools
 
 - ✨ 62+ Chrome Extension API wrappers
 - ✨ Comprehensive TypeScript definitions
 - ✨ Zod-based validation
 - ✨ Manifest V3 compatible
 
-### Migration Guide
+## Migration Guide
 
 <Steps>
   <Step title="Update package names">
@@ -158,7 +159,7 @@ Version 1.0.0 aligns with the W3C Web Model Context API proposal:
   </Step>
 </Steps>
 
-### Bug Fixes
+## Bug Fixes
 
 - Fixed tool name collision errors
 - Improved error messages for schema validation
@@ -166,29 +167,31 @@ Version 1.0.0 aligns with the W3C Web Model Context API proposal:
 - Corrected TypeScript definitions for transport options
 - Fixed race condition in extension port connections
 
-### Performance Improvements
+## Performance Improvements
 
 - Reduced bundle size by 30%
 - Optimized tool registration performance
 - Improved transport message handling
 - Better memory management in long-running sessions
 
----
+</Update>
 
-## Version 0.9.x - December 2024
+<Update label="December 2024" description="v0.9.x" tags={["Minor Releases"]}>
 
-### 0.9.5
+## Version 0.9.5
 
 - Added experimental React hooks package
 - Improved documentation
 - Bug fixes for transport disconnections
 
-### 0.9.0
+## Version 0.9.0
 
 - Initial public release
 - Basic MCP support for web browsers
 - Tab transport implementation
 - Extension transport for Chrome extensions
+
+</Update>
 
 ---
 
