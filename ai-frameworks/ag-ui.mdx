@@ -1,0 +1,385 @@
+---
+title: 'AG-UI Integration'
+description: 'Integrate WebMCP tools with AG-UI agentic framework'
+icon: 'sparkles'
+---
+
+## Overview
+
+[AG-UI](https://docs.ag-ui.com/concepts/tools#frontend-defined-tools) is an agentic UI framework that supports frontend-defined tools, making it a natural fit for WebMCP integration.
+
+## Prerequisites
+
+<Steps>
+  <Step title="Complete basic setup">
+    Follow the [Setup Guide](/ai-frameworks/setup) to install packages and configure MCP client
+  </Step>
+
+  <Step title="Install AG-UI">
+    ```bash
+    npm install @ag-ui/core
+    ```
+  </Step>
+
+  <Step title="Have AG-UI configured">
+    Ensure you have AG-UI set up in your application
+  </Step>
+</Steps>
+
+## Integration Example
+
+### Step 1: Register WebMCP Tools
+
+Register tools using the `useWebMCP` hook:
+
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function ShoppingFeatures() {
+  // Register cart tool
+  useWebMCP({
+    name: 'add_to_cart',
+    description: 'Add a product to the shopping cart',
+    inputSchema: {
+      productId: z.string(),
+      quantity: z.number().min(1).default(1)
+    },
+    handler: async (input) => {
+      const result = await addToCart(input.productId, input.quantity);
+      return {
+        success: true,
+        cartTotal: result.total,
+        itemCount: result.items.length
+      };
+    }
+  });
+
+  // Register search tool
+  useWebMCP({
+    name: 'search_products',
+    description: 'Search for products',
+    inputSchema: {
+      query: z.string(),
+      limit: z.number().min(1).max(50).default(10)
+    },
+    handler: async (input) => {
+      const results = await searchProducts(input.query, input.limit);
+      return { results, count: results.length };
+    }
+  });
+
+  return null;
+}
+```
+
+### Step 2: Connect MCP Tools to AG-UI
+
+Create an AG agent that uses your MCP tools:
+
+```tsx
+import { useMemo } from 'react';
+import { useMcpClient } from '@mcp-b/react-webmcp';
+import { createAgent } from '@ag-ui/core';
+
+function MyAGAssistant() {
+  const { client, tools, isConnected } = useMcpClient();
+
+  const agent = useMemo(() => {
+    if (!isConnected || tools.length === 0) return null;
+
+    return createAgent({
+      tools: tools.map(mcpTool => ({
+        name: mcpTool.name,
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema,
+        execute: async (args) => {
+          const result = await client.callTool({
+            name: mcpTool.name,
+            arguments: args
+          });
+
+          return result.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('\n');
+        }
+      }))
+    });
+  }, [client, tools, isConnected]);
+
+  return agent;
+}
+```
+
+### Step 3: Complete Integration
+
+Put it all together in your application:
+
+```tsx
+import { McpClientProvider, useMcpClient, useWebMCP } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { createAgent } from '@ag-ui/core';
+import { useMemo, useState } from 'react';
+import { z } from 'zod';
+
+// Create client and transport
+const client = new Client({
+  name: 'MyAGApp',
+  version: '1.0.0'
+});
+
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'my-ag-app'
+});
+
+// Main app
+export function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <ShoppingAssistant />
+    </McpClientProvider>
+  );
+}
+
+// Tool provider
+function ToolProvider() {
+  useWebMCP({
+    name: 'add_to_cart',
+    description: 'Add a product to cart',
+    inputSchema: {
+      productId: z.string(),
+      quantity: z.number().min(1)
+    },
+    handler: async (input) => {
+      await addToCart(input.productId, input.quantity);
+      return { success: true };
+    }
+  });
+
+  return null;
+}
+
+// AG-UI assistant
+function ShoppingAssistant() {
+  const { client, tools, isConnected, isLoading } = useMcpClient();
+
+  const agent = useMemo(() => {
+    if (!isConnected || tools.length === 0) return null;
+
+    return createAgent({
+      tools: tools.map(mcpTool => ({
+        name: mcpTool.name,
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema,
+        execute: async (args) => {
+          const result = await client.callTool({
+            name: mcpTool.name,
+            arguments: args
+          });
+
+          return result.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('\n');
+        }
+      }))
+    });
+  }, [client, tools, isConnected]);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!isConnected) return <div>Not connected</div>;
+  if (!agent) return <div>Initializing agent...</div>;
+
+  return (
+    <div>
+      <ToolProvider />
+      {/* Your AG-UI components here */}
+    </div>
+  );
+}
+```
+
+## Full Working Example
+
+Here's a complete example with multiple tools and AG-UI integration:
+
+```tsx
+import { useMemo, useState } from 'react';
+import { McpClientProvider, useMcpClient, useWebMCP } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { createAgent } from '@ag-ui/core';
+import { z } from 'zod';
+
+const client = new Client({
+  name: 'ShoppingAGApp',
+  version: '1.0.0'
+});
+
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'shopping-ag-app'
+});
+
+export function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <ShoppingAssistant />
+    </McpClientProvider>
+  );
+}
+
+function ShoppingTools() {
+  const [cart, setCart] = useState([]);
+
+  useWebMCP({
+    name: 'add_to_cart',
+    description: 'Add a product to the shopping cart',
+    inputSchema: {
+      productId: z.string(),
+      quantity: z.number().min(1)
+    },
+    handler: async (input) => {
+      const newCart = [...cart, { ...input }];
+      setCart(newCart);
+      return {
+        success: true,
+        itemCount: newCart.length,
+        message: `Added ${input.quantity}x ${input.productId}`
+      };
+    }
+  });
+
+  useWebMCP({
+    name: 'view_cart',
+    description: 'View the shopping cart contents',
+    inputSchema: {},
+    handler: async () => {
+      return {
+        items: cart,
+        count: cart.length,
+        total: cart.reduce((sum, item) => sum + item.quantity, 0)
+      };
+    }
+  });
+
+  useWebMCP({
+    name: 'clear_cart',
+    description: 'Clear all items from the cart',
+    inputSchema: {},
+    handler: async () => {
+      setCart([]);
+      return { success: true, message: 'Cart cleared' };
+    }
+  });
+
+  return null;
+}
+
+function ShoppingAssistant() {
+  const { client, tools, isConnected, isLoading } = useMcpClient();
+
+  const agent = useMemo(() => {
+    if (!isConnected || tools.length === 0) return null;
+
+    return createAgent({
+      name: 'ShoppingAssistant',
+      description: 'Helps users shop and manage their cart',
+      tools: tools.map(mcpTool => ({
+        name: mcpTool.name,
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema,
+        execute: async (args) => {
+          const result = await client.callTool({
+            name: mcpTool.name,
+            arguments: args
+          });
+
+          return result.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('\n');
+        }
+      }))
+    });
+  }, [client, tools, isConnected]);
+
+  if (isLoading) {
+    return <div>Connecting to tools...</div>;
+  }
+
+  if (!isConnected) {
+    return <div>Failed to connect to WebMCP</div>;
+  }
+
+  if (!agent) {
+    return <div>Setting up agent...</div>;
+  }
+
+  return (
+    <div>
+      <ShoppingTools />
+      <h1>Shopping Assistant</h1>
+      <p>Agent ready with {tools.length} tools</p>
+      {/* Your AG-UI chat interface here */}
+    </div>
+  );
+}
+```
+
+## Key Concepts
+
+### Tool Mapping
+
+MCP tools map directly to AG-UI's tool format:
+
+```typescript
+// MCP Tool → AG-UI Tool
+{
+  name: mcpTool.name,
+  description: mcpTool.description,
+  parameters: mcpTool.inputSchema,
+  execute: async (args) => {
+    // Call through MCP client
+    const result = await client.callTool({
+      name: mcpTool.name,
+      arguments: args
+    });
+    return formatResult(result);
+  }
+}
+```
+
+### Agent Creation
+
+Use `useMemo` to create the agent only when tools change:
+
+```typescript
+const agent = useMemo(() => {
+  if (!isConnected || tools.length === 0) return null;
+  return createAgent({ tools: convertedTools });
+}, [client, tools, isConnected]);
+```
+
+This ensures the agent updates when new tools are registered.
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="AG-UI Docs" icon="book" href="https://docs.ag-ui.com/concepts/tools#frontend-defined-tools">
+    Official AG-UI documentation
+  </Card>
+
+  <Card title="Best Practices" icon="stars" href="/ai-frameworks/best-practices">
+    Learn optimization patterns
+  </Card>
+
+  <Card title="React Hooks" icon="react" href="/packages/react-webmcp">
+    Complete React WebMCP API reference
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    See complete working examples
+  </Card>
+</CardGroup>

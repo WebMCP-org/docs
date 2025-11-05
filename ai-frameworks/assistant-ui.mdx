@@ -1,0 +1,337 @@
+---
+title: 'Assistant-UI Integration'
+description: 'Integrate WebMCP tools with Assistant-UI React framework'
+icon: 'robot'
+---
+
+## Overview
+
+[Assistant-UI](https://www.assistant-ui.com/docs/copilots/model-context) is a React framework for building AI assistants with built-in support for tool calling and Model Context Protocol.
+
+## Prerequisites
+
+<Steps>
+  <Step title="Complete basic setup">
+    Follow the [Setup Guide](/ai-frameworks/setup) to install packages and configure MCP client
+  </Step>
+
+  <Step title="Install Assistant-UI">
+    ```bash
+    npm install @assistant-ui/react
+    ```
+  </Step>
+
+  <Step title="Have Assistant-UI configured">
+    Ensure you have Assistant-UI runtime set up in your application
+  </Step>
+</Steps>
+
+## Integration Example
+
+### Step 1: Register WebMCP Tools
+
+Register tools using the `useWebMCP` hook:
+
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function ToolProvider() {
+  const [counter, setCounter] = useState(0);
+
+  // Register a tool
+  useWebMCP({
+    name: 'get_user_info',
+    description: 'Get current user information',
+    inputSchema: {},
+    handler: async () => {
+      const user = getCurrentUser(); // Your app logic
+      return { user };
+    }
+  });
+
+  // Register a counter tool
+  useWebMCP({
+    name: 'increment_counter',
+    description: 'Increment the counter',
+    inputSchema: {
+      amount: z.number().min(1).default(1)
+    },
+    handler: async (input) => {
+      setCounter(prev => prev + input.amount);
+      return { counter: counter + input.amount };
+    }
+  });
+
+  return null; // This component just registers tools
+}
+```
+
+### Step 2: Connect MCP Tools to Assistant-UI
+
+Create a hook to bridge MCP tools to Assistant-UI:
+
+```tsx
+import { useEffect } from 'react';
+import { useMcpClient } from '@mcp-b/react-webmcp';
+import { tool, useAssistantRuntime } from '@assistant-ui/react';
+
+function useWebMCPTools() {
+  const { client, tools, isConnected } = useMcpClient();
+  const runtime = useAssistantRuntime();
+
+  useEffect(() => {
+    if (!isConnected || tools.length === 0) return;
+
+    // Convert MCP tools to Assistant-UI format
+    const assistantTools = tools.map(mcpTool =>
+      tool({
+        type: 'frontend',
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema,
+        execute: async (args) => {
+          // Call through MCP client
+          const result = await client.callTool({
+            name: mcpTool.name,
+            arguments: args
+          });
+
+          // Return text content
+          return result.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('\n');
+        }
+      })
+    );
+
+    // Register with Assistant-UI runtime
+    const unregister = runtime.registerModelContextProvider({
+      getModelContext: () => ({
+        tools: Object.fromEntries(
+          tools.map((t, i) => [t.name, assistantTools[i]])
+        )
+      })
+    });
+
+    return () => unregister();
+  }, [client, tools, isConnected, runtime]);
+}
+```
+
+### Step 3: Complete Integration
+
+Put it all together in your application:
+
+```tsx
+import { McpClientProvider, useMcpClient } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+
+// Create client and transport outside component
+const client = new Client({
+  name: 'MyAssistant',
+  version: '1.0.0'
+});
+
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'my-assistant'
+});
+
+// Main app with provider
+export function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <MyAIAssistant />
+    </McpClientProvider>
+  );
+}
+
+// AI Assistant component
+function MyAIAssistant() {
+  const { tools, isConnected, isLoading } = useMcpClient();
+
+  // Bridge MCP tools to Assistant-UI
+  useWebMCPTools();
+
+  if (isLoading) return <div>Connecting to WebMCP...</div>;
+  if (!isConnected) return <div>Not connected</div>;
+
+  return (
+    <div>
+      <ToolProvider />
+      <p>Available tools: {tools.length}</p>
+      {/* Your Assistant-UI chat component here */}
+    </div>
+  );
+}
+```
+
+## Full Working Example
+
+Here's a complete example showing tool registration and Assistant-UI integration:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { McpClientProvider, useMcpClient, useWebMCP } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { tool, useAssistantRuntime } from '@assistant-ui/react';
+import { z } from 'zod';
+
+// Create client and transport
+const client = new Client({
+  name: 'MyAssistant',
+  version: '1.0.0'
+});
+
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'my-assistant'
+});
+
+// Main app with provider
+export function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <MyAIAssistant />
+    </McpClientProvider>
+  );
+}
+
+// Tool provider component
+function ToolProvider() {
+  const [counter, setCounter] = useState(0);
+
+  useWebMCP({
+    name: 'get_user_info',
+    description: 'Get current user information',
+    inputSchema: {},
+    handler: async () => {
+      const user = getCurrentUser();
+      return { user };
+    }
+  });
+
+  useWebMCP({
+    name: 'increment_counter',
+    description: 'Increment the counter',
+    inputSchema: {
+      amount: z.number().min(1).default(1)
+    },
+    handler: async (input) => {
+      setCounter(prev => prev + input.amount);
+      return { counter: counter + input.amount };
+    }
+  });
+
+  return null;
+}
+
+// AI Assistant component
+function MyAIAssistant() {
+  const { client, tools, isConnected, isLoading } = useMcpClient();
+  const runtime = useAssistantRuntime();
+
+  // Register MCP tools with Assistant-UI runtime
+  useEffect(() => {
+    if (!isConnected || tools.length === 0) return;
+
+    const assistantTools = tools.map(mcpTool =>
+      tool({
+        type: 'frontend',
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema,
+        execute: async (args) => {
+          const result = await client.callTool({
+            name: mcpTool.name,
+            arguments: args
+          });
+
+          return result.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('\n');
+        }
+      })
+    );
+
+    const unregister = runtime.registerModelContextProvider({
+      getModelContext: () => ({
+        tools: Object.fromEntries(
+          tools.map((t, i) => [t.name, assistantTools[i]])
+        )
+      })
+    });
+
+    return () => unregister();
+  }, [client, tools, isConnected, runtime]);
+
+  if (isLoading) return <div>Connecting to WebMCP...</div>;
+  if (!isConnected) return <div>Not connected</div>;
+
+  return (
+    <div>
+      <ToolProvider />
+      <p>Available tools: {tools.length}</p>
+      {/* Your AI chat UI here */}
+    </div>
+  );
+}
+```
+
+## Key Concepts
+
+### Tool Conversion
+
+MCP tools need to be converted to Assistant-UI's tool format:
+
+```typescript
+// MCP Tool
+{
+  name: 'add_to_cart',
+  description: 'Add product to cart',
+  inputSchema: { productId: z.string() }
+}
+
+// Assistant-UI Tool
+tool({
+  type: 'frontend',
+  description: 'Add product to cart',
+  parameters: { productId: z.string() },
+  execute: async (args) => { /* ... */ }
+})
+```
+
+### Runtime Registration
+
+Tools are registered with Assistant-UI's runtime using `registerModelContextProvider`:
+
+```typescript
+runtime.registerModelContextProvider({
+  getModelContext: () => ({
+    tools: { /* tool map */ }
+  })
+});
+```
+
+This makes the tools available to the AI agent in your Assistant-UI application.
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Assistant-UI Docs" icon="book" href="https://www.assistant-ui.com/docs/copilots/model-context">
+    Official Assistant-UI documentation
+  </Card>
+
+  <Card title="Best Practices" icon="stars" href="/ai-frameworks/best-practices">
+    Learn optimization patterns
+  </Card>
+
+  <Card title="React Hooks" icon="react" href="/packages/react-webmcp">
+    Complete React WebMCP API reference
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    See complete working examples
+  </Card>
+</CardGroup>

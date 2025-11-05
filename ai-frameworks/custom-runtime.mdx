@@ -1,0 +1,450 @@
+---
+title: 'Custom Runtime Integration'
+description: 'Build your own AI integration with WebMCP tools'
+icon: 'code'
+---
+
+## Overview
+
+You can integrate WebMCP tools with any AI framework or custom runtime by using the MCP client directly. This gives you full control over how tools are called and results are processed.
+
+## Prerequisites
+
+<Steps>
+  <Step title="Complete basic setup">
+    Follow the [Setup Guide](/ai-frameworks/setup) to install packages and configure MCP client
+  </Step>
+
+  <Step title="Have your AI runtime ready">
+    You should have your own AI framework or runtime configured
+  </Step>
+</Steps>
+
+## Basic Integration
+
+### Register Tools
+
+First, register your WebMCP tools:
+
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function AppTools() {
+  useWebMCP({
+    name: 'get_user_data',
+    description: 'Get current user data',
+    inputSchema: {},
+    handler: async () => {
+      const user = getCurrentUser();
+      return { id: user.id, name: user.name };
+    }
+  });
+
+  useWebMCP({
+    name: 'update_settings',
+    description: 'Update user settings',
+    inputSchema: {
+      theme: z.enum(['light', 'dark']),
+      notifications: z.boolean()
+    },
+    handler: async (input) => {
+      await updateUserSettings(input);
+      return { success: true };
+    }
+  });
+
+  return null;
+}
+```
+
+### Call Tools Directly
+
+Use the MCP client to call tools from your custom runtime:
+
+```tsx
+import { useMcpClient } from '@mcp-b/react-webmcp';
+
+function MyCustomAssistant() {
+  const { client, tools, isConnected } = useMcpClient();
+
+  const callTool = async (toolName: string, args: any) => {
+    if (!isConnected) {
+      throw new Error('MCP client not connected');
+    }
+
+    const result = await client.callTool({
+      name: toolName,
+      arguments: args
+    });
+
+    // Extract text from MCP response
+    return result.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+  };
+
+  const handleAction = async () => {
+    const response = await callTool('get_user_data', {});
+    console.log('User data:', response);
+  };
+
+  return (
+    <button onClick={handleAction} disabled={!isConnected}>
+      Get User Data
+    </button>
+  );
+}
+```
+
+## Advanced Integration
+
+### Tool Discovery
+
+List all available tools and their schemas:
+
+```tsx
+function ToolExplorer() {
+  const { tools, isConnected } = useMcpClient();
+
+  if (!isConnected) return <div>Not connected</div>;
+
+  return (
+    <div>
+      <h2>Available Tools</h2>
+      {tools.map(tool => (
+        <div key={tool.name}>
+          <h3>{tool.name}</h3>
+          <p>{tool.description}</p>
+          <pre>{JSON.stringify(tool.inputSchema, null, 2)}</pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Dynamic Tool Calling
+
+Create a wrapper that dynamically calls any tool:
+
+```tsx
+function useMcpTools() {
+  const { client, tools, isConnected } = useMcpClient();
+
+  const callTool = async (name: string, args: Record<string, any>) => {
+    if (!isConnected) {
+      throw new Error('Not connected to MCP');
+    }
+
+    // Validate tool exists
+    const tool = tools.find(t => t.name === name);
+    if (!tool) {
+      throw new Error(`Tool "${name}" not found`);
+    }
+
+    // Call the tool
+    const result = await client.callTool({
+      name,
+      arguments: args
+    });
+
+    // Process result
+    return {
+      text: result.content
+        .filter(c => c.type === 'text')
+        .map(c => c.text)
+        .join('\n'),
+      raw: result
+    };
+  };
+
+  const getToolSchema = (name: string) => {
+    return tools.find(t => t.name === name)?.inputSchema;
+  };
+
+  return {
+    tools,
+    callTool,
+    getToolSchema,
+    isConnected
+  };
+}
+```
+
+Usage:
+
+```tsx
+function MyApp() {
+  const { callTool, tools, isConnected } = useMcpTools();
+
+  const handleSearch = async () => {
+    const result = await callTool('search_products', {
+      query: 'laptop',
+      limit: 10
+    });
+    console.log(result.text);
+  };
+
+  return (
+    <div>
+      <button onClick={handleSearch} disabled={!isConnected}>
+        Search
+      </button>
+    </div>
+  );
+}
+```
+
+## Complete Example
+
+Here's a full example of a custom AI runtime using WebMCP:
+
+```tsx
+import { useState } from 'react';
+import { McpClientProvider, useMcpClient, useWebMCP } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { z } from 'zod';
+
+const client = new Client({
+  name: 'CustomRuntime',
+  version: '1.0.0'
+});
+
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'custom-runtime'
+});
+
+export function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <CustomAIAssistant />
+    </McpClientProvider>
+  );
+}
+
+function AppTools() {
+  const [messages, setMessages] = useState([]);
+
+  useWebMCP({
+    name: 'send_message',
+    description: 'Send a message',
+    inputSchema: {
+      content: z.string(),
+      recipient: z.string()
+    },
+    handler: async (input) => {
+      const message = {
+        id: Date.now(),
+        content: input.content,
+        recipient: input.recipient,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, message]);
+      return { success: true, messageId: message.id };
+    }
+  });
+
+  useWebMCP({
+    name: 'get_messages',
+    description: 'Get all messages',
+    inputSchema: {},
+    handler: async () => {
+      return { messages, count: messages.length };
+    }
+  });
+
+  return null;
+}
+
+function CustomAIAssistant() {
+  const { client, tools, isConnected } = useMcpClient();
+  const [response, setResponse] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const executeAIAction = async (action: string) => {
+    setLoading(true);
+    try {
+      // Your custom AI logic here
+      let result;
+
+      if (action === 'send') {
+        result = await client.callTool({
+          name: 'send_message',
+          arguments: {
+            content: 'Hello from AI!',
+            recipient: 'user@example.com'
+          }
+        });
+      } else if (action === 'get') {
+        result = await client.callTool({
+          name: 'get_messages',
+          arguments: {}
+        });
+      }
+
+      // Process result
+      const text = result.content
+        .filter(c => c.type === 'text')
+        .map(c => c.text)
+        .join('\n');
+
+      setResponse(text);
+    } catch (error) {
+      setResponse(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isConnected) {
+    return <div>Connecting to tools...</div>;
+  }
+
+  return (
+    <div>
+      <AppTools />
+      <h1>Custom AI Assistant</h1>
+      <p>Tools available: {tools.map(t => t.name).join(', ')}</p>
+
+      <div>
+        <button
+          onClick={() => executeAIAction('send')}
+          disabled={loading}
+        >
+          Send Message
+        </button>
+        <button
+          onClick={() => executeAIAction('get')}
+          disabled={loading}
+        >
+          Get Messages
+        </button>
+      </div>
+
+      {response && (
+        <div>
+          <h3>Response:</h3>
+          <pre>{response}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Integration Patterns
+
+### Pattern 1: Direct Call
+
+Simply call tools when needed:
+
+```tsx
+const result = await client.callTool({
+  name: 'my_tool',
+  arguments: { param: 'value' }
+});
+```
+
+### Pattern 2: Tool Wrapper
+
+Create a typed wrapper for your tools:
+
+```tsx
+const tools = {
+  async searchProducts(query: string, limit: number = 10) {
+    const result = await client.callTool({
+      name: 'search_products',
+      arguments: { query, limit }
+    });
+    return JSON.parse(result.content[0].text);
+  },
+
+  async addToCart(productId: string, quantity: number) {
+    const result = await client.callTool({
+      name: 'add_to_cart',
+      arguments: { productId, quantity }
+    });
+    return JSON.parse(result.content[0].text);
+  }
+};
+```
+
+### Pattern 3: LLM Integration
+
+Integrate with your LLM of choice:
+
+```tsx
+async function runAIWithTools(userMessage: string) {
+  // 1. Get available tools
+  const { tools } = useMcpClient();
+
+  // 2. Format tools for your LLM
+  const toolDescriptions = tools.map(t => ({
+    name: t.name,
+    description: t.description,
+    parameters: t.inputSchema
+  }));
+
+  // 3. Call your LLM with tools
+  const llmResponse = await yourLLM.chat({
+    message: userMessage,
+    tools: toolDescriptions
+  });
+
+  // 4. Execute tool calls from LLM
+  if (llmResponse.toolCalls) {
+    for (const call of llmResponse.toolCalls) {
+      await client.callTool({
+        name: call.name,
+        arguments: call.arguments
+      });
+    }
+  }
+}
+```
+
+## Error Handling
+
+Always handle errors when calling tools:
+
+```tsx
+async function safeCallTool(name: string, args: any) {
+  try {
+    const result = await client.callTool({
+      name,
+      arguments: args
+    });
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error(`Tool ${name} failed:`, error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="gear" href="/ai-frameworks/setup">
+    Basic MCP client setup
+  </Card>
+
+  <Card title="Best Practices" icon="stars" href="/ai-frameworks/best-practices">
+    Learn optimization patterns
+  </Card>
+
+  <Card title="React Hooks" icon="react" href="/packages/react-webmcp">
+    Complete API reference
+  </Card>
+
+  <Card title="MCP SDK Docs" icon="book" href="https://modelcontextprotocol.io/docs">
+    Model Context Protocol documentation
+  </Card>
+</CardGroup>
