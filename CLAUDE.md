@@ -1,5 +1,42 @@
 # Mintlify documentation
 
+## Documentation structure overview
+
+The WebMCP documentation is organized into the following main sections:
+
+- **Root pages**: Introduction, quickstart, and core concepts (index.mdx, what-is-webmcp.mdx, etc.)
+- **Getting Started**: Installation guides, basic setup, and first steps
+- **Guides**: In-depth tutorials and how-to content for specific use cases
+- **API Reference**: Technical API documentation and specifications
+- **Examples**: Code examples and real-world implementations
+- **Resources**: Additional materials, FAQs, and community links
+
+### Key files
+- `mint.json`: Site configuration, navigation structure, theme settings, and global metadata
+- `*.mdx`: Documentation pages with frontmatter (title, description, sidebarTitle, icon)
+- `/snippets/`: Reusable content fragments used across multiple pages
+- `/images/`: Static image assets referenced in documentation
+- `/api/`: OpenAPI/API reference files and configurations
+
+## Contributing to the docs
+
+### Before you start
+1. **Search existing content**: Check if similar information already exists to avoid duplication
+2. **Understand the audience**: Documentation targets developers working with MCP in browsers
+3. **Review existing patterns**: Look at similar pages to maintain consistency
+
+### Making changes
+1. **Start small**: Make the smallest reasonable change that solves the problem
+2. **Test thoroughly**: Verify all code examples work before publishing
+3. **Check links**: Ensure all internal links use relative paths and are valid
+4. **Preview locally**: Use `mintlify dev` to preview changes before committing
+
+### Common workflows
+- **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
+- **Updating API docs**: Modify OpenAPI spec or MDX API page → Verify playground functionality → Update examples
+- **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
+- **Adding code examples**: Include language tag, test the code, provide context, show both basic and advanced usage
+
 ## Working relationship
 - You can push back on ideas-this can lead to better documentation. Cite sources and explain your reasoning when you do so
 - ALWAYS ask for clarification rather than making assumptions
@@ -65,3 +102,47 @@
 - Make assumptions - always ask for clarification
 - Reference outdated MiguelsPizza organization links
 - Commit node_modules or build artifacts
+
+## Mintlify documentation reference
+
+Use these official Mintlify resources when working on documentation:
+
+### Essential references
+- **[Global settings](https://mintlify.com/docs/organize/settings)**: Complete mint.json configuration options
+- **[Navigation](https://mintlify.com/docs/organize/navigation)**: Structure and customize navigation hierarchy
+- **[Pages](https://mintlify.com/docs/organize/pages)**: Page creation and frontmatter requirements
+- **[Format text](https://mintlify.com/docs/create/text)**: Text formatting, headers, and styling
+- **[Format code](https://mintlify.com/docs/create/code)**: Inline code and code blocks with syntax highlighting
+
+### Components
+- **[Callouts](https://mintlify.com/docs/components/callouts)**: Info, warning, success, and error callouts
+- **[Cards](https://mintlify.com/docs/components/cards)**: Highlight main points with customizable layouts
+- **[Tabs](https://mintlify.com/docs/components/tabs)**: Toggle between different content views
+- **[Code groups](https://mintlify.com/docs/components/code-groups)**: Display multiple code examples
+- **[Accordions](https://mintlify.com/docs/components/accordions)**: Collapsible content sections
+- **[Steps](https://mintlify.com/docs/components/steps)**: Sequential procedural content
+
+### API documentation
+- **[OpenAPI setup](https://mintlify.com/docs/api-playground/openapi-setup)**: Reference OpenAPI endpoints in docs
+- **[MDX configuration](https://mintlify.com/docs/api-playground/mdx/configuration)**: Generate API docs with MDX
+- **[API playground](https://mintlify.com/docs/api-playground/overview)**: Interactive API testing
+- **[Adding SDK examples](https://mintlify.com/docs/api-playground/adding-sdk-examples)**: Language-specific code samples
+
+### Content creation
+- **[Reusable snippets](https://mintlify.com/docs/create/reusable-snippets)**: Keep content in sync across pages
+- **[Images and embeds](https://mintlify.com/docs/create/image-embeds)**: Add images, videos, and iframes
+- **[Lists and tables](https://mintlify.com/docs/create/list-table)**: Display structured information
+- **[Redirects and broken links](https://mintlify.com/docs/create/broken-links)**: Prevent invalid links
+
+### Best practices
+- **[Style and tone](https://mintlify.com/docs/guides/style-and-tone)**: Writing effective technical documentation
+- **[Content types](https://mintlify.com/docs/guides/content-types)**: Create the right content for your users
+- **[Organize navigation](https://mintlify.com/docs/guides/navigation)**: Information architecture guidelines
+- **[Git concepts](https://mintlify.com/docs/guides/git-concepts)**: Git fundamentals for docs-as-code
+- **[Working with branches](https://mintlify.com/docs/guides/branches)**: Make changes without affecting live docs
+- **[SEO](https://mintlify.com/docs/guides/seo)**: Improve documentation discoverability
+
+### Deployment and tools
+- **[GitHub integration](https://mintlify.com/docs/deploy/github)**: Sync docs with GitHub repo
+- **[Preview deployments](https://mintlify.com/docs/deploy/preview-deployments)**: Preview changes before merging
+- **[CLI installation](https://mintlify.com/docs/installation)**: Preview and maintain docs locally
