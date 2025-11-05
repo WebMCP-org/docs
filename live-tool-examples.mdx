@@ -1,0 +1,551 @@
+---
+title: "Live WebMCP Tool Examples"
+description: "Interactive examples of WebMCP tools embedded directly in documentation"
+sidebarTitle: "Live Tool Examples"
+icon: "wand-magic-sparkles"
+---
+
+import { CalculatorTool } from '/snippets/webmcp-tool-calculator.jsx';
+import { ColorConverterTool } from '/snippets/webmcp-tool-color-converter.jsx';
+import { StorageTool } from '/snippets/webmcp-tool-storage.jsx';
+import { DOMQueryTool } from '/snippets/webmcp-tool-dom-query.jsx';
+
+# Live WebMCP Tool Examples
+
+This page demonstrates **live, interactive WebMCP tools** embedded directly in the documentation. Each tool registers itself with `navigator.modelContext` and can be called by AI agents in real-time.
+
+<Note>
+  These examples require the **MCP-B browser extension** to enable AI agent integration. The tools will still work manually without the extension.
+</Note>
+
+## Prerequisites
+
+To use these tools with AI agents:
+
+1. Install the [MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
+2. Open your AI assistant (Claude, ChatGPT, etc.)
+3. Try the example prompts provided with each tool
+
+## Interactive Tool Examples
+
+### Calculator Tool
+
+A mathematical calculator that AI agents can use to perform computations.
+
+<CalculatorTool />
+
+**Tool Capabilities:**
+- Basic arithmetic operations (+, -, *, /)
+- Mathematical functions (sqrt, pow, etc.)
+- Expression evaluation
+- Real-time results
+
+**Code Implementation:**
+
+```jsx snippets/webmcp-tool-calculator.jsx [expandable]
+export const CalculatorTool = () => {
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [toolCalls, setToolCalls] = useState([]);
+
+  useEffect(() => {
+    const registerTool = async () => {
+      if (!window.navigator?.modelContext) return;
+
+      await window.navigator.modelContext.registerTool({
+        name: 'calculator',
+        description: 'Performs mathematical calculations',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            expression: {
+              type: 'string',
+              description: 'Mathematical expression to evaluate',
+            },
+          },
+          required: ['expression'],
+        },
+        handler: async ({ expression }) => {
+          const result = Function(`"use strict"; return (${expression})`)();
+
+          return {
+            content: [{
+              type: 'text',
+              text: `The result of ${expression} is ${result}`,
+            }],
+          };
+        },
+      });
+
+      setIsRegistered(true);
+    };
+
+    registerTool();
+  }, []);
+
+  // ... UI implementation
+};
+```
+
+---
+
+### Color Converter Tool
+
+Converts colors between different formats (HEX, RGB, HSL).
+
+<ColorConverterTool />
+
+**Tool Capabilities:**
+- HEX to RGB conversion
+- HEX to HSL conversion
+- Live color preview
+- Multiple format support
+
+**Key Features:**
+- Real-time conversion as you type
+- Visual color preview
+- Tracks AI agent tool calls
+- Clean, accessible interface
+
+---
+
+### Storage Management Tool
+
+Manages browser localStorage with multiple operations (set, get, list).
+
+<StorageTool />
+
+**Tool Capabilities:**
+- Store key-value pairs
+- Retrieve stored values
+- List all stored items
+- Delete individual items
+
+**Registered Tools:**
+- `storage_set` - Store a value
+- `storage_get` - Retrieve a value
+- `storage_list` - List all items
+
+**Use Case Example:**
+
+AI agents can use this to remember user preferences, save session data, or maintain state across conversations.
+
+---
+
+### DOM Query Tool
+
+Queries page elements using CSS selectors and returns information about matched elements.
+
+<DOMQueryTool />
+
+**Tool Capabilities:**
+- Query by any CSS selector
+- Count matching elements
+- Extract text content
+- Get element attributes and classes
+
+**Example Queries:**
+- `h1` - Find all h1 headings
+- `.nav-logo` - Find elements with nav-logo class
+- `#content-area` - Find element with content-area ID
+- `button[type="submit"]` - Find submit buttons
+
+---
+
+## Building Your Own Live Tools
+
+### Basic Tool Structure
+
+Every WebMCP tool follows this pattern:
+
+```jsx theme={null}
+export const MyTool = () => {
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  useEffect(() => {
+    const registerTool = async () => {
+      // Check if WebMCP is available
+      if (!window.navigator?.modelContext) {
+        console.log('WebMCP not available');
+        return;
+      }
+
+      try {
+        await window.navigator.modelContext.registerTool({
+          name: 'my_tool',
+          description: 'Clear description of what this tool does',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              param1: {
+                type: 'string',
+                description: 'Description of parameter',
+              },
+            },
+            required: ['param1'],
+          },
+          handler: async (params) => {
+            try {
+              // Tool logic here
+              const result = doSomething(params.param1);
+
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Result: ${result}`,
+                }],
+              };
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
+          },
+        });
+
+        setIsRegistered(true);
+      } catch (error) {
+        console.error('Failed to register tool:', error);
+      }
+    };
+
+    registerTool();
+
+    // Cleanup on unmount
+    return () => {
+      if (window.navigator?.modelContext?.unregisterTool) {
+        window.navigator.modelContext.unregisterTool('my_tool');
+      }
+    };
+  }, []);
+
+  return (
+    <div>
+      {isRegistered && <span>Tool Registered</span>}
+      {/* Your UI here */}
+    </div>
+  );
+};
+```
+
+### Tool Registration Best Practices
+
+<AccordionGroup>
+  <Accordion title="Input Schema Design">
+    - Use clear, descriptive property names
+    - Provide detailed descriptions for each parameter
+    - Specify required fields explicitly
+    - Use appropriate JSON Schema types
+    - Include examples in descriptions when helpful
+  </Accordion>
+
+  <Accordion title="Handler Implementation">
+    - Always wrap logic in try-catch blocks
+    - Return structured content objects
+    - Use `isError: true` for error responses
+    - Keep handlers async for flexibility
+    - Validate input parameters
+  </Accordion>
+
+  <Accordion title="UI/UX Considerations">
+    - Show registration status clearly
+    - Display recent tool calls for transparency
+    - Provide manual testing interface
+    - Include example AI prompts
+    - Use loading states appropriately
+  </Accordion>
+
+  <Accordion title="Cleanup and Lifecycle">
+    - Always unregister tools on component unmount
+    - Handle missing WebMCP gracefully
+    - Don't crash if extension isn't installed
+    - Provide fallback manual functionality
+  </Accordion>
+</AccordionGroup>
+
+### Creating Tool Snippets
+
+Save your tools as JSX files in the `/snippets` directory:
+
+```bash theme={null}
+/docs
+  /snippets
+    /webmcp-tool-example.jsx  # Your tool component
+  /my-page.mdx                # Import and use it here
+```
+
+Then import and use in your MDX files:
+
+```mdx theme={null}
+---
+title: "My Page"
+---
+
+import { MyTool } from '/snippets/webmcp-tool-example.jsx';
+
+# My Documentation Page
+
+<MyTool />
+```
+
+## Advanced Patterns
+
+### Tool with State Management
+
+Track tool calls and display history:
+
+```jsx theme={null}
+const [toolCalls, setToolCalls] = useState([]);
+
+// In your handler:
+handler: async (params) => {
+  // Track the call
+  setToolCalls(prev => [...prev, {
+    time: new Date().toISOString(),
+    params,
+    status: 'processing'
+  }]);
+
+  try {
+    const result = await processRequest(params);
+
+    // Update status
+    setToolCalls(prev => prev.map((call, idx) =>
+      idx === prev.length - 1
+        ? { ...call, result, status: 'success' }
+        : call
+    ));
+
+    return { content: [{ type: 'text', text: result }] };
+  } catch (error) {
+    setToolCalls(prev => prev.map((call, idx) =>
+      idx === prev.length - 1
+        ? { ...call, error: error.message, status: 'error' }
+        : call
+    ));
+
+    return {
+      content: [{ type: 'text', text: `Error: ${error.message}` }],
+      isError: true,
+    };
+  }
+}
+```
+
+### Multiple Related Tools
+
+Register multiple tools that work together:
+
+```jsx theme{null}
+useEffect(() => {
+  const registerTools = async () => {
+    if (!window.navigator?.modelContext) return;
+
+    // Register multiple related tools
+    await Promise.all([
+      window.navigator.modelContext.registerTool({
+        name: 'data_create',
+        // ... tool config
+      }),
+      window.navigator.modelContext.registerTool({
+        name: 'data_read',
+        // ... tool config
+      }),
+      window.navigator.modelContext.registerTool({
+        name: 'data_update',
+        // ... tool config
+      }),
+      window.navigator.modelContext.registerTool({
+        name: 'data_delete',
+        // ... tool config
+      }),
+    ]);
+
+    setIsRegistered(true);
+  };
+
+  registerTools();
+
+  return () => {
+    // Clean up all tools
+    ['data_create', 'data_read', 'data_update', 'data_delete'].forEach(name => {
+      window.navigator.modelContext?.unregisterTool(name);
+    });
+  };
+}, []);
+```
+
+### Tool with External API Integration
+
+```jsx theme={null}
+handler: async ({ query }) => {
+  try {
+    // Call external API
+    const response = await fetch(`https://api.example.com/search?q=${query}`);
+    const data = await response.json();
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Found ${data.results.length} results for "${query}"`,
+      }],
+    };
+  } catch (error) {
+    return {
+      content: [{
+        type: 'text',
+        text: `Failed to search: ${error.message}`,
+      }],
+      isError: true,
+    };
+  }
+}
+```
+
+## Styling Guidelines
+
+Use Tailwind CSS classes for consistent styling:
+
+```jsx theme={null}
+<div className="not-prose border dark:border-white/10 rounded-xl p-6">
+  {/* Tool content */}
+</div>
+```
+
+### Common Styling Patterns
+
+**Status Badges:**
+
+```jsx theme={null}
+<span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+  Tool Registered
+</span>
+```
+
+**Input Fields:**
+
+```jsx theme={null}
+<input
+  type="text"
+  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+/>
+```
+
+**Buttons:**
+
+```jsx theme={null}
+<button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+  Action
+</button>
+```
+
+**Result Displays:**
+
+```jsx theme={null}
+<div className="p-4 rounded-lg bg-zinc-100 dark:bg-zinc-800">
+  <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">Result:</p>
+  <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{result}</p>
+</div>
+```
+
+## Testing Your Tools
+
+### Manual Testing
+
+1. Load the documentation page
+2. Check that the tool registers (green badge)
+3. Test the manual UI controls
+4. Verify results display correctly
+
+### AI Agent Testing
+
+1. Open your AI assistant
+2. Use the provided example prompts
+3. Check that tool calls appear in the history
+4. Verify results are returned to the agent
+
+### Debugging
+
+Use browser DevTools to debug:
+
+```jsx theme={null}
+handler: async (params) => {
+  console.log('[Tool Call]', { params });
+
+  try {
+    const result = await processRequest(params);
+    console.log('[Tool Result]', { result });
+    return result;
+  } catch (error) {
+    console.error('[Tool Error]', error);
+    throw error;
+  }
+}
+```
+
+## Example Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Documentation Tools" icon="book">
+    - Search documentation
+    - Get code examples
+    - Find related pages
+    - Check broken links
+  </Card>
+
+  <Card title="Data Processing" icon="database">
+    - Parse CSV/JSON
+    - Transform data formats
+    - Validate schemas
+    - Generate reports
+  </Card>
+
+  <Card title="UI Interactions" icon="mouse-pointer">
+    - Query page elements
+    - Extract content
+    - Take screenshots
+    - Simulate clicks
+  </Card>
+
+  <Card title="Utilities" icon="wrench">
+    - Date/time operations
+    - String manipulation
+    - Math calculations
+    - Unit conversions
+  </Card>
+</CardGroup>
+
+## Additional Resources
+
+<CardGroup cols={2}>
+  <Card title="WebMCP SDK" icon="code" href="/packages/webmcp-ts-sdk">
+    Learn more about the TypeScript SDK
+  </Card>
+
+  <Card title="Tool Registration" icon="list-check" href="/concepts/tool-registration">
+    Deep dive into tool registration concepts
+  </Card>
+
+  <Card title="React WebMCP" icon="react" href="/packages/react-webmcp">
+    React hooks for WebMCP
+  </Card>
+
+  <Card title="Best Practices" icon="lightbulb" href="/best-practices">
+    WebMCP development best practices
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+1. **Try the examples** - Interact with the tools on this page
+2. **Install the extension** - Enable AI agent integration
+3. **Build your own** - Create custom tools for your use case
+4. **Share and contribute** - Submit your tools to the community
+
+<Note>
+  All code examples on this page are production-ready and can be copied directly into your project.
+</Note>
