@@ -181,9 +181,7 @@ The tools mentioned in the description are registered by the iframe, not by this
 
 ## Part 2: The Embedded App (Vanilla)
 
-The Vanilla template uses `@mcp-b/global` via CDN. No build step required.
-
-### Example: Vanilla Template (`public/index.html`)
+The Vanilla template uses `@mcp-b/global` via CDN—no build step required.
 
 ```html
 <!DOCTYPE html>
@@ -191,451 +189,121 @@ The Vanilla template uses `@mcp-b/global` via CDN. No build step required.
 <head>
   <meta charset="UTF-8">
   <title>WebMCP Template</title>
-
-  <!-- Load @mcp-b/global IIFE - provides navigator.modelContext -->
   <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50">
-  <div id="app" class="p-8">
-    <h1 class="text-3xl font-bold">WebMCP Template</h1>
-
-    <!-- Connection status -->
-    <div id="status" class="mt-4">
-      <span class="bg-yellow-100 px-3 py-1 rounded">Connecting...</span>
-    </div>
-
-    <!-- Message display -->
-    <div class="mt-6 p-4 bg-blue-50 rounded">
-      <p id="message">Hello from WebMCP Template!</p>
-    </div>
-
-    <!-- Action buttons -->
-    <div class="mt-4 space-x-2">
-      <button id="btn-update" class="px-4 py-2 bg-blue-600 text-white rounded">
-        Update Message
-      </button>
-      <button id="btn-reset" class="px-4 py-2 bg-gray-600 text-white rounded">
-        Reset
-      </button>
-    </div>
+<body>
+  <div id="app">
+    <h1>WebMCP Template</h1>
+    <div id="status">Connecting...</div>
+    <p id="message">Hello from WebMCP!</p>
+    <button id="btn-update">Update</button>
+    <button id="btn-reset">Reset</button>
   </div>
 
   <script>
-    // App state
-    let isReady = false;
-    let message = 'Hello from WebMCP Template!';
+    let message = 'Hello from WebMCP!';
 
-    // DOM elements
-    const statusEl = document.getElementById('status');
-    const messageEl = document.getElementById('message');
-    const btnUpdate = document.getElementById('btn-update');
-    const btnReset = document.getElementById('btn-reset');
-
-    // Update UI
-    function updateUI() {
-      messageEl.textContent = message;
-
-      if (isReady) {
-        statusEl.innerHTML = '<span class="bg-green-100 px-3 py-1 rounded">Connected</span>';
-        btnUpdate.disabled = false;
-        btnReset.disabled = false;
-      } else {
-        statusEl.innerHTML = '<span class="bg-yellow-100 px-3 py-1 rounded">Connecting...</span>';
-        btnUpdate.disabled = true;
-        btnReset.disabled = true;
-      }
-    }
-
-    // Listen for parent ready signal
-    window.addEventListener('message', (event) => {
-      if (event.data?.type === 'parent_ready') {
-        isReady = true;
-        updateUI();
-        console.log('[App] Parent is ready');
+    // Parent-child ready protocol
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'parent_ready') {
+        document.getElementById('status').textContent = 'Connected';
       }
     });
-
-    // Notify parent we're ready
     window.parent.postMessage({ type: 'iframe_ready' }, '*');
 
-    // UI button handlers
-    btnUpdate.addEventListener('click', () => {
-      const newMessage = prompt('Enter new message:');
-      if (newMessage) {
-        message = newMessage;
-        updateUI();
-      }
-    });
-
-    btnReset.addEventListener('click', () => {
-      message = 'Hello from WebMCP Template!';
-      updateUI();
-    });
-
-    /**
-     * CRITICAL: Register WebMCP tools
-     *
-     * window.navigator.modelContext is provided by @mcp-b/global
-     * These tools will be discovered by the parent and made available to the AI
-     */
+    // Register WebMCP tools
     window.navigator.modelContext.provideContext({
       tools: [
-        {
-          name: 'template_get_message',
-          description: 'Get the current message displayed in the app',
-          inputSchema: {
-            type: 'object',
-            properties: {}
-          },
-          async execute() {
-            console.log('[Tool] template_get_message called');
-            return {
-              content: [{
-                type: 'text',
-                text: `Current message: ${message}`
-              }]
-            };
-          }
-        },
         {
           name: 'template_update_message',
           description: 'Update the message displayed in the app',
           inputSchema: {
             type: 'object',
             properties: {
-              newMessage: {
-                type: 'string',
-                description: 'The new message to display'
-              }
+              newMessage: { type: 'string', description: 'New message' }
             },
             required: ['newMessage']
           },
           async execute({ newMessage }) {
-            console.log('[Tool] template_update_message called with:', newMessage);
-            // Update state - same logic as UI button!
             message = newMessage;
-            updateUI();
-            return {
-              content: [{
-                type: 'text',
-                text: `Message updated to: ${message}`
-              }]
-            };
-          }
-        },
-        {
-          name: 'template_reset',
-          description: 'Reset the message to its default value',
-          inputSchema: {
-            type: 'object',
-            properties: {}
-          },
-          async execute() {
-            console.log('[Tool] template_reset called');
-            // Reset state - same logic as UI button!
-            message = 'Hello from WebMCP Template!';
-            updateUI();
-            return {
-              content: [{
-                type: 'text',
-                text: `Message reset to: ${message}`
-              }]
-            };
+            document.getElementById('message').textContent = message;
+            return { content: [{ type: 'text', text: `Updated: ${message}` }] };
           }
         }
       ]
     });
-
-    // Initial UI update
-    updateUI();
-    console.log('[App] WebMCP tools registered successfully');
   </script>
 </body>
 </html>
 ```
 
 <Note>
-Key points: `@mcp-b/global` provides `navigator.modelContext`. Tool handlers and UI buttons should share state management logic.
+Full template with styling and additional tools available via `npx create-webmcp-app` (select "vanilla"). Tool handlers and UI buttons should share the same state management logic.
 </Note>
 
 ## Part 3: The Embedded App (React)
 
-<Warning>
-`initializeWebModelContext()` must be called before React renders.
-</Warning>
-
-**src/main.tsx** - Initialize WebMCP:
+**src/main.tsx** - Initialize WebMCP before rendering:
 
 ```typescript
 import { initializeWebModelContext } from '@mcp-b/global';
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import './index.css';
 
-// CRITICAL: Initialize BEFORE React renders
-// This sets up the IframeChildTransport
 initializeWebModelContext({
-  transport: {
-    tabServer: {
-      allowedOrigins: ['*'], // Allow any origin (use specific origins in production)
-    },
-  },
+  transport: { tabServer: { allowedOrigins: ['*'] } }
 });
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+createRoot(document.getElementById('root')!).render(<App />);
 ```
 
 **src/App.tsx** - Register tools with `useWebMCP`:
 
 ```typescript
 import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 
 export default function App() {
-  const [message, setMessage] = useState('Hello from WebMCP Template!');
-  const [isReady, setIsReady] = useState(false);
+  const [message, setMessage] = useState('Hello from WebMCP!');
 
-  // Listen for parent ready signal
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'parent_ready') {
-        setIsReady(true);
-      }
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'parent_ready') console.log('Connected');
     };
     window.addEventListener('message', handleMessage);
     window.parent.postMessage({ type: 'iframe_ready' }, '*');
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  /**
-   * Tool 1: Get current message
-   * Read-only, idempotent
-   */
-  useWebMCP({
-    name: 'template_get_message',
-    description: 'Get the current message displayed in the app',
-    annotations: {
-      readOnlyHint: true,
-      idempotentHint: true,
-    },
-    handler: async () => {
-      return `Current message: ${message}`;
-    },
-  });
-
-  /**
-   * Tool 2: Update message
-   * Uses Zod for validation, updates React state
-   */
   useWebMCP({
     name: 'template_update_message',
     description: 'Update the message displayed in the app',
     inputSchema: {
       newMessage: z.string().describe('The new message to display'),
     },
-    annotations: {
-      idempotentHint: false,
-    },
     handler: async ({ newMessage }) => {
-      setMessage(newMessage);  // Same state update as UI button!
+      setMessage(newMessage);
       return `Message updated to: ${newMessage}`;
     },
   });
 
-  /**
-   * Tool 3: Reset message
-   * Destructive but idempotent
-   */
-  useWebMCP({
-    name: 'template_reset',
-    description: 'Reset the message to its default value',
-    annotations: {
-      destructiveHint: true,
-      idempotentHint: true,
-    },
-    handler: async () => {
-      const defaultMessage = 'Hello from WebMCP Template!';
-      setMessage(defaultMessage);  // Same state update as UI button!
-      return `Message reset to: ${defaultMessage}`;
-    },
-  });
-
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold">WebMCP Template (React)</h1>
-
-      <div className="mt-4">
-        {isReady ? (
-          <span className="bg-green-100 px-3 py-1 rounded">Connected</span>
-        ) : (
-          <span className="bg-yellow-100 px-3 py-1 rounded">Connecting...</span>
-        )}
-      </div>
-
-      <div className="mt-6 p-4 bg-blue-50 rounded">
-        <p>{message}</p>
-      </div>
-
-      <div className="mt-4 space-x-2">
-        <button
-          onClick={() => {
-            const newMsg = prompt('Enter new message:');
-            if (newMsg) setMessage(newMsg);
-          }}
-          disabled={!isReady}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-300"
-        >
-          Update Message
-        </button>
-        <button
-          onClick={() => setMessage('Hello from WebMCP Template!')}
-          disabled={!isReady}
-          className="px-4 py-2 bg-gray-600 text-white rounded disabled:bg-gray-300"
-        >
-          Reset
-        </button>
-      </div>
+    <div>
+      <h1>WebMCP Template</h1>
+      <p>{message}</p>
+      <button onClick={() => {
+        const msg = prompt('Enter message:');
+        if (msg) setMessage(msg);
+      }}>Update</button>
     </div>
   );
 }
 ```
 
 <Note>
-`useWebMCP` hook automatically registers and unregisters tools. Tool handlers and UI should share the same React state.
+Full template with Zod validation, TypeScript types, and additional tools available via `npx create-webmcp-app` (select "react").
 </Note>
-
-## Part 4: How the Host Application Integrates This
-
-When your AI agent calls `showTemplateApp`, here's what happens in the host application (e.g., Claude Desktop, chat-ui):
-
-### Step 1: Tool Result Contains UIResource
-
-```typescript
-// In host application (chat-ui)
-const result = await mcpClient.callTool({
-  name: 'showTemplateApp',
-  arguments: {}
-});
-
-// result.content contains:
-// [
-//   { type: 'text', text: '# Template App Started...' },
-//   { type: 'resource', resource: { uri: 'ui://template-app', ... } }
-// ]
-```
-
-### Step 2: Host Detects and Adds UIResource
-
-```typescript
-// McpToolBridge component (simplified)
-result.content.forEach((content) => {
-  if (isUIResource(content) && content.resource) {
-    // Add to UI resources context
-    addResource({
-      toolName: 'showTemplateApp',
-      resource: content.resource,
-    });
-  }
-});
-```
-
-### Step 3: Host Renders Iframe with Lifecycle Setup
-
-```typescript
-// ToolResponsePanel component (simplified)
-<UIResourceRenderer
-  resource={selectedResource.resource}
-  htmlProps={{
-    iframeProps: {
-      ref: iframeRef,
-      onLoad: async (e) => {
-        // CRITICAL: Setup WebMCP connection when iframe loads
-        await setupIframe(e.currentTarget, selectedResource.id);
-      },
-    },
-  }}
-/>
-```
-
-### Step 4: useIframeLifecycle Discovers Tools
-
-```typescript
-// useIframeLifecycle.ts (simplified)
-async function setupIframe(iframe: HTMLIFrameElement, sourceId: string) {
-  // 1. Handle parent-child ready protocol
-  const handleMessage = (event: MessageEvent) => {
-    if (event.data?.type === 'ui-lifecycle-iframe-ready') {
-      iframe.contentWindow?.postMessage({ type: 'parent-ready' }, '*');
-    }
-  };
-  window.addEventListener('message', handleMessage);
-
-  // 2. Create MCP client for this iframe
-  const client = new Client({
-    name: 'WebMCP Client',
-    version: '1.0.0',
-  });
-
-  // 3. Create IframeParentTransport
-  const transport = new IframeParentTransport({
-    targetOrigin: new URL(serverUrl).origin,
-    iframe: iframe,
-  });
-
-  // 4. Connect to iframe's MCP server
-  await client.connect(transport);
-
-  // 5. Discover tools from iframe
-  const toolsResponse = await client.listTools();
-  // toolsResponse.tools = [
-  //   { name: 'template_get_message', ... },
-  //   { name: 'template_update_message', ... },
-  //   { name: 'template_reset', ... }
-  // ]
-
-  // 6. Register these tools with the host
-  registerWebMcpTools(toolsResponse.tools, sourceId);
-  registerWebMcpClient(sourceId, client);
-
-  // 7. Listen for dynamic tool updates
-  client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
-    const updated = await client.listTools();
-    registerWebMcpTools(updated.tools, sourceId);
-  });
-}
-```
-
-### Step 5: Tools Available to AI
-
-```typescript
-// MCPToolRegistry component routes tool calls
-{webMcpTools.map((tool) => {
-  const sourceId = tool._sourceId;
-  return (
-    <McpToolBridge
-      toolName={tool.name}
-      callTool={(name, args) => {
-        // Route to correct WebMCP client based on source ID
-        const webMcpClient = webMcpClients.current?.get(sourceId);
-        return webMcpClient.callTool({ name, arguments: args });
-      }}
-    />
-  );
-})}
-```
-
-**Now the AI can call:**
-- `showTemplateApp` → from MCP server (returns iframe)
-- `template_get_message` → routed to iframe via IframeParentTransport
-- `template_update_message` → routed to iframe
-- `template_reset` → routed to iframe
 
 ## Development Workflow
 
@@ -693,242 +361,33 @@ async function setupIframe(iframe: HTMLIFrameElement, sourceId: string) {
 
 ## Best Practices
 
-### 1. Share Logic Between UI and Tools
+<AccordionGroup>
+  <Accordion title="Share logic between UI and tools">
+    Tool handlers and UI buttons should call the same underlying functions—avoid duplicating state update logic.
+  </Accordion>
 
-UI handlers and WebMCP tools should call the same underlying functions.
+  <Accordion title="Use tool annotations">
+    Use `destructiveHint`, `idempotentHint`, and `readOnlyHint` to help AI understand tool behavior.
+  </Accordion>
 
-**❌ Bad:** Duplicate logic
-```typescript
-// UI button
-button.onclick = () => {
-  message = "Updated!";
-  messageEl.textContent = message;
-};
+  <Accordion title="Validate inputs">
+    Use JSON Schema (Vanilla) or Zod (React) for type-safe, validated tool inputs.
+  </Accordion>
 
-// WebMCP tool
-async execute({ newMessage }) {
-  message = newMessage;  // Duplicate!
-  messageEl.textContent = message;  // Duplicate!
-}
-```
-
-**✅ Good:** Single source of truth
-```typescript
-// Shared function
-function updateMessage(newMsg) {
-  message = newMsg;
-  messageEl.textContent = message;
-  return `Message updated to: ${message}`;
-}
-
-// UI button
-button.onclick = () => {
-  const newMsg = prompt('Enter message:');
-  if (newMsg) updateMessage(newMsg);
-};
-
-// WebMCP tool
-async execute({ newMessage }) {
-  return updateMessage(newMessage);
-}
-```
-
-### 2. Use Tool Annotations
-
-```typescript
-useWebMCP({
-  name: 'delete_all',
-  description: 'Delete all data',
-  annotations: {
-    destructiveHint: true,  // Warns AI this destroys data
-    idempotentHint: true,   // Calling twice = same result
-    readOnlyHint: false,    // Modifies state
-  },
-  handler: async () => { /* ... */ }
-});
-```
-
-### 3. Handle Parent-Ready Protocol
-
-Always wait for parent to be ready before sending notifications:
-
-```typescript
-const [isParentReady, setIsParentReady] = useState(false);
-
-useEffect(() => {
-  const handleMessage = (event) => {
-    if (event.data?.type === 'parent-ready') {
-      setIsParentReady(true);
-    }
-  };
-  window.addEventListener('message', handleMessage);
-  window.parent.postMessage({ type: 'iframe-ready' }, '*');
-  return () => window.removeEventListener('message', handleMessage);
-}, []);
-
-// Only send notifications when ready
-if (isParentReady) {
-  window.parent.postMessage({
-    type: 'notify',
-    payload: { message: 'Something happened!' }
-  }, '*');
-}
-```
-
-### 4. Validate Inputs
-
-```typescript
-// Vanilla: Use inputSchema
-{
-  name: 'update_score',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      points: {
-        type: 'number',
-        minimum: 0,
-        maximum: 100
-      }
-    },
-    required: ['points']
-  },
-  async execute({ points }) {
-    // points is validated!
-  }
-}
-
-// React: Use Zod
-useWebMCP({
-  name: 'update_score',
-  inputSchema: {
-    points: z.number().min(0).max(100)
-  },
-  handler: async ({ points }) => {
-    // points is validated and typed!
-  }
-});
-```
+  <Accordion title="Handle parent-ready protocol">
+    Wait for the `parent_ready` message before sending notifications to avoid race conditions.
+  </Accordion>
+</AccordionGroup>
 
 ## Deployment
 
-<Steps>
-  <Step title="Build for Production">
-    ```bash
-    pnpm build
-    ```
-
-    This creates:
-    - `dist/client/` - Your embedded app (HTML, CSS, JS)
-    - `dist/worker/` - Your MCP server (Cloudflare Worker bundle)
-  </Step>
-
-  <Step title="Deploy to Cloudflare Workers">
-    ```bash
-    # Update .prod.vars with your worker URL
-    echo "APP_URL=https://your-app.your-username.workers.dev" > .prod.vars
-
-    # Deploy
-    pnpm deploy
-    ```
-  </Step>
-
-  <Step title="Update MCP Client Configuration">
-    Point your AI clients to the production URL:
-
-    **Claude Desktop:**
-    ```json
-    {
-      "mcpServers": {
-        "my-app": {
-          "command": "http",
-          "args": ["https://your-app.workers.dev/mcp"]
-        }
-      }
-    }
-    ```
-
-    **Chat UI (.env.production):**
-    ```
-    VITE_MCP_SERVER_URL=https://your-app.workers.dev/mcp
-    ```
-  </Step>
-</Steps>
-
-## Advanced Topics
-
-### Dynamic Tool Registration
-
-Tools can be added/removed at runtime:
-
-```typescript
-const [isAdmin, setIsAdmin] = useState(false);
-
-// Only register admin tools when user is admin
-{isAdmin && useWebMCP({
-  name: 'admin_delete_all',
-  description: 'Delete all data (admin only)',
-  handler: async () => {
-    // Admin action
-  }
-})}
+```bash
+# Build and deploy
+pnpm build
+pnpm deploy
 ```
 
-When tools change, send notification:
-
-```typescript
-// @mcp-b/global handles this automatically
-// Host listens for 'tools/list_changed' notification
-```
-
-### Multiple Embedded Apps
-
-You can create multiple apps, each with its own tools:
-
-```typescript
-// MCP Server
-this.server.tool('showGame1', ..., async () => {
-  return createUIResource({
-    uri: 'ui://game1',
-    content: { type: 'externalUrl', iframeUrl: `${this.env.APP_URL}/game1/` }
-  });
-});
-
-this.server.tool('showGame2', ..., async () => {
-  return createUIResource({
-    uri: 'ui://game2',
-    content: { type: 'externalUrl', iframeUrl: `${this.env.APP_URL}/game2/` }
-  });
-});
-```
-
-Each iframe gets its own WebMCP client and tool namespace.
-
-### Cross-Origin Security
-
-**Development:** Allow all origins
-```typescript
-initializeWebModelContext({
-  transport: {
-    tabServer: {
-      allowedOrigins: ['*']
-    }
-  }
-});
-```
-
-**Production:** Whitelist specific origins
-```typescript
-initializeWebModelContext({
-  transport: {
-    tabServer: {
-      allowedOrigins: [
-        'https://claude.ai',
-        'https://your-chat-ui.com'
-      ]
-    }
-  }
-});
-```
+Update your MCP client to point to the production URL (e.g., `https://your-app.workers.dev/mcp`). See the [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) for detailed deployment instructions.
 
 ## Next Steps
 
@@ -948,38 +407,10 @@ initializeWebModelContext({
   <Card title="@mcp-b/transports" icon="arrows-left-right" href="/packages/transports">
     Transport layer documentation
   </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Common issues and solutions
+  </Card>
 </CardGroup>
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title="Iframe tools not appearing">
-    1. Check browser console for WebMCP initialization errors
-    2. Verify `initializeWebModelContext()` runs BEFORE React renders
-    3. Check that `provideContext()` is called with valid tools
-    4. Ensure parent-child ready protocol completes
-    5. Verify `allowedOrigins` includes the parent's origin
-  </Accordion>
-
-  <Accordion title="Tools execute but UI doesn't update">
-    1. Ensure tool handlers update the same state as UI
-    2. Check that state updates trigger re-renders (React) or manual DOM updates (vanilla)
-    3. Verify `updateUI()` function is called after state changes
-  </Accordion>
-
-  <Accordion title="'Parent not ready' errors">
-    1. Implement parent-ready protocol correctly
-    2. Wait for `isParentReady` before sending notifications
-    3. Check that parent sends 'parent-ready' signal
-  </Accordion>
-
-  <Accordion title="MCP server not found">
-    1. Verify worker is running (`pnpm dev`)
-    2. Check `.dev.vars` has correct `APP_URL`
-    3. Ensure MCP endpoint is `/mcp` not `/`
-    4. Test with `curl http://localhost:8888/mcp`
-  </Accordion>
-</AccordionGroup>
 
 ## Resources
 
