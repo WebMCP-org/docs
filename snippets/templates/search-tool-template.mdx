@@ -1,0 +1,214 @@
+{/*
+# Search Tool Template
+
+Complete template for search with filters, pagination, and sorting.
+
+## When to use:
+- Implementing search functionality
+- Need filters and pagination
+- Product/content search features
+
+## Features included:
+- Multi-field search
+- Filter options (category, price, etc.)
+- Pagination support
+- Sorting options
+- Rich markdown results
+
+## Example usage in docs:
+```mdx
+import SearchToolTemplate from '/snippets/templates/search-tool-template.mdx';
+
+<SearchToolTemplate />
+```
+*/}
+
+```tsx "search-tool.tsx" twoslash lines icon="react"
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+import { useState } from 'react';
+
+function SearchComponent() {
+  const [searchResults, setSearchResults] = useState([]);
+
+  const searchTool = useWebMCP({
+    name: 'search_items',
+    description: `Search items by query with advanced filtering and pagination.
+
+Features:
+- Full-text search across title and description
+- Filter by category, price range, tags
+- Pagination with customizable limit
+- Sort by relevance, price, or date
+- Returns formatted results with metadata`,
+
+    inputSchema: {
+      query: z.string()
+        .min(1, "Query required")
+        .max(200, "Query too long")
+        .describe("Search query - searches title, description, and tags"),
+
+      // Filters
+      category: z.enum(["all", "electronics", "clothing", "books", "home"])
+        .optional()
+        .default("all")
+        .describe("Filter by category"),
+
+      minPrice: z.number()
+        .min(0)
+        .optional()
+        .describe("Minimum price in USD"),
+
+      maxPrice: z.number()
+        .min(0)
+        .optional()
+        .describe("Maximum price in USD"),
+
+      tags: z.array(z.string())
+        .max(10, "Maximum 10 tags")
+        .optional()
+        .describe("Filter by tags (match any)"),
+
+      inStock: z.boolean()
+        .optional()
+        .describe("Only show in-stock items"),
+
+      // Pagination
+      limit: z.number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(10)
+        .describe("Results per page (1-100)"),
+
+      offset: z.number()
+        .int()
+        .min(0)
+        .default(0)
+        .describe("Number of results to skip"),
+
+      // Sorting
+      sortBy: z.enum(["relevance", "price_asc", "price_desc", "date_newest", "date_oldest"])
+        .optional()
+        .default("relevance")
+        .describe("Sort order for results")
+    },
+
+    handler: async ({ query, category, minPrice, maxPrice, tags, inStock, limit, offset, sortBy }) => {
+      try {
+        // Perform search with filters
+        const results = await performSearch({
+          query,
+          filters: {
+            category: category !== "all" ? category : undefined,
+            minPrice,
+            maxPrice,
+            tags,
+            inStock
+          },
+          pagination: { limit, offset },
+          sortBy
+        });
+
+        // Update local state
+        setSearchResults(results.items);
+
+        // No results
+        if (results.items.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: `# No results for "${query}"
+
+Try:
+- Different search terms
+- Removing some filters
+- Checking spelling`
+            }]
+          };
+        }
+
+        // Format results as markdown
+        const markdown = `# Search Results: "${query}"
+
+Found **${results.total}** items${results.total > limit ? ` (showing ${offset + 1}-${offset + results.items.length})` : ''}
+
+## Items
+
+${results.items.map((item, i) => `
+### ${offset + i + 1}. ${item.title}
+
+**Price:** $${item.price.toFixed(2)}${!item.inStock ? ' 🔴 _Out of Stock_' : ' ✅'}
+**Category:** ${item.category}
+${item.rating ? `**Rating:** ${'⭐'.repeat(Math.round(item.rating))} (${item.rating}/5)` : ''}
+
+${item.description}
+
+${item.tags?.length > 0 ? `_Tags: ${item.tags.join(', ')}_` : ''}
+${item.url ? `[View Item](${item.url})` : ''}
+`).join('\n---\n')}
+
+---
+
+**Search Settings:**
+- Sort: ${sortBy}
+- Category: ${category}
+${minPrice || maxPrice ? `- Price: $${minPrice || 0} - $${maxPrice || '∞'}` : ''}
+${inStock ? '- In stock only' : ''}
+
+${results.total > limit ? `\n*Showing ${offset + 1}-${Math.min(offset + limit, results.total)} of ${results.total} results*` : ''}`;
+
+        return {
+          content: [{ type: "text", text: markdown }]
+        };
+
+      } catch (error) {
+        console.error('Search failed:', error);
+        return {
+          content: [{
+            type: "text",
+            text: `**Search Error:** ${error.message}\n\nPlease try again with different parameters.`
+          }],
+          isError: true
+        };
+      }
+    }
+  });
+
+  return (
+    <div>
+      {searchTool.state.isExecuting && (
+        <div className="loading">Searching...</div>
+      )}
+
+      <div className="results">
+        {searchResults.map(item => (
+          <div key={item.id} className="result-item">
+            <h3>{item.title}</h3>
+            <p>${item.price}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Search implementation
+async function performSearch(options: {
+  query: string;
+  filters: any;
+  pagination: { limit: number; offset: number };
+  sortBy: string;
+}) {
+  // Replace with your actual search implementation
+  const response = await fetch('/api/search', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options)
+  });
+
+  return response.json();
+}
+```

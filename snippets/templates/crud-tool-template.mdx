@@ -1,0 +1,249 @@
+{/*
+# CRUD Tool Template
+
+Complete template for Create/Read/Update/Delete operations using action-based pattern.
+
+## When to use:
+- Managing data with CRUD operations
+- Single tool handling multiple actions
+- RESTful-style tool design
+
+## Features included:
+- Action-based discriminated union
+- Full CRUD operations
+- Error handling per action
+- Optimistic UI updates
+
+## Example usage in docs:
+```mdx
+import CrudToolTemplate from '/snippets/templates/crud-tool-template.mdx';
+
+<CrudToolTemplate />
+```
+*/}
+
+```tsx "crud-tool.tsx" twoslash lines icon="react"
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+import { useState } from 'react';
+
+function DataManager() {
+  const [items, setItems] = useState([]);
+
+  const crudTool = useWebMCP({
+    name: 'data_manager',
+    description: `Manage data items with full CRUD operations.
+
+Actions available:
+- create: Add a new item
+- read: Retrieve item(s) by ID
+- update: Modify existing item
+- delete: Remove item by ID
+- list: Get all items`,
+
+    inputSchema: {
+      action: z.discriminatedUnion("type", [
+        // CREATE
+        z.object({
+          type: z.literal("create"),
+          title: z.string().min(1).describe("Item title"),
+          description: z.string().optional().describe("Item description"),
+          metadata: z.record(z.any()).optional().describe("Additional metadata")
+        }),
+
+        // READ
+        z.object({
+          type: z.literal("read"),
+          id: z.string().uuid().describe("Item ID to retrieve")
+        }),
+
+        // UPDATE
+        z.object({
+          type: z.literal("update"),
+          id: z.string().uuid().describe("Item ID to update"),
+          title: z.string().min(1).optional().describe("New title"),
+          description: z.string().optional().describe("New description"),
+          metadata: z.record(z.any()).optional().describe("Updated metadata")
+        }),
+
+        // DELETE
+        z.object({
+          type: z.literal("delete"),
+          id: z.string().uuid().describe("Item ID to delete")
+        }),
+
+        // LIST
+        z.object({
+          type: z.literal("list"),
+          limit: z.number().int().min(1).max(100).default(10).describe("Number of items"),
+          offset: z.number().int().min(0).default(0).describe("Skip N items")
+        })
+      ])
+    },
+
+    handler: async ({ action }) => {
+      try {
+        switch (action.type) {
+          case "create": {
+            const newItem = {
+              id: crypto.randomUUID(),
+              title: action.title,
+              description: action.description,
+              metadata: action.metadata,
+              createdAt: new Date().toISOString()
+            };
+
+            // Optimistic update
+            setItems(prev => [...prev, newItem]);
+
+            // Background sync
+            syncToBackend('create', newItem).catch(console.error);
+
+            return {
+              content: [{
+                type: "text",
+                text: `✅ **Created:** ${newItem.title}\nID: ${newItem.id}`
+              }]
+            };
+          }
+
+          case "read": {
+            const item = items.find(i => i.id === action.id);
+            if (!item) {
+              return {
+                content: [{
+                  type: "text",
+                  text: `❌ Item not found: ${action.id}`
+                }],
+                isError: true
+              };
+            }
+
+            return {
+              content: [{
+                type: "text",
+                text: `# ${item.title}\n\n${item.description || 'No description'}\n\n**ID:** ${item.id}\n**Created:** ${new Date(item.createdAt).toLocaleDateString()}`
+              }]
+            };
+          }
+
+          case "update": {
+            const index = items.findIndex(i => i.id === action.id);
+            if (index === -1) {
+              return {
+                content: [{
+                  type: "text",
+                  text: `❌ Item not found: ${action.id}`
+                }],
+                isError: true
+              };
+            }
+
+            const updatedItem = {
+              ...items[index],
+              ...(action.title && { title: action.title }),
+              ...(action.description && { description: action.description }),
+              ...(action.metadata && { metadata: action.metadata }),
+              updatedAt: new Date().toISOString()
+            };
+
+            setItems(prev => {
+              const newItems = [...prev];
+              newItems[index] = updatedItem;
+              return newItems;
+            });
+
+            syncToBackend('update', updatedItem).catch(console.error);
+
+            return {
+              content: [{
+                type: "text",
+                text: `✅ **Updated:** ${updatedItem.title}`
+              }]
+            };
+          }
+
+          case "delete": {
+            const item = items.find(i => i.id === action.id);
+            if (!item) {
+              return {
+                content: [{
+                  type: "text",
+                  text: `❌ Item not found: ${action.id}`
+                }],
+                isError: true
+              };
+            }
+
+            setItems(prev => prev.filter(i => i.id !== action.id));
+            syncToBackend('delete', { id: action.id }).catch(console.error);
+
+            return {
+              content: [{
+                type: "text",
+                text: `🗑️ **Deleted:** ${item.title}`
+              }]
+            };
+          }
+
+          case "list": {
+            const paginatedItems = items.slice(action.offset, action.offset + action.limit);
+
+            if (paginatedItems.length === 0) {
+              return {
+                content: [{
+                  type: "text",
+                  text: "📭 No items found"
+                }]
+              };
+            }
+
+            const markdown = `# Items (${paginatedItems.length} of ${items.length})
+
+${paginatedItems.map((item, i) => `
+${action.offset + i + 1}. **${item.title}**
+   ID: ${item.id}
+   ${item.description ? `Description: ${item.description}` : ''}
+`).join('\n')}
+
+---
+*Page: ${Math.floor(action.offset / action.limit) + 1} • Total: ${items.length} items*`;
+
+            return {
+              content: [{ type: "text", text: markdown }]
+            };
+          }
+        }
+      } catch (error) {
+        console.error('CRUD operation failed:', error);
+        return {
+          content: [{
+            type: "text",
+            text: `**Error:** ${error.message}`
+          }],
+          isError: true
+        };
+      }
+    }
+  });
+
+  return (
+    <div>
+      {crudTool.state.isExecuting && <div>Processing...</div>}
+      {/* Your UI */}
+    </div>
+  );
+}
+
+// Backend sync helper
+async function syncToBackend(operation: string, data: any) {
+  // Implement your backend sync logic
+  await fetch('/api/items', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operation, data })
+  });
+}
+```

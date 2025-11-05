@@ -85,6 +85,18 @@ snippets/
 - `lifecycle-cleanup.mdx` - Lifecycle cleanup pattern
 - `optimistic-update.mdx` - Optimistic update pattern for instant UX
 
+### Templates (`snippets/templates/`)
+
+**Complete Tool Templates (Phase 3):**
+- `basic-tool-template.mdx` - Ready-to-use basic tool with all best practices
+- `crud-tool-template.mdx` - Full CRUD operations with action-based pattern
+- `search-tool-template.mdx` - Search with filters, pagination, and sorting
+- `vanilla-tool-template.mdx` - Complete vanilla JS tool (no React)
+
+**Component Templates (Phase 3):**
+- `multi-tool-component.mdx` - Component registering multiple related tools
+- `provider-with-tools.mdx` - Context provider with application-level tools
+
 ### Examples (`snippets/examples/`)
 
 Full working React components:
@@ -208,19 +220,23 @@ docs(snippets): improve zod schema example
 
 **Total:** 13 additional snippets
 
-**Grand Total:** 27 reusable snippets
+## Phase 3 Implementation (Completed)
+
+**Created templates:**
+- ✅ Complete tool templates (4 templates: basic, CRUD, search, vanilla)
+- ✅ Component templates (2 templates: multi-tool, provider with tools)
+
+**Total:** 6 complete templates
+
+**Grand Total:** 33 reusable snippets and templates
 
 ## Next Steps
 
-### Phase 3: Templates & Examples (Planned)
-- Complete tool templates
-- React component templates
-- Ready-to-use starting points
-
-### Phase 4: Documentation Migration (Planned)
-- Update high-traffic pages to use snippets
-- Replace duplicated code across docs
-- Achieve 90%+ adoption target
+### Phase 4: Documentation Migration (Ready to Begin)
+- Pilot migration of high-traffic pages (quickstart.mdx, best-practices.mdx)
+- Replace duplicated code site-wide
+- Test rendering with `mintlify dev`
+- Achieve 90%+ adoption target across documentation
 
 ## Contributing
 

@@ -1,0 +1,113 @@
+{/*
+# Basic Tool Template
+
+Complete, ready-to-use tool template. Copy and customize for your needs.
+
+## When to use:
+- Starting a new tool from scratch
+- Need a complete working example
+- Want best practices built-in
+
+## Features included:
+- Input validation with Zod
+- Error handling
+- Markdown response formatting
+- Descriptive schema for AI
+
+## Example usage in docs:
+```mdx
+import BasicToolTemplate from '/snippets/templates/basic-tool-template.mdx';
+
+<BasicToolTemplate />
+```
+*/}
+
+```tsx "my-tool.tsx" twoslash lines icon="react"
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function MyComponent() {
+  const tool = useWebMCP({
+    name: 'my_tool',
+    description: `Describe what your tool does here.
+
+Include details about:
+- When to use this tool
+- What data it returns
+- Any prerequisites or dependencies`,
+
+    inputSchema: {
+      // Define your input parameters with validation
+      query: z.string()
+        .min(1, "Query cannot be empty")
+        .max(100, "Query too long")
+        .describe("The search query or input parameter"),
+
+      limit: z.number()
+        .int()
+        .min(1)
+        .max(100)
+        .default(10)
+        .describe("Number of results to return (1-100, default: 10)"),
+
+      includeDetails: z.boolean()
+        .optional()
+        .default(false)
+        .describe("Include detailed information in results")
+    },
+
+    handler: async ({ query, limit, includeDetails }) => {
+      try {
+        // Your tool logic here
+        const results = await performOperation(query, limit);
+
+        // Return markdown-formatted response
+        const markdown = `# Results for "${query}"
+
+Found ${results.length} items:
+
+${results.map((item, i) => `
+${i + 1}. **${item.title}**
+   ${includeDetails ? `- Details: ${item.description}` : ''}
+`).join('\n')}
+
+---
+*Showing ${results.length} of ${limit} requested results*`;
+
+        return {
+          content: [{ type: "text", text: markdown }]
+        };
+
+      } catch (error) {
+        console.error('Tool execution error:', error);
+        return {
+          content: [{
+            type: "text",
+            text: `**Error:** ${error.message}\n\nPlease try again or contact support.`
+          }],
+          isError: true
+        };
+      }
+    }
+  });
+
+  return (
+    <div>
+      {tool.state.isExecuting && <div>Loading...</div>}
+      {tool.state.error && (
+        <div className="error">
+          Error: {tool.state.error.message}
+        </div>
+      )}
+      {/* Your component UI */}
+    </div>
+  );
+}
+
+// Helper function (implement your logic)
+async function performOperation(query: string, limit: number) {
+  // Replace with your actual implementation
+  return [];
+}
+```
