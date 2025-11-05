@@ -4,15 +4,38 @@ description: 'Complete guide to building interactive apps that AI agents can con
 icon: 'hammer'
 ---
 
-## What You're Actually Building
+## What You're Building
 
-When you run `npx create-webmcp-app`, you're scaffolding a **complete bidirectional system** with three main components:
+`npx create-webmcp-app` scaffolds a bidirectional system with three components:
 
 1. **MCP Server** (Cloudflare Worker) - Exposes tools to AI agents
 2. **Embedded Web App** (React or Vanilla JS) - Runs in an iframe, registers its own tools
 3. **Communication Layer** - IframeParentTransport ↔ IframeChildTransport
 
-**The magic:** Your embedded app can register tools that the AI can call, creating true bidirectional interaction.
+Your embedded app registers tools that AI can call, creating bidirectional interaction.
+
+## Quick Navigation
+
+<CardGroup cols={3}>
+  <Card title="Quick Start" icon="bolt" href="#quick-start">
+    Get started in minutes with npx
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="#the-complete-architecture">
+    Understand the system design
+  </Card>
+  <Card title="MCP Server" icon="server" href="#part-1-the-mcp-server">
+    Build the backend tools
+  </Card>
+  <Card title="Vanilla App" icon="code" href="#part-2-the-embedded-app-vanilla">
+    HTML/CSS/JS implementation
+  </Card>
+  <Card title="React App" icon="react" href="#part-3-the-embedded-app-react">
+    TypeScript + React implementation
+  </Card>
+  <Card title="Deployment" icon="rocket" href="#deployment">
+    Deploy to production
+  </Card>
+</CardGroup>
 
 ## Quick Start
 
@@ -20,20 +43,33 @@ When you run `npx create-webmcp-app`, you're scaffolding a **complete bidirectio
 npx create-webmcp-app
 ```
 
-Choose your template:
-- **Vanilla** - Pure HTML/CSS/JavaScript (no build step!)
-- **React** - React + TypeScript + Vite (full-featured)
+<Tabs>
+  <Tab title="Vanilla Template" icon="code">
+    HTML/CSS/JavaScript with no build step. Uses CDN for dependencies.
 
-```bash
-cd your-project
-pnpm dev
-```
+    ```bash
+    # Select "vanilla" when prompted
+    cd your-project
+    pnpm dev
+    ```
 
-Your app runs at `http://localhost:8888` (React) or `http://localhost:8889` (Vanilla).
+    Runs at: `http://localhost:8889`
+  </Tab>
 
-## The Complete Architecture
+  <Tab title="React Template" icon="react">
+    React + TypeScript + Vite with hot module replacement.
 
-Here's what actually happens when an AI interacts with your app:
+    ```bash
+    # Select "react" when prompted
+    cd your-project
+    pnpm dev
+    ```
+
+    Runs at: `http://localhost:8888`
+  </Tab>
+</Tabs>
+
+## Architecture
 
 ```mermaid
 sequenceDiagram
@@ -72,7 +108,7 @@ sequenceDiagram
 
 ## Part 1: The MCP Server
 
-Your MCP server (`worker/mcpServer.ts`) provides the entry point for AI agents.
+The MCP server (`worker/mcpServer.ts`) exposes tools that return UI resources.
 
 ### Example: Template MCP Server
 
@@ -139,15 +175,13 @@ Try calling these tools to interact with the app!`,
 }
 ```
 
-**Key Points:**
-- The tool returns a `UIResource` with `type: 'externalUrl'`
-- The `iframeUrl` points to your embedded app
-- The host application (Claude Desktop, chat-ui) will render this as an iframe
-- The tools mentioned in the description will be registered BY THE IFRAME, not the server
+<Warning>
+The tools mentioned in the description are registered by the iframe, not by this server.
+</Warning>
 
 ## Part 2: The Embedded App (Vanilla)
 
-Your embedded app runs inside an iframe and uses `@mcp-b/global` to register tools.
+The Vanilla template uses `@mcp-b/global` via CDN. No build step required.
 
 ### Example: Vanilla Template (`public/index.html`)
 
@@ -321,17 +355,15 @@ Your embedded app runs inside an iframe and uses `@mcp-b/global` to register too
 </html>
 ```
 
-**Key Points:**
-- `@mcp-b/global` IIFE provides `window.navigator.modelContext`
-- Call `provideContext({ tools: [...] })` to register tools
-- Tool handlers update the same state that UI buttons use
-- Parent-child ready protocol ensures reliable communication
+<Note>
+Key points: `@mcp-b/global` provides `navigator.modelContext`. Tool handlers and UI buttons should share state management logic.
+</Note>
 
 ## Part 3: The Embedded App (React)
 
-For React apps, use `initializeWebModelContext()` and the `useWebMCP` hook.
-
-### Example: React Template
+<Warning>
+`initializeWebModelContext()` must be called before React renders.
+</Warning>
 
 **src/main.tsx** - Initialize WebMCP:
 
@@ -475,11 +507,9 @@ export default function App() {
 }
 ```
 
-**Key Points:**
-- `initializeWebModelContext()` must run BEFORE React renders
-- `useWebMCP` hook automatically registers tools on mount, unregisters on unmount
-- Zod schemas provide type-safe validation
-- Tool handlers share the same state as UI (single source of truth)
+<Note>
+`useWebMCP` hook automatically registers and unregisters tools. Tool handlers and UI should share the same React state.
+</Note>
 
 ## Part 4: How the Host Application Integrates This
 
@@ -609,50 +639,63 @@ async function setupIframe(iframe: HTMLIFrameElement, sourceId: string) {
 
 ## Development Workflow
 
-### 1. Start Development Server
+<Steps>
+  <Step title="Start Development Server">
+    Launch your local development environment:
 
-```bash
-pnpm dev
-```
+    ```bash
+    pnpm dev
+    ```
 
-This starts:
-- **MCP server**: `http://localhost:8888/mcp` (or 8889 for vanilla)
-- **Embedded app**: `http://localhost:8888/` (served by the worker)
-- **Hot reload**: Changes to your app update instantly
+    This starts:
+    - **MCP server**: `http://localhost:8888/mcp` (or 8889 for vanilla)
+    - **Embedded app**: `http://localhost:8888/` (served by the worker)
+    - **Hot reload**: Changes to your app update instantly
+  </Step>
 
-### 2. Test with AI
+  <Step title="Connect a Test Client">
+    <Tabs>
+      <Tab title="Chat UI" icon="messages">
+        Use the included chat-ui (in mcp-ui-webmcp repo):
 
-**Option A: Use chat-ui (included in mcp-ui-webmcp repo)**
-```bash
-# In a separate terminal
-cd ../chat-ui
-pnpm dev
-# Open http://localhost:5173
-```
+        ```bash
+        # In a separate terminal
+        cd ../chat-ui
+        pnpm dev
+        # Open http://localhost:5173
+        ```
+      </Tab>
 
-**Option B: Connect Claude Desktop**
-Add to your Claude Desktop MCP config:
-```json
-{
-  "mcpServers": {
-    "my-app": {
-      "command": "http",
-      "args": ["http://localhost:8888/mcp"]
-    }
-  }
-}
-```
+      <Tab title="Claude Desktop" icon="desktop">
+        Add to your Claude Desktop MCP config:
 
-### 3. Call Your Tools
+        ```json
+        {
+          "mcpServers": {
+            "my-app": {
+              "command": "http",
+              "args": ["http://localhost:8888/mcp"]
+            }
+          }
+        }
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
 
-1. AI calls `showTemplateApp` → iframe appears
-2. AI calls `template_get_message` → reads current state
-3. AI calls `template_update_message` → updates the UI
-4. You can also click UI buttons - same logic!
+  <Step title="Test the Interaction">
+    1. AI calls `showTemplateApp` → iframe appears
+    2. AI calls `template_get_message` → reads current state
+    3. AI calls `template_update_message` → updates the UI
+    4. UI buttons use the same logic as tool handlers
+  </Step>
+</Steps>
 
 ## Best Practices
 
 ### 1. Share Logic Between UI and Tools
+
+UI handlers and WebMCP tools should call the same underlying functions.
 
 **❌ Bad:** Duplicate logic
 ```typescript
@@ -768,46 +811,48 @@ useWebMCP({
 
 ## Deployment
 
-### Build for Production
+<Steps>
+  <Step title="Build for Production">
+    ```bash
+    pnpm build
+    ```
 
-```bash
-pnpm build
-```
+    This creates:
+    - `dist/client/` - Your embedded app (HTML, CSS, JS)
+    - `dist/worker/` - Your MCP server (Cloudflare Worker bundle)
+  </Step>
 
-This creates:
-- `dist/client/` - Your embedded app (HTML, CSS, JS)
-- `dist/worker/` - Your MCP server (Cloudflare Worker bundle)
+  <Step title="Deploy to Cloudflare Workers">
+    ```bash
+    # Update .prod.vars with your worker URL
+    echo "APP_URL=https://your-app.your-username.workers.dev" > .prod.vars
 
-### Deploy to Cloudflare Workers
+    # Deploy
+    pnpm deploy
+    ```
+  </Step>
 
-```bash
-# Update .prod.vars with your worker URL
-echo "APP_URL=https://your-app.your-username.workers.dev" > .prod.vars
+  <Step title="Update MCP Client Configuration">
+    Point your AI clients to the production URL:
 
-# Deploy
-pnpm deploy
-```
-
-### Update MCP Client Configuration
-
-Point your AI to the production URL:
-
-**Claude Desktop:**
-```json
-{
-  "mcpServers": {
-    "my-app": {
-      "command": "http",
-      "args": ["https://your-app.workers.dev/mcp"]
+    **Claude Desktop:**
+    ```json
+    {
+      "mcpServers": {
+        "my-app": {
+          "command": "http",
+          "args": ["https://your-app.workers.dev/mcp"]
+        }
+      }
     }
-  }
-}
-```
+    ```
 
-**Chat UI (.env.production):**
-```
-VITE_MCP_SERVER_URL=https://your-app.workers.dev/mcp
-```
+    **Chat UI (.env.production):**
+    ```
+    VITE_MCP_SERVER_URL=https://your-app.workers.dev/mcp
+    ```
+  </Step>
+</Steps>
 
 ## Advanced Topics
 
