@@ -71,7 +71,8 @@
             "pages": [
               "introduction",
               "quickstart",
-              "examples"
+              "examples",
+              "live-tool-examples"
             ]
           },
           {
