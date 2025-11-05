@@ -5,12 +5,35 @@ icon: 'heart'
 ---
 
 <Note>
-**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain MCP servers. The parent page can connect using **IframeParentTransport** (for cross-origin) or **TabClientTransport** (for same-origin), and it **automatically discovers** all tools inside the iframe - no manual bridging needed!
+**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain MCP servers. The parent page connects using **IframeParentTransport** or **TabClientTransport**, and it **automatically discovers** all tools inside the iframe - no manual bridging needed!
 </Note>
 
 <Info>
 **New to MCP-UI apps?** Check out the [Building MCP-UI Apps guide](/building-mcp-ui-apps) for a complete walkthrough from scaffolding to deployment. This page focuses on the integration patterns and architecture.
 </Info>
+
+## Quick Navigation
+
+<CardGroup cols={3}>
+  <Card title="Live Demos" icon="globe" href="#try-it-live">
+    Try the TicTacToe game demo
+  </Card>
+  <Card title="Simple Idea" icon="lightbulb" href="#the-simple-idea">
+    Understand the core concept
+  </Card>
+  <Card title="Quick Start" icon="bolt" href="#quick-start-with-create-webmcp-app">
+    Get started with CLI
+  </Card>
+  <Card title="Real Example" icon="gamepad" href="#real-world-example-tictactoe-game">
+    TicTacToe implementation
+  </Card>
+  <Card title="Deployment" icon="rocket" href="#deployment-architecture">
+    Production setup
+  </Card>
+  <Card title="Use Cases" icon="list-check" href="#use-cases">
+    What you can build
+  </Card>
+</CardGroup>
 
 ## Try It Live
 
@@ -75,9 +98,15 @@ This scaffolds a complete MCP-UI + WebMCP application with:
 
 ## Real-World Example: TicTacToe Game
 
-Here's the complete production implementation from the [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp).
+<Info>
+This complete production implementation from the [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) demonstrates all integration patterns in action.
+</Info>
 
-###System Architecture
+### System Architecture
+
+<Note>
+The following diagram shows how all three components (Chat UI, MCP Server, and Embedded App) work together to enable AI gameplay.
+</Note>
 
 ```mermaid
 flowchart TB
@@ -571,35 +600,67 @@ export function useIframeLifecycle() {
 
 ### Key Implementation Details
 
-**Shared Logic Pattern**: The TicTacToe app demonstrates best practices where UI handlers and WebMCP tools call the same underlying functions (`game.makeMove()`, `game.reset()`). This ensures:
-- Consistency between UI and API behavior
-- Single source of truth for business logic
-- Easier testing and maintenance
+<AccordionGroup>
+  <Accordion title="Shared Logic Pattern" icon="code-merge">
+    The TicTacToe app demonstrates best practices where UI handlers and WebMCP tools call the same underlying functions (`game.makeMove()`, `game.reset()`).
 
-**Tool Annotations** provide metadata for better AI interaction:
-- `readOnlyHint`: Tool doesn't modify state (safe to call anytime)
-- `idempotentHint`: Calling multiple times has same effect
-- `destructiveHint`: Operation destroys or significantly modifies data
+    **Benefits:**
+    - Consistency between UI and API behavior
+    - Single source of truth for business logic
+    - Easier testing and maintenance
 
-**Parent-Ready Protocol**: Ensures reliable communication by waiting for parent to signal readiness. The implementation handles multiple ready signal types to work with different MCP-UI clients:
-- `ui-lifecycle-iframe-ready` → sent by iframe on load
-- `parent-ready` → parent confirms it's listening
-- `ui-lifecycle-iframe-render-data` → alternative ready signal
-- `ui-message-response` / `ui-message-received` → fallback signals
+    <Tip>
+    Always share your state management logic between UI and tools!
+    </Tip>
+  </Accordion>
 
-**Iframe Lifecycle Management**: The `useIframeLifecycle` hook manages the complete lifecycle:
-1. Wait for iframe-ready signal from child
-2. Send parent-ready response
-3. Create MCP client and IframeParentTransport
-4. Connect and discover tools via `listTools()`
-5. Listen for tool list changes via notifications
-6. Setup cleanup on unmount (close client, transport, unregister)
+  <Accordion title="Tool Annotations" icon="tags">
+    Provide metadata for better AI interaction:
 
-**Dynamic Tool Updates**: The integration listens for `tools/list_changed` notifications, allowing embedded apps to add or remove tools dynamically. This is perfect for applications with conditional features.
+    - `readOnlyHint`: Tool doesn't modify state (safe to call anytime)
+    - `idempotentHint`: Calling multiple times has same effect
+    - `destructiveHint`: Operation destroys or significantly modifies data
+
+    These hints help AI agents make better decisions about when to call tools.
+  </Accordion>
+
+  <Accordion title="Parent-Ready Protocol" icon="handshake">
+    Ensures reliable communication by waiting for parent to signal readiness.
+
+    **Signal Types Handled:**
+    - `ui-lifecycle-iframe-ready` → sent by iframe on load
+    - `parent-ready` → parent confirms it's listening
+    - `ui-lifecycle-iframe-render-data` → alternative ready signal
+    - `ui-message-response` / `ui-message-received` → fallback signals
+
+    The implementation handles multiple signal types to work with different MCP-UI clients.
+  </Accordion>
+
+  <Accordion title="Iframe Lifecycle Management" icon="rotate">
+    The `useIframeLifecycle` hook manages the complete lifecycle:
+
+    1. Wait for iframe-ready signal from child
+    2. Send parent-ready response
+    3. Create MCP client and IframeParentTransport
+    4. Connect and discover tools via `listTools()`
+    5. Listen for tool list changes via notifications
+    6. Setup cleanup on unmount (close client, transport, unregister)
+  </Accordion>
+
+  <Accordion title="Dynamic Tool Updates" icon="arrows-rotate">
+    The integration listens for `tools/list_changed` notifications, allowing embedded apps to add or remove tools dynamically.
+
+    <Note>
+    This is perfect for applications with conditional features, user permissions, or state-dependent capabilities.
+    </Note>
+  </Accordion>
+</AccordionGroup>
 
 ## Vanilla JavaScript Example
 
-You can also build MCP-UI apps with pure HTML/CSS/JavaScript - no build step required!
+<Tip>
+**Zero build step!** You can build fully-functional MCP-UI apps with pure HTML/CSS/JavaScript. Just include `@mcp-b/global` via CDN and start coding.
+</Tip>
 
 **public/index.html**:
 
@@ -732,19 +793,61 @@ The MCP server uses `APP_URL` to construct iframe URLs that work in any environm
 
 ## Choosing Between Tab and Iframe Transports
 
-**Use Tab Transports when:**
-- Parent and iframe are on the same origin
-- You want automatic server discovery
-- You're working with multiple servers in the same context
+<Info>
+WebMCP provides two transport options for iframe communication. Choose based on your origin requirements and architecture needs.
+</Info>
 
-**Use Iframe Transports when:**
-- Parent and iframe are on different origins (most common)
-- You need explicit parent-child communication
-- You want dedicated channel isolation
-- You need robust iframe loading handling
+<Tabs>
+  <Tab title="Iframe Transports" icon="window">
+    **IframeParentTransport + IframeChildTransport**
+
+    **Use When:**
+    - Parent and iframe are on **different origins** (most common)
+    - You need explicit parent-child communication
+    - You want dedicated channel isolation
+    - You need robust iframe loading handling
+
+    **Features:**
+    - Cross-origin security with `targetOrigin` and `allowedOrigins`
+    - Explicit lifecycle management
+    - Production-ready (used in mcp-ui-webmcp repo)
+
+    ```typescript
+    // Parent side
+    const transport = new IframeParentTransport({
+      iframe: iframeElement,
+      targetOrigin: 'https://iframe-app.com'
+    });
+
+    // Child side
+    const transport = new IframeChildTransport({
+      allowedOrigins: ['https://parent-app.com']
+    });
+    ```
+  </Tab>
+
+  <Tab title="Tab Transports" icon="browsers">
+    **TabClientTransport + TabServerTransport**
+
+    **Use When:**
+    - Parent and iframe are on the **same origin**
+    - You want automatic server discovery
+    - You're working with multiple servers in the same context
+
+    **Features:**
+    - Automatic server discovery
+    - Simplified same-origin communication
+    - Multiple server support
+
+    ```typescript
+    // Automatic discovery on same origin
+    const transport = new TabClientTransport();
+    ```
+  </Tab>
+</Tabs>
 
 <Tip>
-The [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) uses IframeParentTransport and IframeChildTransport for production-ready cross-origin communication.
+**Production Recommendation:** The [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) uses IframeParentTransport and IframeChildTransport for production-ready cross-origin communication.
 </Tip>
 
 ## More Examples

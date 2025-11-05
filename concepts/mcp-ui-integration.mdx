@@ -9,8 +9,25 @@ icon: 'arrows-left-right-to-line'
 **MCP UI + WebMCP** enables a powerful pattern where AI assistants invoke tools that render interactive web applications, and those embedded apps can dynamically register new tools back to the AI in real-time. This creates a bidirectional feedback loop between conversational interfaces and embedded applications.
 
 <Note>
-  This pattern combines **MCP UI resources** (tools that return visual interfaces) with **WebMCP tool registration** (apps registering new tools via `navigator.modelContext`).
+This pattern combines **MCP UI resources** (tools that return visual interfaces) with **WebMCP tool registration** (apps registering new tools via `navigator.modelContext`).
 </Note>
+
+## Quick Navigation
+
+<CardGroup cols={2}>
+  <Card title="Getting Started" icon="rocket" href="/building-mcp-ui-apps">
+    Build your first MCP-UI app
+  </Card>
+  <Card title="Integration Guide" icon="heart" href="/mcpui-webmcp-integration">
+    Complete integration patterns
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="#architecture-components">
+    Understand the system design
+  </Card>
+  <Card title="Live Examples" icon="globe" href="https://beattheclankers.com">
+    Try the TicTacToe demo
+  </Card>
+</CardGroup>
 
 ## The Core Workflow
 
@@ -191,10 +208,14 @@ sequenceDiagram
 
 ## MCP UI Resource Types
 
-The MCP server can return three types of UI resources:
+<Info>
+MCP servers can return three types of UI resources, each optimized for different use cases.
+</Info>
 
-<AccordionGroup>
-  <Accordion title="externalUrl - Iframe Embedding">
+<Tabs>
+  <Tab title="externalUrl" icon="window">
+    **Iframe Embedding**
+
     Load a complete web application in an iframe:
 
     ```typescript
@@ -208,10 +229,20 @@ The MCP server can return three types of UI resources:
     })
     ```
 
-    **Best for:** Full-featured applications, existing web apps, complex interactions
-  </Accordion>
+    **Best for:**
+    - Full-featured applications
+    - Existing web apps
+    - Complex interactions
+    - Production apps with build processes
 
-  <Accordion title="rawHtml - Sanitized Markup">
+    <Tip>
+    This is the most common type for MCP-UI + WebMCP integration.
+    </Tip>
+  </Tab>
+
+  <Tab title="rawHtml" icon="code">
+    **Sanitized Markup**
+
     Inject sanitized HTML directly into the page:
 
     ```typescript
@@ -225,10 +256,16 @@ The MCP server can return three types of UI resources:
     })
     ```
 
-    **Best for:** Simple widgets, static content, lightweight components
-  </Accordion>
+    **Best for:**
+    - Simple widgets
+    - Static content
+    - Lightweight components
+    - Quick prototypes
+  </Tab>
 
-  <Accordion title="remoteDom - Dynamic Content">
+  <Tab title="remoteDom" icon="satellite-dish">
+    **Dynamic Content**
+
     Stream dynamic DOM updates to the parent:
 
     ```typescript
@@ -243,9 +280,13 @@ The MCP server can return three types of UI resources:
     })
     ```
 
-    **Best for:** Real-time updates, streaming data, live visualizations
-  </Accordion>
-</AccordionGroup>
+    **Best for:**
+    - Real-time updates
+    - Streaming data
+    - Live visualizations
+    - Server-driven UI
+  </Tab>
+</Tabs>
 
 ## WebMCP vs MCP-B
 
@@ -281,20 +322,49 @@ The MCP-B packages (`@mcp-b/react-webmcp`, `@mcp-b/transports`, `@mcp-b/global`)
 
 ## Getting Started
 
-### Quick Start with Scaffolding
+<Info>
+The fastest way to start building is with the `create-webmcp-app` CLI tool, which scaffolds a complete project with all necessary configuration.
+</Info>
 
-Create a new bidirectional MCP UI + WebMCP project:
+<Steps>
+  <Step title="Create Project">
+    Run the interactive CLI:
 
-```bash
-npx create-webmcp-app
-cd your-project
-pnpm install
-pnpm dev
-```
+    ```bash
+    npx create-webmcp-app
+    ```
 
-Choose between:
-- **Vanilla template**: HTML/CSS/JS with no build step
-- **React template**: TypeScript + Vite + React 19
+    Choose between:
+    - **Vanilla template**: HTML/CSS/JS with no build step
+    - **React template**: TypeScript + Vite + React 19
+  </Step>
+
+  <Step title="Install Dependencies">
+    ```bash
+    cd your-project
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Start Development Server">
+    ```bash
+    pnpm dev
+    ```
+
+    Your MCP server and embedded app are now running locally!
+  </Step>
+
+  <Step title="Explore the Code">
+    Check out:
+    - `worker/mcpServer.ts` - MCP server implementation
+    - `public/` or `src/` - Embedded app code
+    - `.dev.vars` - Environment configuration
+
+    <Tip>
+    Modify the template to add your own tools and UI features.
+    </Tip>
+  </Step>
+</Steps>
 
 ### Repository & Examples
 
@@ -318,13 +388,32 @@ Choose between:
 
 ## Use Cases
 
-This pattern is ideal for:
+<Note>
+This bidirectional pattern unlocks powerful use cases where AI agents can both see and interact with complex interfaces.
+</Note>
 
-- **Interactive Games**: AI plays games by calling dynamically registered moves
-- **Data Visualization**: Charts and graphs that expose filtering/manipulation tools
-- **Form Builders**: Dynamic forms that register validation and submission tools
-- **Collaboration Tools**: Whiteboards, document editors with AI-accessible operations
-- **Configuration UIs**: Settings panels that expose configuration tools to AI
+**Ideal applications include:**
+
+<CardGroup cols={2}>
+  <Card title="Interactive Games" icon="gamepad">
+    AI plays games by calling dynamically registered moves (see TicTacToe demo)
+  </Card>
+  <Card title="Data Visualization" icon="chart-line">
+    Charts and graphs that expose filtering/manipulation tools
+  </Card>
+  <Card title="Form Builders" icon="list-check">
+    Dynamic forms that register validation and submission tools
+  </Card>
+  <Card title="Collaboration Tools" icon="users">
+    Whiteboards, document editors with AI-accessible operations
+  </Card>
+  <Card title="Configuration UIs" icon="sliders">
+    Settings panels that expose configuration tools to AI
+  </Card>
+  <Card title="Real-time Dashboards" icon="dashboard">
+    Live data displays with AI-controlled filters and actions
+  </Card>
+</CardGroup>
 
 ## Key Benefits
 
