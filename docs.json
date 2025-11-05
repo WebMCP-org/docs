@@ -71,8 +71,7 @@
             "pages": [
               "introduction",
               "quickstart",
-              "examples",
-              "live-tool-examples"
+              "examples"
             ]
           },
           {
@@ -221,6 +220,18 @@
             "group": "AI Indexing",
             "pages": [
               "llms-txt"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Live Tool Examples",
+        "icon": "wand-magic-sparkles",
+        "groups": [
+          {
+            "group": "Interactive Demos",
+            "pages": [
+              "live-tool-examples"
             ]
           }
         ]
