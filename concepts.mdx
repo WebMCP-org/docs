@@ -525,7 +525,7 @@ graph TB
     subgraph "Embedded App (Iframe)"
         A[React Component] -->|Uses| B[useWebMCP Hook]
         B -->|Registers via| C[navigator.modelContext]
-        C -->|Polyfilled by| D[MCP-B Core]
+        C -->|Polyfilled by| D[@mcp-b/global]
         D -->|Communicates via| E[IframeChildTransport]
         E <-->|postMessage| F[Parent Window]
     end
@@ -546,15 +546,18 @@ function TicTacToeGame() {
 
   // Register a tool that AI can call
   useWebMCP({
-    name: "tictactoe_move",
+    name: "tictactoe_ai_move",
     description: "Make a move at the specified position (0-8)",
-    schema: z.object({
-      position: z.number().min(0).max(8),
-      player: z.enum(['X', 'O'])
-    }),
-    handler: async ({ position, player }) => {
+    inputSchema: {
+      position: z.number().int().min(0).max(8)
+        .describe('Cell position in row-major order')
+    },
+    annotations: {
+      idempotentHint: false,
+    },
+    handler: async ({ position }) => {
       // Update game state
-      const newState = makeMove(gameState, position, player);
+      const newState = makeMove(gameState, position);
       setGameState(newState);
 
       return {
@@ -579,29 +582,33 @@ function TicTacToeGame() {
 Remote server that exposes initial tools returning UI resources:
 
 ```typescript
-// MCP server tool that returns an iframe
-server.registerTool({
-  name: "showTicTacToeGame",
-  description: "Display an interactive TicTacToe game",
-  inputSchema: { type: "object", properties: {} },
-  handler: async () => {
-    return {
-      toolResult: {
-        content: [{
-          type: "resource",
-          resource: {
-            uri: "ui://tictactoe",
-            mimeType: "text/html",
-            metadata: {
-              uiType: "externalUrl",
-              url: "https://example.com/games/tictactoe"
-            }
-          }
-        }]
+import { McpAgent } from 'agents';
+import { createUIResource } from '@mcp-ui/server';
+
+class MyMCP extends McpAgent {
+  async init() {
+    // Register a tool that returns a UI resource
+    this.server.tool(
+      'showTicTacToeGame',
+      'Display an interactive TicTacToe game',
+      {},
+      async () => {
+        const uiResource = createUIResource({
+          uri: 'ui://tictactoe',
+          content: {
+            type: 'externalUrl',
+            iframeUrl: `${this.env.APP_URL}/`
+          },
+          encoding: 'text'
+        });
+
+        return {
+          content: [uiResource]
+        };
       }
-    };
+    );
   }
-});
+}
 ```
 
 ### Communication Flow
@@ -620,8 +627,8 @@ sequenceDiagram
     C->>I: Render iframe with URL
 
     Note over C,I: WebMCP Transport Setup
-    I->>C: postMessage: "mcp-init"
-    C-->>I: postMessage: "mcp-init-ack"
+    I->>C: postMessage: "ui-lifecycle-iframe-ready"
+    C-->>I: postMessage: "parent-ready"
 
     Note over I,A: Dynamic Tool Registration
     I->>C: Register "tictactoe_move" via postMessage
@@ -644,21 +651,15 @@ The MCP server can return three types of UI resources:
   <Accordion title="externalUrl - Iframe Embedding">
     Load a complete web application in an iframe:
 
-    ```javascript
-    {
-      type: "resource",
-      resource: {
-        uri: "ui://myapp",
-        mimeType: "text/html",
-        metadata: {
-          uiType: "externalUrl",
-          url: "https://example.com/app",
-          // Optional iframe attributes
-          sandbox: "allow-scripts allow-same-origin",
-          allow: "camera; microphone"
-        }
-      }
-    }
+    ```typescript
+    createUIResource({
+      uri: 'ui://myapp',
+      content: {
+        type: 'externalUrl',
+        iframeUrl: 'https://example.com/app'
+      },
+      encoding: 'text'
+    })
     ```
 
     **Best for:** Full-featured applications, existing web apps, complex interactions
@@ -667,19 +668,15 @@ The MCP server can return three types of UI resources:
   <Accordion title="rawHtml - Sanitized Markup">
     Inject sanitized HTML directly into the page:
 
-    ```javascript
-    {
-      type: "resource",
-      resource: {
-        uri: "ui://widget",
-        mimeType: "text/html",
-        metadata: {
-          uiType: "rawHtml",
-          html: "<div class='widget'>Content</div>",
-          css: ".widget { color: blue; }"
-        }
-      }
-    }
+    ```typescript
+    createUIResource({
+      uri: 'ui://widget',
+      content: {
+        type: 'rawHtml',
+        htmlString: '<div class="widget">Content</div>'
+      },
+      encoding: 'text'
+    })
     ```
 
     **Best for:** Simple widgets, static content, lightweight components
@@ -688,19 +685,16 @@ The MCP server can return three types of UI resources:
   <Accordion title="remoteDom - Dynamic Content">
     Stream dynamic DOM updates to the parent:
 
-    ```javascript
-    {
-      type: "resource",
-      resource: {
-        uri: "ui://dynamic",
-        mimeType: "text/html",
-        metadata: {
-          uiType: "remoteDom",
-          initialHtml: "<div id='root'></div>",
-          updateChannel: "wss://example.com/updates"
-        }
-      }
-    }
+    ```typescript
+    createUIResource({
+      uri: 'ui://dynamic',
+      content: {
+        type: 'remoteDom',
+        script: 'console.log("Dynamic content")',
+        framework: 'vanilla'
+      },
+      encoding: 'text'
+    })
     ```
 
     **Best for:** Real-time updates, streaming data, live visualizations
@@ -714,10 +708,30 @@ It's important to understand the distinction:
 - **WebMCP**: The W3C standard specification defining `navigator.modelContext` API
 - **MCP-B**: Reference implementation providing polyfills and npm packages before native browser support
 
-The MCP-B packages (`@mcp-b/react-webmcp`, `@mcp-b/transports`, `@mcp-b/core`) enable WebMCP functionality today by:
+The MCP-B packages (`@mcp-b/react-webmcp`, `@mcp-b/transports`, `@mcp-b/global`) enable WebMCP functionality today by:
 1. Polyfilling `navigator.modelContext` for current browsers
 2. Providing transport layers (iframe, tab, extension)
 3. Bridging between WebMCP and MCP protocols
+
+<Warning>
+  **Critical Implementation Detail**: When using `@mcp-b/global`, you must call `initializeWebModelContext()` BEFORE React renders. This initialization must happen at module scope in your main.tsx entry point:
+
+  ```typescript
+  import { initializeWebModelContext } from '@mcp-b/global';
+
+  // MUST run before React
+  initializeWebModelContext({
+    transport: {
+      tabServer: {
+        allowedOrigins: ['*'], // Restrict in production
+      },
+    },
+  });
+
+  // Then render React
+  createRoot(document.getElementById('root')!).render(<App />);
+  ```
+</Warning>
 
 ### Getting Started
 
@@ -811,6 +825,7 @@ When building MCP UI + WebMCP applications:
     - Use clear, descriptive tool names and descriptions
     - Return structured data (JSON) in tool results
     - Include success/error states in responses
+    - Use annotations to provide hints: `idempotentHint`, `readOnlyHint`, `destructiveHint`
   </Accordion>
 
   <Accordion title="Manage tool lifecycle carefully">
@@ -835,8 +850,9 @@ When building MCP UI + WebMCP applications:
 **Key dependencies:**
 - `@mcp-b/react-webmcp` - React hooks for WebMCP
 - `@mcp-b/transports` - Iframe transport implementation
-- `@mcp-b/core` - Core WebMCP polyfill
+- `@mcp-b/global` - Core WebMCP polyfill (navigator.modelContext)
 - `@modelcontextprotocol/sdk` - MCP protocol implementation
+- `@mcp-ui/server` - MCP UI resource creation utilities
 
 **Deployment targets:**
 - Cloudflare Workers (MCP server)
