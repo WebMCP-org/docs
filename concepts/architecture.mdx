@@ -1,0 +1,153 @@
+---
+title: 'Architecture Overview'
+description: 'Understanding WebMCP components, data flow, and how everything works together'
+icon: 'diagram-project'
+---
+
+## Key Components
+
+<CardGroup cols={2}>
+  <Card title="W3C Web Model Context API" icon="globe">
+    Standard browser API (`navigator.modelContext`) for registering tools - the WebMCP specification
+  </Card>
+
+  <Card title="MCP-B Polyfill & Bridge" icon="arrows-left-right">
+    Implements navigator.modelContext for current browsers and translates between WebMCP and MCP protocols
+  </Card>
+
+  <Card title="Transport Layer" icon="tower-broadcast">
+    Communication between browser contexts (tabs, extensions, pages)
+  </Card>
+
+  <Card title="MCP-B Extension" icon="puzzle-piece">
+    Development and testing tool that collects WebMCP servers from tabs and supports userscript injection
+  </Card>
+</CardGroup>
+
+## High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph "Your Website"
+        A[JavaScript Code] -->|registerTool| B[navigator.modelContext]
+        B -->|Polyfill| C[MCP Bridge]
+    end
+
+    subgraph "Browser Layer"
+        C -->|Tab Transport| D[MCP-B Extension]
+        D -->|Extension Transport| E[AI Agent Interface]
+    end
+
+    subgraph "AI Layer"
+        E -->|Tool Discovery| F[Available Tools]
+        E -->|Tool Execution| G[Call Tool]
+        G -->|Response| E
+    end
+
+    style A fill:#4B7BFF
+    style B fill:#1F5EFF
+    style C fill:#1449CC
+    style D fill:#FFB84D
+    style E fill:#50C878
+```
+
+## Component Interaction Flow
+
+```mermaid
+sequenceDiagram
+    participant W as Website
+    participant N as navigator.modelContext
+    participant B as MCP Bridge
+    participant T as Transport
+    participant X as MCP-B Extension
+    participant A as AI Agent
+
+    W->>N: registerTool(config)
+    N->>B: Store tool definition
+    B->>T: Expose via MCP protocol
+
+    A->>X: Request available tools
+    X->>T: List tools
+    T->>B: Get registered tools
+    B-->>X: Return tool list
+    X-->>A: Display available tools
+
+    A->>X: Call tool(name, args)
+    X->>T: Execute tool
+    T->>B: Route to tool handler
+    B->>N: Call execute()
+    N->>W: Run handler function
+    W-->>N: Return result
+    N-->>B: Format response
+    B-->>T: MCP response
+    T-->>X: Tool result
+    X-->>A: Show result
+```
+
+## Data Flow
+
+Understanding how data flows through WebMCP when AI agents interact with your website tools.
+
+### Tool Execution Flow
+
+The following diagram shows how the extension maintains a fresh tool list and handles AI requests:
+
+```mermaid
+sequenceDiagram
+    participant W as Your Code
+    participant B as MCP Bridge
+    participant T as Tab Transport
+    participant X as MCP-B Extension
+    participant A as AI Agent
+
+    Note over W,X: Tool Registration & Updates
+    W->>B: registerTool() / unregister()
+    B->>T: Tool list change event
+    T->>X: Notify tools changed
+    X->>T: Fetch fresh tool list
+    T->>B: Query registered tools
+    B-->>T: Return tool definitions
+    T-->>X: Updated tool list
+
+    Note over X,A: AI Inference Request
+    X->>A: Send context with fresh tool list
+    A->>A: Analyze available tools
+
+    Note over W,A: Tool Execution Phase
+    A->>X: Call tool(name, args)
+    X->>T: Execute tool request
+    T->>B: Route to tool handler
+    B->>W: Run handler function
+    W-->>B: Return result data
+    B-->>T: Format MCP response
+    T-->>X: Tool execution result
+    X-->>A: Show result to user
+```
+
+## How It All Works Together
+
+1. **Your website** registers tools using `navigator.modelContext.registerTool()`
+2. **The MCP-B polyfill** implements the WebMCP API and translates to MCP protocol
+3. **Transport layers** handle communication between different browser contexts
+4. **The MCP-B extension** aggregates tools from all tabs and exposes them to AI agents
+5. **AI agents** discover available tools and execute them on behalf of users
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Tool Registration" icon="screwdriver-wrench" href="/concepts/tool-registration">
+    Learn how to register and manage tools
+  </Card>
+
+  <Card title="Transports" icon="tower-broadcast" href="/concepts/transports">
+    Understanding transport layers and communication
+  </Card>
+
+  <Card title="Extension Architecture" icon="puzzle-piece" href="/concepts/extension">
+    Deep dive into the MCP-B extension
+  </Card>
+
+  <Card title="Security Model" icon="shield" href="/concepts/security">
+    How WebMCP maintains security
+  </Card>
+</CardGroup>
