@@ -72,7 +72,7 @@ To prepare for browser agent support:
   </Step>
 
   <Step title="Test with MCP-B Extension">
-    Use the [MCP-B Extension](/extension) to test how agents will interact with your tools
+    Use the [MCP-B Extension](/extension/index) to test how agents will interact with your tools
   </Step>
 </Steps>
 
@@ -82,7 +82,7 @@ To prepare for browser agent support:
 
 Frontend AI frameworks let you build AI-powered features directly into your website or web application. These frameworks can call WebMCP tools from your site's own AI agent.
 
-<Card title="Frontend Tool Calling Guide" icon="wand-magic-sparkles" href="/ai-frameworks">
+<Card title="Frontend Tool Calling Guide" icon="wand-magic-sparkles" href="/ai-frameworks/index">
   Complete guide to integrating WebMCP with frontend AI frameworks
 </Card>
 
@@ -148,7 +148,7 @@ The [MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/d
 - Lets you create custom tools via userscripts
 - Bridges tools to local MCP clients
 
-<Card title="Extension Guide" icon="puzzle-piece" href="/extension">
+<Card title="Extension Guide" icon="puzzle-piece" href="/extension/index">
   Complete guide to the MCP-B browser extension
 </Card>
 
@@ -359,7 +359,7 @@ Use this guide to select the best connection method for your use case:
 <Tabs>
   <Tab title="For Website Developers">
     **Building AI features into your site:**
-    - Use [Frontend AI Frameworks](/ai-frameworks) (Assistant-UI, AG-UI)
+    - Use [Frontend AI Frameworks](/ai-frameworks/index) (Assistant-UI, AG-UI)
     - Integrate WebMCP tools directly with your site's AI
     - Full control over user experience
 
@@ -371,19 +371,19 @@ Use this guide to select the best connection method for your use case:
 
   <Tab title="For Extension Users">
     **Want to customize any website:**
-    - Install [MCP-B Extension](/extension)
+    - Install [MCP-B Extension](/extension/index)
     - Use built-in agents to create tools and userscripts
     - No coding required for basic use
 
     **Connect to desktop AI:**
-    - Install [MCP-B Extension](/extension)
+    - Install [MCP-B Extension](/extension/index)
     - Set up [Native Server Bridge](/native-host-setup)
     - Access browser tools from Claude Desktop/Code
   </Tab>
 
   <Tab title="For AI App Builders">
     **Building browser-based AI:**
-    - Use [Frontend AI Frameworks](/ai-frameworks)
+    - Use [Frontend AI Frameworks](/ai-frameworks/index)
     - Integrate `@mcp-b/react-webmcp` hooks
     - Call WebMCP tools from your AI runtime
 
@@ -396,10 +396,10 @@ Use this guide to select the best connection method for your use case:
   <Tab title="For End Users">
     **Using existing websites:**
     - If site has Jason's WebMCP widget: Use [Jason's WebMCP library](https://github.com/jasonjmcghee/WebMCP)
-    - If you want to add tools: Install [MCP-B Extension](/extension)
+    - If you want to add tools: Install [MCP-B Extension](/extension/index)
 
     **Connecting to Claude Desktop:**
-    1. Install [MCP-B Extension](/extension)
+    1. Install [MCP-B Extension](/extension/index)
     2. Install and start [Native Server](/native-host-setup)
     3. Configure Claude Desktop
     4. Tools from open tabs appear in Claude
@@ -441,7 +441,7 @@ All connection methods execute tools with the same permissions as your browser s
     - Extension has access to all open tabs
     - Tools scoped by domain
     - Native server listens on localhost only
-    - Review [extension security](/extension#security)
+    - Review [extension security](/extension/index#privacy--security)
   </Accordion>
 
   <Accordion title="Jason's WebMCP">
@@ -465,7 +465,7 @@ Ready to connect your agent? Follow these quick start guides:
   <Card
     title="Frontend Integration"
     icon="wand-magic-sparkles"
-    href="/ai-frameworks"
+    href="/ai-frameworks/index"
   >
     Add WebMCP to your website's AI features
   </Card>
@@ -473,7 +473,7 @@ Ready to connect your agent? Follow these quick start guides:
   <Card
     title="MCP-B Extension"
     icon="puzzle-piece"
-    href="/extension"
+    href="/extension/index"
   >
     Install and use the browser extension
   </Card>
@@ -499,7 +499,7 @@ Ready to connect your agent? Follow these quick start guides:
 
 <Steps>
   <Step title="Understand the architecture">
-    Read [Core Concepts](/concepts) to learn how WebMCP works
+    Read [Core Concepts](/concepts/overview) to learn how WebMCP works
   </Step>
 
   <Step title="Review security">
@@ -541,7 +541,7 @@ Ready to connect your agent? Follow these quick start guides:
     1. Verify tools are registered: Check `navigator.modelContext`
     2. Confirm MCP client is connected
     3. Check tool schema validation
-    4. Review [frontend tools guide](/ai-frameworks)
+    4. Review [frontend tools guide](/ai-frameworks/index)
     5. Enable verbose logging in your transport
   </Accordion>
 </AccordionGroup>
