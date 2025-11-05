@@ -42,33 +42,17 @@ function AdminPanel() {
 
 ### Page-Specific Tools
 
-Register different tools based on the current route:
+Register tools based on the current route - tools appear and disappear as users navigate:
 
 ```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useLocation } from 'react-router-dom';
-import { z } from 'zod';
-
 function ProductPage({ productId }) {
-  // Product-specific tools only available on this page
   useWebMCP({
     name: 'add_to_cart',
     description: 'Add this product to cart',
-    inputSchema: {
-      quantity: z.number().min(1).default(1)
-    },
+    inputSchema: { quantity: z.number().min(1).default(1) },
     handler: async ({ quantity }) => {
       await addToCart(productId, quantity);
-      return { success: true, productId, quantity };
-    }
-  });
-
-  useWebMCP({
-    name: 'get_product_details',
-    description: 'Get current product information',
-    handler: async () => {
-      const product = await fetchProduct(productId);
-      return product;
+      return { success: true };
     }
   });
 
@@ -78,76 +62,26 @@ function ProductPage({ productId }) {
 
 ### Component Lifecycle Tool Scoping
 
-Tools tied to React component lifecycle automatically register when mounted and unregister when unmounted:
+Tools automatically register when mounted and unregister when unmounted:
 
 ```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useEffect } from 'react';
-import { z } from 'zod';
-
-function ShoppingCartTools({ cartId, items }) {
-  // These tools exist only while this component is mounted
-  useWebMCP({
-    name: 'add_to_cart',
-    description: 'Add an item to the shopping cart',
-    inputSchema: {
-      productId: z.string(),
-      quantity: z.number().min(1)
-    },
-    handler: async ({ productId, quantity }) => {
-      await cartService.addItem(cartId, productId, quantity);
-      return { success: true, message: `Added ${quantity} of ${productId} to cart` };
-    }
-  });
-
-  useWebMCP({
-    name: 'remove_from_cart',
-    description: 'Remove an item from the shopping cart',
-    inputSchema: {
-      itemId: z.string()
-    },
-    handler: async ({ itemId }) => {
-      await cartService.removeItem(cartId, itemId);
-      return { success: true, message: `Removed item ${itemId} from cart` };
-    }
-  });
-
-  // Conditionally register checkout tool only if cart has items
+function CartTools({ cartId, items }) {
   useWebMCP({
     name: 'checkout',
-    description: 'Proceed to checkout with current cart items',
-    inputSchema: {
-      paymentMethod: z.enum(['credit', 'debit', 'paypal'])
-    },
+    description: 'Proceed to checkout',
+    inputSchema: { paymentMethod: z.enum(['credit', 'debit', 'paypal']) },
     handler: async ({ paymentMethod }) => {
       const order = await checkoutService.processCart(cartId, paymentMethod);
-      return { success: true, orderId: order.id };
+      return { orderId: order.id };
     },
     enabled: items.length > 0 // Only available when cart has items
   });
 
-  return null; // No UI needed, just tool registration
-}
-
-// Usage in your app
-function EcommerceApp() {
-  const { cart } = useAppState();
-
-  return (
-    <Routes>
-      <Route path="/cart" element={
-        <>
-          <CartPage />
-          <ShoppingCartTools cartId={cart.id} items={cart.items} />
-        </>
-      } />
-      <Route path="/product/:id" element={<ProductPage />} />
-    </Routes>
-  );
+  return null;
 }
 ```
 
-This pattern creates a **UI for LLMs** similar to how websites guide human users - instead of showing all tools at once, you progressively reveal capabilities based on context.
+This creates a **UI for LLMs** - instead of showing all tools at once, you progressively reveal capabilities based on context.
 
 ## Context Engineering Patterns
 
@@ -162,74 +96,30 @@ Context engineering is the practice of giving AI models only the tools and infor
 Expose different tools based on the current URL path:
 
 ```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useLocation } from 'react-router-dom';
-import { z } from 'zod';
-
 function ToolProvider() {
   const { pathname } = useLocation();
 
-  // Home page tools
   if (pathname === '/') {
     useWebMCP({
       name: 'search_products',
-      description: 'Search for products in the catalog',
-      inputSchema: {
-        query: z.string(),
-        category: z.string().optional()
-      },
-      handler: async ({ query, category }) => {
-        return await searchAPI.search({ query, category });
-      }
+      inputSchema: { query: z.string(), category: z.string().optional() },
+      handler: async ({ query, category }) => await searchAPI.search({ query, category })
     });
   }
 
-  // Product detail page tools
   if (pathname.startsWith('/product/')) {
-    const productId = pathname.split('/')[2];
-
-    useWebMCP({
-      name: 'get_product_details',
-      description: 'Get detailed information about the current product',
-      handler: async () => {
-        return await productAPI.getDetails(productId);
-      }
-    });
-
     useWebMCP({
       name: 'add_to_cart',
-      description: 'Add the current product to cart',
-      inputSchema: {
-        quantity: z.number().min(1).default(1)
-      },
-      handler: async ({ quantity }) => {
-        return await cartAPI.add(productId, quantity);
-      }
+      inputSchema: { quantity: z.number().min(1).default(1) },
+      handler: async ({ quantity }) => await cartAPI.add(productId, quantity)
     });
   }
 
-  // Checkout page tools
   if (pathname === '/checkout') {
     useWebMCP({
-      name: 'apply_discount',
-      description: 'Apply a discount code to the order',
-      inputSchema: {
-        code: z.string()
-      },
-      handler: async ({ code }) => {
-        return await checkoutAPI.applyDiscount(code);
-      }
-    });
-
-    useWebMCP({
       name: 'complete_checkout',
-      description: 'Complete the checkout process',
-      inputSchema: {
-        paymentMethod: z.enum(['credit', 'debit', 'paypal'])
-      },
-      handler: async ({ paymentMethod }) => {
-        return await checkoutAPI.complete(paymentMethod);
-      }
+      inputSchema: { paymentMethod: z.enum(['credit', 'debit', 'paypal']) },
+      handler: async ({ paymentMethod }) => await checkoutAPI.complete(paymentMethod)
     });
   }
 
@@ -354,93 +244,43 @@ function FeatureGatedTools() {
 
 ### React State Integration
 
-Sync tools with React state for real-time updates:
+Tools can access and update React state:
 
 ```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useState } from 'react';
-import { z } from 'zod';
-
-function ShoppingCart() {
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
+function Counter() {
+  const [count, setCount] = useState(0);
 
   useWebMCP({
-    name: 'view_cart',
-    description: 'View shopping cart contents',
-    handler: async () => {
-      return {
-        items,
-        total,
-        itemCount: items.length
-      };
+    name: 'increment',
+    inputSchema: { amount: z.number().default(1) },
+    handler: async ({ amount }) => {
+      setCount(prev => prev + amount);
+      return { newValue: count + amount };
     }
   });
 
-  useWebMCP({
-    name: 'update_quantity',
-    description: 'Update item quantity in cart',
-    inputSchema: {
-      itemId: z.string(),
-      quantity: z.number().min(0)
-    },
-    handler: async ({ itemId, quantity }) => {
-      setItems(prev => {
-        if (quantity === 0) {
-          return prev.filter(item => item.id !== itemId);
-        }
-        return prev.map(item =>
-          item.id === itemId ? { ...item, quantity } : item
-        );
-      });
-      recalculateTotal();
-      return { success: true };
-    }
-  });
-
-  return <div>Cart UI</div>;
+  return <div>Count: {count}</div>;
 }
 ```
 
 ### Context API Integration
 
-Share tools across component tree:
+Share tools across the component tree using React Context:
 
 ```tsx
-import { createContext, useContext } from 'react';
-import { useWebMCP } from '@mcp-b/react-webmcp';
-
-const AppContext = createContext(null);
-
 function AppProvider({ children }) {
   const [state, setState] = useState({});
 
   useWebMCP({
-    name: 'get_app_state',
-    description: 'Get current application state',
-    handler: async () => {
-      return state;
-    }
-  });
-
-  useWebMCP({
     name: 'update_settings',
-    description: 'Update application settings',
-    inputSchema: {
-      theme: z.enum(['light', 'dark']).optional(),
-      language: z.string().optional()
-    },
+    inputSchema: { theme: z.enum(['light', 'dark']).optional() },
     handler: async (settings) => {
       setState(prev => ({ ...prev, ...settings }));
-      return { success: true, settings };
+      return { success: true };
     }
   });
 
-  return (
-    <AppContext.Provider value={{ state, setState }}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={{ state }}>{children}</AppContext.Provider>;
 }
 ```
 
@@ -448,177 +288,95 @@ function AppProvider({ children }) {
 
 ### Complex Input Validation
 
-Use Zod for sophisticated validation:
+Zod supports sophisticated validation patterns:
 
 ```tsx
-import { z } from 'zod';
-
 useWebMCP({
   name: 'create_event',
-  description: 'Create a new calendar event',
   inputSchema: {
     title: z.string().min(1).max(100),
     startDate: z.string().datetime(),
-    endDate: z.string().datetime(),
     attendees: z.array(z.string().email()).min(1).max(50),
-    location: z.string().optional(),
     recurrence: z.object({
       frequency: z.enum(['daily', 'weekly', 'monthly']),
-      interval: z.number().min(1).max(365),
-      endDate: z.string().datetime().optional()
+      interval: z.number().min(1).max(365)
     }).optional()
   },
-  handler: async (event) => {
-    // Input is fully validated and typed
-    const created = await api.events.create(event);
-    return created;
-  }
+  handler: async (event) => await api.events.create(event)
 });
 ```
 
 ### Custom Validation Logic
 
-Add business logic validation:
+Add business logic validation in your handler:
 
 ```tsx
 useWebMCP({
   name: 'transfer_funds',
-  description: 'Transfer funds between accounts',
   inputSchema: {
     fromAccount: z.string(),
     toAccount: z.string(),
     amount: z.number().positive()
   },
   handler: async ({ fromAccount, toAccount, amount }) => {
-    // Additional validation beyond schema
     const balance = await getAccountBalance(fromAccount);
-    if (balance < amount) {
-      throw new Error(`Insufficient funds. Balance: $${balance}`);
-    }
-
-    if (fromAccount === toAccount) {
-      throw new Error('Cannot transfer to the same account');
-    }
+    if (balance < amount) throw new Error(`Insufficient funds`);
+    if (fromAccount === toAccount) throw new Error('Same account transfer');
 
     await api.transfer({ fromAccount, toAccount, amount });
-    return {
-      success: true,
-      newBalance: balance - amount
-    };
+    return { success: true };
   }
 });
 ```
 
 ## Error Handling
 
-### Custom Error Responses
+Handle errors gracefully and provide clear feedback:
 
 ```tsx
 useWebMCP({
   name: 'process_order',
-  description: 'Process a customer order',
-  inputSchema: {
-    orderId: z.string()
-  },
+  inputSchema: { orderId: z.string() },
   handler: async ({ orderId }) => {
     try {
-      const order = await api.orders.process(orderId);
-      return { success: true, order };
+      return await api.orders.process(orderId);
     } catch (error) {
       if (error.code === 'PAYMENT_FAILED') {
-        return {
-          success: false,
-          error: 'Payment failed. Please check your payment method.'
-        };
+        return { success: false, error: 'Payment failed' };
       }
-      if (error.code === 'OUT_OF_STOCK') {
-        return {
-          success: false,
-          error: 'Some items are out of stock.'
-        };
-      }
-      throw error; // Re-throw unexpected errors
+      throw error;
     }
   },
-  onError: (error, input) => {
-    // Log errors for monitoring
-    analytics.trackError('process_order_failed', {
-      error: error.message,
-      orderId: input.orderId
-    });
-  }
+  onError: (error, input) => analytics.trackError('process_order_failed', { orderId: input.orderId })
 });
 ```
 
 ## Performance Optimization
 
-### Debouncing and Throttling
+Use debouncing, throttling, and caching for expensive operations:
 
 ```tsx
-import { useMemo } from 'react';
-import { debounce } from 'lodash-es';
-import { z } from 'zod';
+// Debounce search requests
+const debouncedSearch = useMemo(() => debounce(api.search, 300), []);
 
-function SearchComponent() {
-  const debouncedSearch = useMemo(
-    () => debounce(async (query) => {
-      return await api.search(query);
-    }, 300),
-    []
-  );
+useWebMCP({
+  name: 'search',
+  inputSchema: { query: z.string().min(2) },
+  handler: async ({ query }) => await debouncedSearch(query)
+});
 
-  useWebMCP({
-    name: 'search',
-    description: 'Search the database',
-    inputSchema: {
-      query: z.string().min(2)
-    },
-    handler: async ({ query }) => {
-      return await debouncedSearch(query);
-    }
-  });
-
-  return <div>Search UI</div>;
-}
-```
-
-### Caching Results
-
-```tsx
-import { useRef } from 'react';
-
-function DataComponent() {
-  const cache = useRef(new Map());
-
-  useWebMCP({
-    name: 'get_user_data',
-    description: 'Get user data with caching',
-    inputSchema: {
-      userId: z.string(),
-      skipCache: z.boolean().optional()
-    },
-    handler: async ({ userId, skipCache }) => {
-      if (!skipCache && cache.current.has(userId)) {
-        return {
-          ...cache.current.get(userId),
-          cached: true
-        };
-      }
-
-      const data = await api.users.get(userId);
-      cache.current.set(userId, data);
-
-      // Clear cache after 5 minutes
-      setTimeout(() => {
-        cache.current.delete(userId);
-      }, 5 * 60 * 1000);
-
-      return { ...data, cached: false };
-    }
-  });
-
-  return <div>User Data</div>;
-}
+// Cache results
+const cache = useRef(new Map());
+useWebMCP({
+  name: 'get_data',
+  inputSchema: { id: z.string() },
+  handler: async ({ id }) => {
+    if (cache.current.has(id)) return cache.current.get(id);
+    const data = await api.get(id);
+    cache.current.set(id, data);
+    return data;
+  }
+});
 ```
 
 ## Multi-Tab Tool Collection
@@ -920,123 +678,35 @@ sequenceDiagram
     Extension-->>Agent: Best deals found
 ```
 
-### Example: Shopping Cart + Price Comparison
+### Example: Cross-Site Tool Composition
 
-**Site A (shop.example.com)** exposes cart state:
-
-```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useCartContext } from './cart';
-
-function CartTools() {
-  const { cart } = useCartContext();
-
-  useWebMCP({
-    name: 'get_current_cart',
-    description: 'Get current shopping cart contents',
-    handler: async () => {
-      return {
-        items: cart.items.map(item => ({
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          sku: item.sku
-        })),
-        total: cart.total,
-        itemCount: cart.items.length
-      };
-    }
-  });
-
-  return null;
-}
-```
-
-**Site B (pricewatch.com)** wraps its existing authenticated API:
+**Site A** exposes cart data:
 
 ```tsx
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { z } from 'zod';
-
-function PriceComparisonTools() {
-  useWebMCP({
-    name: 'compare_prices',
-    description: 'Search for product prices across retailers',
-    inputSchema: {
-      productName: z.string().describe('Product name to search for'),
-      sku: z.string().optional().describe('Product SKU for exact matching')
-    },
-    handler: async ({ productName, sku }) => {
-      // Uses the site's existing API with user's current session
-      // No additional auth needed - cookies/headers already set
-      const response = await fetch('/api/products/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin', // Uses existing session cookies
-        body: JSON.stringify({
-          query: productName,
-          sku: sku,
-          includeShipping: true
-        })
-      });
-
-      const results = await response.json();
-
-      return {
-        bestPrice: results.prices[0],
-        averagePrice: results.average,
-        retailers: results.retailers.slice(0, 5)
-      };
-    }
-  });
-
-  return null;
-}
+useWebMCP({
+  name: 'get_current_cart',
+  handler: async () => ({ items: cart.items, total: cart.total })
+});
 ```
 
-### Multi-Site Workflow
+**Site B** offers price comparison:
 
-When the AI agent wants to compare prices for cart items:
+```tsx
+useWebMCP({
+  name: 'compare_prices',
+  inputSchema: { productName: z.string() },
+  handler: async ({ productName }) => {
+    const response = await fetch('/api/products/search', {
+      method: 'POST',
+      credentials: 'same-origin', // Uses existing session
+      body: JSON.stringify({ query: productName })
+    });
+    return await response.json();
+  }
+});
+```
 
-<Steps>
-  <Step title="Get cart data">
-    Extension calls `shop_example_com_get_current_cart` on the shopping site tab
-  </Step>
-
-  <Step title="Agent processes data">
-    Model receives cart data and decides to check prices
-  </Step>
-
-  <Step title="Route to price site">
-    Agent calls `pricewatch_com_compare_prices`. Extension detects this tool belongs to a different domain
-  </Step>
-
-  <Step title="Open price site">
-    Extension opens pricewatch.com in a new tab (or switches if already open)
-  </Step>
-
-  <Step title="Wait for tools">
-    Extension waits for MCP server to initialize on that tab
-  </Step>
-
-  <Step title="Execute tool">
-    Extension executes the tool call with product data from step 1
-  </Step>
-
-  <Step title="Return results">
-    Results are returned to the agent's context
-  </Step>
-</Steps>
-
-### Authentication Context Preservation
-
-The key insight is that `fetch('/api/products/search')` uses whatever authentication the user already has with pricewatch.com:
-
-- Session cookies
-- Authorization headers
-- Any other browser-managed auth
-
-The MCP tool is just a thin wrapper around the site's existing API endpoints. The extension manages tab navigation and maintains conversation context across sites, while each site's tools operate with their own authentication context.
+**How it works**: Agent can call tools from both sites. The extension routes each tool call to the correct tab, preserving separate authentication contexts for each site. Tools are thin wrappers around existing APIs - no special auth needed.
 
 ```mermaid
 graph TB
@@ -1068,46 +738,28 @@ graph TB
 
 ### Example: Content Aggregation
 
-Combine content from multiple sources:
+Agents can fetch content from one site and post to another:
 
-**News Site A:**
 ```tsx
+// News site
 useWebMCP({
   name: 'get_top_stories',
-  description: 'Get today\'s top news stories',
-  handler: async () => {
-    const response = await fetch('/api/stories/top');
-    const stories = await response.json();
-    return { stories: stories.slice(0, 10) };
-  }
+  handler: async () => ({ stories: await fetch('/api/stories/top').then(r => r.json()) })
 });
-```
 
-**Social Site B:**
-```tsx
+// Social site
 useWebMCP({
   name: 'post_to_feed',
-  description: 'Post content to user\'s social feed',
-  inputSchema: {
-    title: z.string(),
-    url: z.string().url(),
-    description: z.string()
-  },
-  handler: async ({ title, url, description }) => {
-    const response = await fetch('/api/posts', {
-      method: 'POST',
-      credentials: 'same-origin',
-      body: JSON.stringify({ title, url, description })
-    });
-    return await response.json();
-  }
+  inputSchema: { title: z.string(), url: z.string().url() },
+  handler: async ({ title, url }) => await fetch('/api/posts', {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: JSON.stringify({ title, url })
+  }).then(r => r.json())
 });
 ```
 
-**Agent workflow:**
-1. Call `newssite_get_top_stories` to fetch articles
-2. User selects interesting stories
-3. Call `socialsite_post_to_feed` for each story to share
+Agents can fetch stories from the news site and share them on social media.
 
 ### Best Practices for Cross-Site Tools
 
@@ -1211,71 +863,12 @@ function AppLayout() {
 
 ## Security Best Practices
 
-### Input Sanitization
+Always sanitize inputs, implement rate limiting, and validate permissions. See the [Security Guide](/security) for comprehensive patterns including:
 
-```tsx
-import DOMPurify from 'dompurify';
-
-useWebMCP({
-  name: 'post_comment',
-  description: 'Post a comment',
-  inputSchema: {
-    text: z.string().max(1000),
-    postId: z.string().uuid()
-  },
-  handler: async ({ text, postId }) => {
-    // Sanitize HTML content
-    const sanitized = DOMPurify.sanitize(text);
-
-    await api.comments.create({
-      text: sanitized,
-      postId
-    });
-
-    return { success: true };
-  }
-});
-```
-
-### Rate Limiting
-
-```tsx
-import { useRef } from 'react';
-
-function RateLimitedComponent() {
-  const callCount = useRef(new Map());
-
-  const checkRateLimit = (key: string, maxCalls = 10, windowMs = 60000) => {
-    const now = Date.now();
-    const calls = callCount.current.get(key) || [];
-    const recentCalls = calls.filter(time => now - time < windowMs);
-
-    if (recentCalls.length >= maxCalls) {
-      throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((windowMs - (now - recentCalls[0])) / 1000)}s`);
-    }
-
-    recentCalls.push(now);
-    callCount.current.set(key, recentCalls);
-  };
-
-  useWebMCP({
-    name: 'send_message',
-    description: 'Send a message',
-    inputSchema: {
-      to: z.string(),
-      message: z.string()
-    },
-    handler: async ({ to, message }) => {
-      checkRateLimit('send_message', 5, 60000); // 5 per minute
-
-      await api.messages.send({ to, message });
-      return { success: true };
-    }
-  });
-
-  return <div>Messaging</div>;
-}
-```
+- Input sanitization with DOMPurify
+- Rate limiting implementations
+- Permission checks and auth validation
+- Handling sensitive data securely
 
 ## Next Steps
 
