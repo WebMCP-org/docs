@@ -1,0 +1,476 @@
+---
+title: 'Performance Guidelines'
+description: 'Optimizing WebMCP tool registration, execution, and communication'
+icon: 'gauge-high'
+---
+
+Follow these performance guidelines to ensure your WebMCP tools are fast and efficient.
+
+## Tool Registration
+
+### Register Once Per Lifecycle
+
+Don't repeatedly register and unregister tools:
+
+```javascript
+// ✅ Good - Register once when component mounts
+useEffect(() => {
+  const registration = navigator.modelContext.registerTool({
+    name: "my_tool",
+    // ...
+  });
+
+  return () => registration.unregister();
+}, []); // Empty deps - runs once
+
+// ❌ Bad - Re-registering on every render
+function MyComponent({ data }) {
+  // This runs on every render!
+  const registration = navigator.modelContext.registerTool({
+    name: "my_tool",
+    // ...
+  });
+
+  return <div>...</div>;
+}
+```
+
+### Limit Total Tools
+
+Avoid registering too many tools per page:
+
+- ✅ **Good**: 5-20 tools per page
+- ⚠️ **Acceptable**: 20-50 tools per page
+- ❌ **Too many**: >50 tools per page
+
+**Why?** Too many tools overwhelm AI agents and slow down tool discovery.
+
+**Solutions:**
+- Register tools dynamically based on page context
+- Group related operations into single tools with parameters
+- Use conditional registration based on user state
+
+```javascript
+// ✅ Good - Conditional registration
+useEffect(() => {
+  const registrations = [];
+
+  // Only register cart tools if user has items in cart
+  if (cartItems.length > 0) {
+    registrations.push(
+      navigator.modelContext.registerTool({ name: "cart_checkout", ... }),
+      navigator.modelContext.registerTool({ name: "cart_clear", ... })
+    );
+  }
+
+  // Only register admin tools if user is admin
+  if (isAdmin) {
+    registrations.push(
+      navigator.modelContext.registerTool({ name: "admin_manage_users", ... })
+    );
+  }
+
+  return () => registrations.forEach(reg => reg.unregister());
+}, [cartItems, isAdmin]);
+```
+
+### Lazy Registration
+
+Register tools only when features become available:
+
+```javascript
+function ProductPage() {
+  const [product, setProduct] = useState(null);
+
+  // Only register tool once product is loaded
+  useWebMCP(
+    product ? {
+      name: "product_add_to_cart",
+      description: `Add ${product.name} to cart`,
+      inputSchema: { quantity: z.number().min(1).default(1) },
+      handler: async ({ quantity }) => {
+        await addToCart(product.id, quantity);
+        return { content: [{ type: "text", text: "Added to cart" }] };
+      }
+    } : null // Don't register until product loads
+  );
+
+  useEffect(() => {
+    loadProduct().then(setProduct);
+  }, []);
+
+  return product ? <ProductDetails product={product} /> : <Loading />;
+}
+```
+
+## Tool Execution
+
+### Use Async/Await Properly
+
+Always use async/await for asynchronous operations:
+
+```javascript
+// ✅ Good - Proper async/await
+{
+  async execute({ orderId }) {
+    try {
+      const order = await fetchOrder(orderId);
+      const items = await fetchOrderItems(order.id);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ order, items }) }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+}
+
+// ❌ Bad - Missing await
+{
+  async execute({ orderId }) {
+    const order = fetchOrder(orderId); // Missing await!
+    return {
+      content: [{ type: "text", text: JSON.stringify(order) }]
+    };
+  }
+}
+```
+
+### Avoid Blocking Operations
+
+Don't block the main thread with heavy computations:
+
+```javascript
+// ❌ Bad - Blocks main thread
+{
+  async execute({ data }) {
+    // Heavy computation on main thread
+    const result = data.map(item => {
+      // Complex processing...
+      for (let i = 0; i < 1000000; i++) {
+        // Heavy work
+      }
+      return processed;
+    });
+
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+}
+
+// ✅ Good - Use Web Workers or server-side processing
+{
+  async execute({ data }) {
+    // Offload to server
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  }
+}
+```
+
+### Implement Timeouts
+
+Prevent tools from hanging indefinitely:
+
+```javascript
+async function executeWithTimeout(operation, timeoutMs = 30000) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+  );
+
+  return Promise.race([operation, timeout]);
+}
+
+// Use in tool
+{
+  async execute({ query }) {
+    try {
+      const result = await executeWithTimeout(
+        fetch(`/api/search?q=${query}`).then(r => r.json()),
+        10000 // 10 second timeout
+      );
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(result) }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+}
+```
+
+### Show Progress for Long Operations
+
+Provide feedback for operations that take time:
+
+```javascript
+{
+  async execute({ fileUrl }) {
+    // Start operation
+    updateUI({ status: 'downloading', progress: 0 });
+
+    const response = await fetch(fileUrl);
+    const reader = response.body.getReader();
+    const contentLength = +response.headers.get('Content-Length');
+
+    let receivedLength = 0;
+    const chunks = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      chunks.push(value);
+      receivedLength += value.length;
+
+      // Update progress
+      const progress = (receivedLength / contentLength) * 100;
+      updateUI({ status: 'downloading', progress });
+    }
+
+    // Process downloaded data
+    updateUI({ status: 'processing', progress: 100 });
+    const result = await processChunks(chunks);
+
+    updateUI({ status: 'complete', progress: 100 });
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result) }]
+    };
+  }
+}
+```
+
+## Transport Performance
+
+### Minimize Payload Size
+
+Keep tool registration payloads small:
+
+```javascript
+// ✅ Good - Concise descriptions
+{
+  name: "search_products",
+  description: "Search products by name, category, or SKU. Returns up to 100 results.",
+  inputSchema: { /* ... */ }
+}
+
+// ❌ Bad - Overly verbose
+{
+  name: "search_products",
+  description: "This tool allows you to search for products in our extensive catalog by providing a search query that can match against product names, categories, or SKU numbers. The tool will return a list of matching products with their details including name, price, description, availability, and more. You can also specify additional filters like category, price range, and availability status. The results are paginated and you can control the number of results returned per page. This is useful when users want to find specific products or browse through our catalog.",
+  inputSchema: { /* ... */ }
+}
+```
+
+### Batch Updates
+
+If registering multiple tools, do it in a batch:
+
+```javascript
+// ✅ Good - Batch registration
+useEffect(() => {
+  const tools = [
+    { name: "tool1", ... },
+    { name: "tool2", ... },
+    { name: "tool3", ... }
+  ];
+
+  const registrations = tools.map(tool =>
+    navigator.modelContext.registerTool(tool)
+  );
+
+  return () => registrations.forEach(reg => reg.unregister());
+}, []);
+
+// ❌ Less efficient - Staggered registration
+useEffect(() => {
+  const reg1 = navigator.modelContext.registerTool({ name: "tool1", ... });
+  setTimeout(() => {
+    const reg2 = navigator.modelContext.registerTool({ name: "tool2", ... });
+  }, 100);
+  setTimeout(() => {
+    const reg3 = navigator.modelContext.registerTool({ name: "tool3", ... });
+  }, 200);
+  // Cleanup becomes complex
+}, []);
+```
+
+## Memory Management
+
+### Clean Up Properly
+
+Always unregister tools when they're no longer needed:
+
+```javascript
+// ✅ Good - Proper cleanup in React
+useEffect(() => {
+  const registration = navigator.modelContext.registerTool({ /* ... */ });
+
+  return () => {
+    registration.unregister(); // Cleanup on unmount
+  };
+}, []);
+
+// ✅ Good - Cleanup in vanilla JS
+const registration = navigator.modelContext.registerTool({ /* ... */ });
+
+window.addEventListener('beforeunload', () => {
+  registration.unregister();
+});
+
+// ❌ Bad - No cleanup (memory leak)
+useEffect(() => {
+  navigator.modelContext.registerTool({ /* ... */ });
+  // Missing cleanup!
+}, []);
+```
+
+### Avoid Memory Leaks in Handlers
+
+Be careful with closures in tool handlers:
+
+```javascript
+// ❌ Bad - Potential memory leak
+function MyComponent() {
+  const [largeData, setLargeData] = useState(/* large object */);
+
+  useWebMCP({
+    name: "my_tool",
+    handler: async () => {
+      // This closure captures largeData
+      // Even after component unmounts, largeData stays in memory
+      console.log(largeData);
+    }
+  });
+}
+
+// ✅ Good - Avoid unnecessary closures
+function MyComponent() {
+  const [largeData, setLargeData] = useState(/* large object */);
+
+  useWebMCP({
+    name: "my_tool",
+    handler: async ({ dataId }) => {
+      // Fetch fresh data when needed
+      const data = await fetchData(dataId);
+      return processData(data);
+    }
+  });
+}
+```
+
+## Monitoring Performance
+
+### Measure Tool Execution Time
+
+Track how long tools take to execute:
+
+```javascript
+{
+  async execute(args) {
+    const startTime = performance.now();
+
+    try {
+      const result = await performOperation(args);
+
+      const duration = performance.now() - startTime;
+      console.log(`Tool executed in ${duration}ms`);
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ...result,
+            _metadata: { executionTime: duration }
+          })
+        }]
+      };
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      console.error(`Tool failed after ${duration}ms:`, error);
+
+      return {
+        content: [{ type: "text", text: `Error: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+}
+```
+
+### Performance Budget
+
+Set performance targets for your tools:
+
+- ⚡ **Instant**: <100ms - Data reads, simple computations
+- ✅ **Fast**: 100-500ms - API calls, database queries
+- ⚠️ **Acceptable**: 500ms-2s - Complex operations, file processing
+- ❌ **Too slow**: >2s - Consider breaking into smaller steps or showing progress
+
+## Caching
+
+### Cache Expensive Operations
+
+```javascript
+const cache = new Map();
+
+{
+  async execute({ userId }) {
+    // Check cache first
+    if (cache.has(userId)) {
+      const cached = cache.get(userId);
+      if (Date.now() - cached.timestamp < 60000) { // 1 minute TTL
+        return {
+          content: [{ type: "text", text: JSON.stringify(cached.data) }]
+        };
+      }
+    }
+
+    // Fetch fresh data
+    const data = await fetchUserData(userId);
+
+    // Update cache
+    cache.set(userId, {
+      data,
+      timestamp: Date.now()
+    });
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(data) }]
+    };
+  }
+}
+```
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Tool Registration" icon="screwdriver-wrench" href="/concepts/tool-registration">
+    Best practices for registering tools
+  </Card>
+
+  <Card title="Tool Design" icon="lightbulb" href="/concepts/tool-design">
+    Designing efficient tools
+  </Card>
+
+  <Card title="Best Practices" icon="star" href="/best-practices">
+    General WebMCP best practices
+  </Card>
+
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    Understanding system architecture
+  </Card>
+</CardGroup>

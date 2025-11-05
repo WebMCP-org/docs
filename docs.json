@@ -113,10 +113,44 @@
         "icon": "lightbulb",
         "groups": [
           {
-            "group": "Core Concepts",
+            "group": "Understanding WebMCP",
+            "icon": "compass",
             "pages": [
-              "concepts",
-              "glossary"
+              "concepts/overview",
+              "concepts/architecture"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "icon": "cubes",
+            "pages": [
+              "concepts/tool-registration",
+              "concepts/transports",
+              "concepts/security"
+            ]
+          },
+          {
+            "group": "Advanced Topics",
+            "icon": "rocket",
+            "pages": [
+              "concepts/mcp-ui-integration",
+              "concepts/extension",
+              "concepts/schemas"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "icon": "lightbulb-on",
+            "pages": [
+              "concepts/tool-design",
+              "concepts/performance"
+            ]
+          },
+          {
+            "group": "Reference",
+            "icon": "book",
+            "pages": [
+              "concepts/glossary"
             ]
           }
         ]

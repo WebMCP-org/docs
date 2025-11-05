@@ -1,0 +1,424 @@
+---
+title: 'Tool Schemas & Validation'
+description: 'Defining input schemas for WebMCP tools using JSON Schema and Zod'
+icon: 'file-contract'
+---
+
+Tool schemas define the expected input structure for your tools, enabling automatic validation and helping AI agents understand how to call your tools correctly.
+
+## Input Schema (JSON Schema)
+
+WebMCP uses [JSON Schema](https://json-schema.org/) for input validation:
+
+```javascript
+navigator.modelContext.registerTool({
+  name: "search_products",
+  description: "Search for products by various criteria",
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "Search query text",
+        minLength: 1,
+        maxLength: 100
+      },
+      category: {
+        type: "string",
+        enum: ["electronics", "clothing", "books", "home"],
+        description: "Product category to filter by"
+      },
+      minPrice: {
+        type: "number",
+        minimum: 0,
+        description: "Minimum price in dollars"
+      },
+      maxPrice: {
+        type: "number",
+        minimum: 0,
+        description: "Maximum price in dollars"
+      },
+      limit: {
+        type: "number",
+        minimum: 1,
+        maximum: 100,
+        default: 10,
+        description: "Maximum number of results to return"
+      }
+    },
+    required: ["query"]
+  },
+  async execute({ query, category, minPrice, maxPrice, limit = 10 }) {
+    // Implementation
+  }
+});
+```
+
+### Common JSON Schema Types
+
+<AccordionGroup>
+  <Accordion title="String Properties">
+    ```javascript
+    {
+      type: "string",
+      minLength: 1,
+      maxLength: 100,
+      pattern: "^[a-zA-Z0-9]+$",  // Regex validation
+      format: "email",             // Built-in formats
+      enum: ["option1", "option2"], // Allowed values
+      description: "User-friendly description"
+    }
+    ```
+
+    **Built-in formats:**
+    - `email` - Email address
+    - `uri` - URI/URL
+    - `date` - ISO 8601 date
+    - `date-time` - ISO 8601 date-time
+    - `uuid` - UUID string
+  </Accordion>
+
+  <Accordion title="Number Properties">
+    ```javascript
+    {
+      type: "number",        // or "integer" for whole numbers
+      minimum: 0,
+      maximum: 100,
+      exclusiveMinimum: 0,   // Greater than (not equal to)
+      multipleOf: 0.01,      // Must be divisible by
+      default: 10,
+      description: "Quantity between 0 and 100"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Boolean Properties">
+    ```javascript
+    {
+      type: "boolean",
+      default: false,
+      description: "Include archived items"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Array Properties">
+    ```javascript
+    {
+      type: "array",
+      items: {
+        type: "string"       // Each item must be a string
+      },
+      minItems: 1,
+      maxItems: 10,
+      uniqueItems: true,
+      description: "List of tags"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Object Properties (Nested)">
+    ```javascript
+    {
+      type: "object",
+      properties: {
+        address: {
+          type: "object",
+          properties: {
+            street: { type: "string" },
+            city: { type: "string" },
+            zip: { type: "string", pattern: "^\\d{5}$" }
+          },
+          required: ["street", "city"]
+        }
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Zod Schema (React)
+
+When using React and TypeScript, [Zod](https://zod.dev/) provides type-safe schema validation:
+
+```typescript
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function ProductSearch() {
+  useWebMCP({
+    name: "search_products",
+    description: "Search for products by various criteria",
+    inputSchema: {
+      query: z.string().min(1).max(100).describe("Search query text"),
+      category: z.enum(["electronics", "clothing", "books", "home"])
+        .optional()
+        .describe("Product category to filter by"),
+      minPrice: z.number().min(0).optional().describe("Minimum price in dollars"),
+      maxPrice: z.number().min(0).optional().describe("Maximum price in dollars"),
+      limit: z.number().int().min(1).max(100).default(10)
+        .describe("Maximum number of results")
+    },
+    handler: async ({ query, category, minPrice, maxPrice, limit }) => {
+      // TypeScript infers types from Zod schema!
+      // query: string
+      // category: "electronics" | "clothing" | "books" | "home" | undefined
+      // limit: number (defaults to 10)
+
+      // Implementation
+    }
+  });
+}
+```
+
+### Zod Schema Patterns
+
+<AccordionGroup>
+  <Accordion title="String Validation">
+    ```typescript
+    z.string()
+      .min(1, "Required")
+      .max(100, "Too long")
+      .email("Invalid email")
+      .url("Invalid URL")
+      .uuid("Invalid UUID")
+      .regex(/^[a-zA-Z0-9]+$/, "Alphanumeric only")
+      .startsWith("prefix_")
+      .endsWith(".com")
+      .includes("keyword")
+      .trim()  // Automatically trim whitespace
+      .toLowerCase()  // Convert to lowercase
+      .describe("User-friendly description")
+    ```
+  </Accordion>
+
+  <Accordion title="Number Validation">
+    ```typescript
+    z.number()
+      .int("Must be integer")
+      .positive("Must be positive")
+      .min(0, "Minimum is 0")
+      .max(100, "Maximum is 100")
+      .multipleOf(0.01, "Max 2 decimal places")
+      .finite("Must be finite")
+      .safe("Must be safe integer")
+      .default(10)
+      .describe("Quantity between 0 and 100")
+    ```
+  </Accordion>
+
+  <Accordion title="Enums and Literals">
+    ```typescript
+    // Enum (one of several values)
+    z.enum(["small", "medium", "large"])
+
+    // Literal (exact value)
+    z.literal("exact_value")
+
+    // Union (one of multiple types)
+    z.union([z.string(), z.number()])
+
+    // Discriminated union
+    z.discriminatedUnion("type", [
+      z.object({ type: z.literal("email"), address: z.string().email() }),
+      z.object({ type: z.literal("phone"), number: z.string() })
+    ])
+    ```
+  </Accordion>
+
+  <Accordion title="Arrays and Objects">
+    ```typescript
+    // Array
+    z.array(z.string())
+      .min(1, "At least one item required")
+      .max(10, "Maximum 10 items")
+      .nonempty("Required")
+
+    // Object
+    z.object({
+      name: z.string(),
+      email: z.string().email(),
+      age: z.number().int().positive().optional()
+    })
+
+    // Nested object
+    z.object({
+      user: z.object({
+        name: z.string(),
+        address: z.object({
+          street: z.string(),
+          city: z.string()
+        })
+      })
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="Optional and Nullable">
+    ```typescript
+    // Optional (field may be undefined)
+    z.string().optional()
+
+    // Nullable (field may be null)
+    z.string().nullable()
+
+    // Both
+    z.string().optional().nullable()
+
+    // With default
+    z.string().optional().default("default value")
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Schema Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always add descriptions">
+    Descriptions help AI agents understand how to use your tools:
+
+    ```javascript
+    // ✅ Good
+    {
+      userId: {
+        type: "string",
+        pattern: "^[a-zA-Z0-9-]+$",
+        description: "Unique identifier for the user (alphanumeric and hyphens only)"
+      }
+    }
+
+    // ❌ Bad
+    {
+      userId: {
+        type: "string",
+        pattern: "^[a-zA-Z0-9-]+$"
+        // No description!
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Validate at the schema level">
+    Use schema validation instead of manual checks:
+
+    ```javascript
+    // ✅ Good - validation in schema
+    inputSchema: {
+      quantity: {
+        type: "number",
+        minimum: 1,
+        maximum: 1000
+      }
+    }
+
+    // ❌ Bad - manual validation
+    inputSchema: {
+      quantity: { type: "number" }
+    },
+    async execute({ quantity }) {
+      if (quantity < 1 || quantity > 1000) {
+        throw new Error("Invalid quantity");
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use appropriate constraints">
+    Apply relevant constraints to prevent invalid inputs:
+
+    ```javascript
+    {
+      email: {
+        type: "string",
+        format: "email",        // Validate email format
+        maxLength: 255          // Prevent extremely long inputs
+      },
+      age: {
+        type: "integer",
+        minimum: 0,
+        maximum: 150            // Reasonable bounds
+      },
+      tags: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 20,           // Prevent excessive arrays
+        uniqueItems: true       // No duplicates
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Provide sensible defaults">
+    Use default values for optional parameters:
+
+    ```javascript
+    {
+      limit: {
+        type: "number",
+        minimum: 1,
+        maximum: 100,
+        default: 10            // Sensible default
+      },
+      sortOrder: {
+        type: "string",
+        enum: ["asc", "desc"],
+        default: "asc"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Keep schemas focused">
+    Don't make schemas overly complex. Split into multiple tools if needed:
+
+    ```javascript
+    // ✅ Good - focused tools
+    registerTool({ name: "search_products", ... });
+    registerTool({ name: "filter_products", ... });
+
+    // ❌ Bad - one tool doing too much
+    registerTool({
+      name: "manage_products",
+      inputSchema: {
+        action: { enum: ["search", "filter", "sort", "export", ...] },
+        // Too many conditional fields
+      }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Validation Error Handling
+
+When validation fails, the error is caught before your handler executes:
+
+```javascript
+// Your handler won't be called if validation fails
+async execute({ userId, quantity }) {
+  // If we get here, inputs are valid per schema
+  // No need to revalidate
+  return await processOrder(userId, quantity);
+}
+```
+
+The AI agent receives a clear error message indicating what validation failed.
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Tool Registration" icon="screwdriver-wrench" href="/concepts/tool-registration">
+    Learn how to register tools with schemas
+  </Card>
+
+  <Card title="Tool Design" icon="lightbulb" href="/concepts/tool-design">
+    Best practices for designing tools
+  </Card>
+
+  <Card title="React WebMCP" icon="react" href="/packages/react-webmcp">
+    Using Zod schemas with React
+  </Card>
+
+  <Card title="JSON Schema Spec" icon="external-link" href="https://json-schema.org/">
+    Official JSON Schema documentation
+  </Card>
+</CardGroup>
