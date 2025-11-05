@@ -1,0 +1,124 @@
+name: Update Changelog
+
+on:
+  # Trigger manually from GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.1.0)'
+        required: true
+        type: string
+      label:
+        description: 'Label for changelog entry (e.g., "February 2025")'
+        required: true
+        type: string
+      tags:
+        description: 'Comma-separated tags (e.g., "Bug Fixes,Performance")'
+        required: false
+        type: string
+        default: ''
+      content:
+        description: 'Markdown content for the changelog entry'
+        required: true
+        type: string
+
+  # Trigger from npm-packages repo when a release is published
+  repository_dispatch:
+    types: [npm-release]
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Extract release info
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "version=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
+            echo "label=${{ github.event.client_payload.label }}" >> $GITHUB_OUTPUT
+            echo "tags=${{ github.event.client_payload.tags }}" >> $GITHUB_OUTPUT
+            echo "content=${{ github.event.client_payload.content }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "label=${{ inputs.label }}" >> $GITHUB_OUTPUT
+            echo "tags=${{ inputs.tags }}" >> $GITHUB_OUTPUT
+            echo "content=${{ inputs.content }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Write content to file
+        run: |
+          # Write user-provided content to a file to prevent command injection
+          cat > /tmp/content.txt <<'EOF'
+          ${{ steps.release_info.outputs.content }}
+          EOF
+
+      - name: Update changelog
+        run: |
+          VERSION="${{ steps.release_info.outputs.version }}"
+          LABEL="${{ steps.release_info.outputs.label }}"
+          TAGS="${{ steps.release_info.outputs.tags }}"
+
+          # Format tags for MDX
+          if [ -n "$TAGS" ]; then
+            TAG_ARRAY="tags={["
+            IFS=',' read -ra TAG_LIST <<< "$TAGS"
+            for i in "${!TAG_LIST[@]}"; do
+              TAG="${TAG_LIST[$i]}"
+              # Trim whitespace
+              TAG=$(echo "$TAG" | xargs)
+              if [ $i -eq 0 ]; then
+                TAG_ARRAY="${TAG_ARRAY}\"${TAG}\""
+              else
+                TAG_ARRAY="${TAG_ARRAY}, \"${TAG}\""
+              fi
+            done
+            TAG_ARRAY="${TAG_ARRAY}]}"
+          else
+            TAG_ARRAY=""
+          fi
+
+          # Find the line number where to insert (after frontmatter)
+          # Insert after the closing --- of frontmatter
+          LINE_NUM=$(grep -n "^---$" changelog.mdx | head -2 | tail -1 | cut -d: -f1)
+          INSERT_LINE=$((LINE_NUM + 2))
+
+          # Create temp file with the new content
+          head -n $LINE_NUM changelog.mdx > changelog.tmp
+          echo "" >> changelog.tmp
+
+          # Write the Update component opening with safe string interpolation
+          echo "<Update label=\"${LABEL}\" description=\"v${VERSION}\" ${TAG_ARRAY}>" >> changelog.tmp
+          echo "" >> changelog.tmp
+
+          # Safely append the user content from file (no command substitution)
+          cat /tmp/content.txt >> changelog.tmp
+
+          # Write the Update component closing
+          echo "" >> changelog.tmp
+          echo "</Update>" >> changelog.tmp
+          echo "" >> changelog.tmp
+
+          # Append the rest of the original file
+          tail -n +$INSERT_LINE changelog.mdx >> changelog.tmp
+
+          # Replace the original file
+          mv changelog.tmp changelog.mdx
+
+      - name: Commit and push changes
+        run: |
+          git add changelog.mdx
+          git commit -m "docs: update changelog for v${{ steps.release_info.outputs.version }}"
+          git push
