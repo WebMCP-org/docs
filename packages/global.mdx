@@ -97,7 +97,7 @@ This package implements the [W3C Web Model Context API](https://github.com/webma
 **Key Features:**
 - **Automatic dual-server mode** - Tools accessible from both same-window clients AND parent pages (when in iframe)
 - **Zero configuration** - Works out of the box, detects iframe context automatically
-- **Production-ready** - Used in [real-world examples](/mcpui-webmcp-integration) like the TicTacToe mini-app
+- **Production-ready** - Used in [real-world examples](/examples) like the TicTacToe mini-app
 
 ## Tool Registration
 
@@ -423,7 +423,7 @@ navigator.modelContext.registerTool({
 
 ### Usage in Iframes
 
-When your application runs inside an iframe (like in the [MCP-UI integration pattern](/mcpui-webmcp-integration)), the iframe server automatically enables:
+When your application runs inside an iframe (like in the [MCP-UI integration pattern](/concepts/mcp-ui-integration)), the iframe server automatically enables:
 
 **In the iframe (your app):**
 
@@ -562,7 +562,7 @@ Or use JSON for advanced configuration:
 
 ### Real-World Example: TicTacToe Mini-App
 
-The [TicTacToe example](/mcpui-webmcp-integration#real-world-example-tictactoe-game-with-webmcp) demonstrates dual-server mode in production:
+The [TicTacToe example](/examples) demonstrates dual-server mode in production:
 
 ```typescript
 // mini-apps/tictactoe/main.tsx
@@ -589,7 +589,7 @@ The game component registers three tools that become available to both:
 - **Tab clients** (browser extensions in the same window)
 - **Parent page** (chat UI via IframeParentTransport)
 
-See the [complete TicTacToe example](/mcpui-webmcp-integration#real-world-example-tictactoe-game-with-webmcp) for the full implementation.
+See the [complete TicTacToe example](https://github.com/WebMCP-org/mcp-ui-webmcp) in the mcp-ui-webmcp repository for the full implementation.
 
 ### Security Best Practices
 
