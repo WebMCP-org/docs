@@ -34,7 +34,7 @@ The WebMCP documentation is organized into the following main sections:
 - **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
 - **Updating SDK documentation**: Update MDX content → Test code examples → Verify TypeScript types are accurate
 - **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
-- **Adding code examples**: Include language tag, test the code, provide context, show both basic and advanced usage
+- **Adding code examples**: Follow [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) → Test the code → Use appropriate options (twoslash for TS, icons, titles, etc.)
 
 ## Working relationship
 - You can push back on ideas-this can lead to better documentation. Cite sources and explain your reasoning when you do so
@@ -74,9 +74,33 @@ The WebMCP documentation is organized into the following main sections:
 - Test all code examples before publishing
 - Match style and formatting of existing pages
 - Include both basic and advanced use cases
-- Language tags on all code blocks
 - Alt text on all images
 - Relative paths for internal links
+
+### Code blocks
+Follow the [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) for all code formatting. Key requirements:
+- **Always specify language** for syntax highlighting (e.g., `typescript`, `bash`, `tsx`)
+- **Use `twoslash`** for TypeScript/TSX examples to enable hover type information
+- **Add titles** to major code examples (3+ uses or complex): `"filename.ext"` or `"Description"`
+- **Use icons** to provide visual context (e.g., `icon="react"`, `icon="server"`, `icon="npm"`)
+- **Use `lines`** for reference documentation and tutorial content
+- **Make long examples expandable** (50+ lines): add `expandable` option
+- **Use diff syntax** for good vs. bad comparisons: `// [!code ++]` and `// [!code --]`
+- **Highlight key lines** in teaching examples: `highlight={5-12}`
+
+Example:
+````markdown
+```tsx "MyComponent.tsx" twoslash lines icon="react" highlight={5-7}
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+function MyComponent() {
+  useWebMCP({
+    name: 'my_tool',
+    handler: async (args) => { ... }
+  });
+}
+```
+````
 
 ## Git workflow
 - NEVER use --no-verify when committing
