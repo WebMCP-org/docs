@@ -19,11 +19,11 @@ Before you begin, ensure you have:
 
 <Tabs>
   <Tab title="React (Recommended)">
-    ```bash
+    ```bash icon="react"
     pnpm add @mcp-b/react-webmcp @mcp-b/global zod
     ```
 
-    ```tsx
+    ```tsx "MyComponent.tsx" twoslash lines icon="react" highlight={5-17}
     import '@mcp-b/global';
     import { useWebMCP } from '@mcp-b/react-webmcp';
     import { z } from 'zod';
@@ -49,11 +49,11 @@ Before you begin, ensure you have:
   </Tab>
 
   <Tab title="Vanilla JS">
-    ```bash
+    ```bash icon="node"
     pnpm add @mcp-b/global
     ```
 
-    ```javascript
+    ```javascript "tool-registration.js" lines icon="square-js" highlight={4-12}
     import '@mcp-b/global';
 
     // Register individual tools (recommended)
@@ -74,7 +74,7 @@ Before you begin, ensure you have:
   </Tab>
 
   <Tab title="Script Tag">
-    ```html
+    ```html "index.html" lines icon="code" highlight={3-10}
     <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
     <script>
       // Register tools using the standard API
@@ -95,7 +95,7 @@ Before you begin, ensure you have:
 
 Want to build interactive apps that AI agents can control? Use `create-webmcp-app`:
 
-```bash
+```bash icon="terminal"
 npx create-webmcp-app
 cd your-project
 pnpm dev
@@ -114,7 +114,7 @@ Wrap your existing application logic as tools:
 
 <Tabs>
   <Tab title="React">
-    ```tsx
+    ```tsx "ProductPage.tsx" twoslash lines icon="react" highlight={5-18}
     import { useWebMCP } from '@mcp-b/react-webmcp';
     import { z } from 'zod';
 
@@ -142,7 +142,7 @@ Wrap your existing application logic as tools:
   </Tab>
 
   <Tab title="Vanilla JS">
-    ```javascript
+    ```javascript "cart-tool.js" lines icon="square-js" highlight={1-23}
     navigator.modelContext.registerTool({
       name: "add_to_cart",
       description: "Add item to shopping cart",
@@ -218,7 +218,7 @@ Wrap your existing application logic as tools:
   <Accordion title="✅ Use registerTool() - it just works!">
     For 99% of use cases, use `navigator.modelContext.registerTool()`. It's simple, automatic, and handles cleanup for you.
 
-    ```javascript
+    ```javascript icon="square-js"
     const registration = navigator.modelContext.registerTool({
       name: 'my_tool',
       description: 'What my tool does',
@@ -231,7 +231,7 @@ Wrap your existing application logic as tools:
   <Accordion title="⚛️ React: Use the useWebMCP() hook">
     React users should use the `useWebMCP()` hook - it handles registration, cleanup, and Zod validation automatically:
 
-    ```tsx
+    ```tsx icon="react"
     useWebMCP({
       name: 'my_tool',
       description: 'What it does',

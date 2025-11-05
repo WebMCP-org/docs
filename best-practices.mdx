@@ -36,20 +36,18 @@ Follow a clear naming convention for all your tools:
 
 **Naming pattern:** Use `domain_verb_noun` or `verb_noun` format:
 
-```javascript
-// ✅ Clear, descriptive names
-navigator.modelContext.registerTool({
-  name: 'products_search',
-  name: 'cart_add_item',
-  name: 'orders_get_status'
-});
+```javascript "Tool naming patterns" lines icon="square-js"
+navigator.modelContext.registerTool({ // [!code --]
+  name: 'search',      // Too generic // [!code --]
+  name: 'doAction',    // Unclear purpose // [!code --]
+  name: 'helper1'      // Meaningless // [!code --]
+}); // [!code --]
 
-// ❌ Vague names
-navigator.modelContext.registerTool({
-  name: 'search',      // Too generic
-  name: 'doAction',    // Unclear purpose
-  name: 'helper1'      // Meaningless
-});
+navigator.modelContext.registerTool({ // [!code ++]
+  name: 'products_search',  // Clear domain + action // [!code ++]
+  name: 'cart_add_item',    // Verb + noun pattern // [!code ++]
+  name: 'orders_get_status' // Descriptive and specific // [!code ++]
+}); // [!code ++]
 ```
 
 ### Provide Detailed Descriptions
@@ -60,32 +58,30 @@ Tool names, descriptions, and input schemas are sent directly to the AI model's 
 
 Help AI agents understand **when** and **how** to use your tools by including everything they need to know in the description:
 
-```javascript
-// ✅ Comprehensive description with all context
-navigator.modelContext.registerTool({
-  name: 'products_search',
-  description: `Search products by name, category, or SKU.
+```javascript "Tool descriptions" lines icon="square-js" expandable
+navigator.modelContext.registerTool({ // [!code --]
+  name: 'products_search', // [!code --]
+  description: 'Searches for products', // Too vague! // [!code --]
+  // Model doesn't know when to use this or what it returns // [!code --]
+}); // [!code --]
 
-Returns paginated results with title, price, stock status, and product URLs.
-Use this when users ask about product availability or pricing.
-
-If searching by price range, use the minPrice and maxPrice parameters.
-Results are sorted by relevance by default.`,
-  inputSchema: {
-    query: z.string().min(1).describe('Product name, category, or SKU to search for'),
-    minPrice: z.number().positive().optional().describe('Minimum price filter in USD'),
-    maxPrice: z.number().positive().optional().describe('Maximum price filter in USD'),
-    limit: z.number().int().min(1).max(100).default(10).describe('Number of results (max 100)')
-  }
-  // ...
-});
-
-// ❌ Vague description - model doesn't know what to do
-navigator.modelContext.registerTool({
-  name: 'products_search',
-  description: 'Searches for products',
-  // ...
-});
+navigator.modelContext.registerTool({ // [!code ++]
+  name: 'products_search', // [!code ++]
+  description: `Search products by name, category, or SKU. // [!code ++]
+ // [!code ++]
+Returns paginated results with title, price, stock status, and product URLs. // [!code ++]
+Use this when users ask about product availability or pricing. // [!code ++]
+ // [!code ++]
+If searching by price range, use the minPrice and maxPrice parameters. // [!code ++]
+Results are sorted by relevance by default.`, // [!code ++]
+  inputSchema: { // [!code ++]
+    query: z.string().min(1).describe('Product name, category, or SKU to search for'), // [!code ++]
+    minPrice: z.number().positive().optional().describe('Minimum price filter in USD'), // [!code ++]
+    maxPrice: z.number().positive().optional().describe('Maximum price filter in USD'), // [!code ++]
+    limit: z.number().int().min(1).max(100).default(10).describe('Number of results (max 100)') // [!code ++]
+  } // [!code ++]
+  // ... // [!code ++]
+}); // [!code ++]
 ```
 
 **Include in descriptions:**
@@ -102,7 +98,7 @@ Create consolidated tools that handle related operations rather than many single
 
 <Tabs>
   <Tab title="Good: Consolidated Tools">
-    ```javascript
+    ```javascript "Consolidated tool example" lines icon="check"
     // ✅ Powerful tool handling related operations
     navigator.modelContext.registerTool({
       name: 'cart_manager',
@@ -118,7 +114,7 @@ Create consolidated tools that handle related operations rather than many single
   </Tab>
 
   <Tab title="Avoid: Too Many Single-Purpose Tools">
-    ```javascript
+    ```javascript "Multiple single-purpose tools" lines icon="x"
     // ❌ Multiple tools consuming unnecessary context
     navigator.modelContext.registerTool({
       name: 'cart_add_item',
@@ -158,7 +154,7 @@ Parameter descriptions (via `.describe()`) are sent to the AI model's context. B
 
 Zod provides excellent TypeScript integration and runtime validation. Use `.describe()` on every parameter to tell the model exactly what it needs to know:
 
-```typescript
+```typescript "Zod validation with descriptions" twoslash lines icon="check" expandable
 import { z } from 'zod';
 
 navigator.modelContext.registerTool({
@@ -262,7 +258,7 @@ Return data as markdown strings rather than JSON objects:
 
 <Tabs>
   <Tab title="Good: Markdown">
-    ```javascript
+    ```javascript "Markdown response format" lines icon="check" expandable
     // ✅ Markdown formatted response
     async execute({ query }) {
       try {
@@ -302,7 +298,7 @@ ${i + 1}. **${p.name}** - $${p.price}
   </Tab>
 
   <Tab title="Avoid: JSON">
-    ```javascript
+    ```javascript "JSON response format" lines icon="x"
     // ❌ JSON is harder for models to parse and present
     async execute({ query }) {
       const results = await searchProducts(query);
@@ -566,36 +562,34 @@ navigator.modelContext.registerTool({
 
 Be careful what data you include in responses:
 
-```javascript
-// ✅ Safe: Only expose necessary data, formatted as markdown
-async execute({ userId }) {
-  const user = await getUser(userId);
+```javascript "Secure data exposure" lines icon="shield"
+async execute({ userId }) { // [!code --]
+  const user = await getUser(userId); // [!code --]
+ // [!code --]
+  return { // [!code --]
+    content: [{ // [!code --]
+      type: "text", // [!code --]
+      text: JSON.stringify(user) // ❌ Might include sensitive fields! // [!code --]
+    }] // [!code --]
+  }; // [!code --]
+} // [!code --]
 
-  // ✅ Only include safe fields in response
-  return {
-    content: [{
-      type: "text",
-      text: `# User Information
-
-**Name:** ${user.name}
-**Email:** ${user.email}
-**Member since:** ${new Date(user.createdAt).toLocaleDateString()}`
-    }]
-  };
-  // ✅ NOT including: password hash, internal IDs, private notes, session tokens
-}
-
-// ❌ Dangerous: Blindly converting entire object
-async execute({ userId }) {
-  const user = await getUser(userId);
-
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify(user) // ❌ Might include sensitive fields!
-    }]
-  };
-}
+async execute({ userId }) { // [!code ++]
+  const user = await getUser(userId); // [!code ++]
+ // [!code ++]
+  // ✅ Only include safe fields in response // [!code ++]
+  return { // [!code ++]
+    content: [{ // [!code ++]
+      type: "text", // [!code ++]
+      text: `# User Information // [!code ++]
+ // [!code ++]
+**Name:** ${user.name} // [!code ++]
+**Email:** ${user.email} // [!code ++]
+**Member since:** ${new Date(user.createdAt).toLocaleDateString()}` // [!code ++]
+    }] // [!code ++]
+  }; // [!code ++]
+  // ✅ NOT including: password hash, internal IDs, private notes, session tokens // [!code ++]
+} // [!code ++]
 ```
 
 ## Performance Optimization
@@ -677,7 +671,7 @@ Voice models and real-time interactions work best with instant tool responses. I
 
 <Tabs>
   <Tab title="Good: Optimistic Update">
-    ```javascript
+    ```javascript "Optimistic update pattern" lines icon="bolt" expandable highlight={9-11,15-17}
     // ✅ Update local state immediately, sync in background
     navigator.modelContext.registerTool({
       name: 'cart_add_item',
@@ -717,7 +711,7 @@ ${cartItems.map(item => `- ${item.name} x${item.quantity} - $${item.price * item
   </Tab>
 
   <Tab title="Avoid: Blocking on API">
-    ```javascript
+    ```javascript "Blocking API call pattern" lines icon="x" highlight={6-10}
     // ❌ Slow - waits for API before responding
     navigator.modelContext.registerTool({
       name: 'cart_add_item',
@@ -1004,7 +998,7 @@ Requires the trackingNumber from that response.`,
 
 Use `useWebMCP` for component-scoped tools:
 
-```typescript
+```typescript "React integration with useWebMCP" twoslash lines icon="react" expandable highlight={8-31}
 import { useWebMCP } from '@mcp-b/react-webmcp';
 import { z } from 'zod';
 
