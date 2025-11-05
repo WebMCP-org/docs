@@ -16,9 +16,66 @@ The MCP-B browser extension is a development and testing tool for WebMCP servers
   Get the extension from the Chrome Web Store
 </Card>
 
+## Connect to Desktop AI with Native Host
+
+<Info>
+**Unlock the full power of WebMCP**: The native host bridges your browser tools to desktop AI assistants like Claude Code and Claude Desktop. This means you can use browser-based tools from your command line or desktop apps!
+</Info>
+
+<CardGroup cols={2}>
+  <Card
+    title="Setup Native Host"
+    icon="server"
+    href="/native-host-setup"
+    color="#1F5EFF"
+  >
+    **Start here** - Connect browser tools to Claude Code, Claude Desktop, and other MCP clients
+  </Card>
+  <Card
+    title="How It Works"
+    icon="diagram-project"
+    href="/concepts/extension"
+  >
+    Learn about the architecture behind browser-to-desktop integration
+  </Card>
+</CardGroup>
+
+## Quick Navigation
+
+Jump to the section that best matches your needs:
+
+<CardGroup cols={2}>
+  <Card
+    title="Understanding Agents"
+    icon="robot"
+    href="/extension/agents"
+  >
+    Learn about the 4 specialized agents and when to use each one
+  </Card>
+  <Card
+    title="Managing Userscripts"
+    icon="gear"
+    href="/extension/managing-userscripts"
+  >
+    Create, download, upload, and organize custom scripts
+  </Card>
+</CardGroup>
+
 ## What Can You Do?
 
 <CardGroup cols={2}>
+  <Card
+    title="Connect Desktop AI"
+    icon="desktop"
+  >
+    Use browser tools from Claude Code, Claude Desktop, and other desktop MCP clients
+  </Card>
+  <Card
+    title="AI-Powered Development"
+    icon="robot"
+  >
+    Work with specialized AI agents that understand web development and can build scripts for you
+  </Card>
   <Card
     title="Customize Websites"
     icon="paintbrush"
@@ -38,10 +95,10 @@ The MCP-B browser extension is a development and testing tool for WebMCP servers
     Expose website functionality as tools that AI agents can discover and use
   </Card>
   <Card
-    title="AI-Powered Development"
-    icon="robot"
+    title="Cross-Site Workflows"
+    icon="diagram-project"
   >
-    Work with specialized AI agents that understand web development and can build scripts for you
+    Chain actions across multiple tabs and sites for complex automation
   </Card>
 </CardGroup>
 
@@ -406,11 +463,35 @@ Userscripts can access and modify website content. Only install scripts from tru
   </Card>
 </CardGroup>
 
+## Architecture & Development
+
+<AccordionGroup>
+  <Accordion title="Extension Architecture" icon="sitemap">
+    Dive deep into how the extension works internally, including background workers, content scripts, and the MCP transport layer.
+
+    <Card title="View Extension Architecture" icon="arrow-right" href="/concepts/extension">
+      Technical architecture documentation
+    </Card>
+  </Accordion>
+
+  <Accordion title="Extension Tools API" icon="code">
+    Build your own Chrome extensions using MCP wrappers for Chrome Extension APIs.
+
+    <Card title="View API Documentation" icon="arrow-right" href="/packages/extension-tools">
+      @mcp-b/extension-tools package docs
+    </Card>
+  </Accordion>
+</AccordionGroup>
+
 ## Next Steps
 
 <Steps>
   <Step title="Install the extension">
     Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
+  </Step>
+
+  <Step title="Set up Native Host (Recommended)">
+    Connect browser tools to desktop AI with the [Native Host Setup](/native-host-setup) guide - use WebMCP from Claude Code, Claude Desktop, and more!
   </Step>
 
   <Step title="Learn about agents">

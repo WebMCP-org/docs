@@ -160,12 +160,28 @@
         "icon": "puzzle-piece",
         "groups": [
           {
-            "group": "Browser Extension",
+            "group": "Getting Started",
+            "icon": "rocket",
             "pages": [
-              "extension/index",
+              "extension/index"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "icon": "cubes",
+            "expanded": true,
+            "pages": [
+              "native-host-setup",
               "extension/agents",
-              "extension/managing-userscripts",
-              "native-host-setup"
+              "extension/managing-userscripts"
+            ]
+          },
+          {
+            "group": "Architecture & Development",
+            "icon": "code",
+            "pages": [
+              "concepts/extension",
+              "packages/extension-tools"
             ]
           }
         ]
