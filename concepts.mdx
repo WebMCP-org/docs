@@ -23,19 +23,6 @@ WebMCP is built on a **human-in-the-loop** philosophy where the human web interf
 - Tools enable collaborative workflows between humans and AI
 - The web page UI remains the primary interaction method
 
-### What WebMCP Is NOT
-
-<Warning>
-These use cases are explicitly out of scope for the WebMCP standard.
-</Warning>
-
-WebMCP is **not** designed for:
-
-- **Headless browsing** - Requires an active browsing context with the user present
-- **Fully autonomous workflows** - Designed for collaborative human-AI interaction, not unsupervised agents
-- **Backend service integration** - For server-to-agent communication without a UI, use [MCP](https://modelcontextprotocol.io)
-- **UI replacement** - Tools augment the human interface, they don't replace it
-
 ### Relationship to MCP
 
 WebMCP is inspired by Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io) but adapted specifically for web browsers. While WebMCP shares similar concepts with MCP (tools, resources, structured communication), it is evolving as an independent web standard with its own specification path.
@@ -202,48 +189,6 @@ registration.unregister();
   See [Advanced Patterns](/advanced) for detailed guidance.
 </Accordion>
 
-<AccordionGroup>
-  <Accordion title="Implementation Detail: Two-Bucket Tool System">
-    WebMCP internally uses a dual-bucket system for tool organization. This is mostly transparent to you, but helps explain how `provideContext()` and `registerTool()` work together:
-
-    ```mermaid
-    graph LR
-        subgraph "Bucket A: Base Tools"
-            A1[App Tool 1]
-            A2[App Tool 2]
-        end
-
-        subgraph "Bucket B: Dynamic Tools"
-            B1[Component Tool 1]
-            B2[Component Tool 2]
-            B3[Feature Tool 1]
-        end
-
-        P[provideContext] -.->|Replaces| A1
-        P -.->|Replaces| A2
-
-        R1[registerTool] -->|Adds| B1
-        R2[registerTool] -->|Adds| B2
-        R3[registerTool] -->|Adds| B3
-
-        B1 -.->|unregister| D1[Removed]
-
-        style A1 fill:#FFB84D
-        style A2 fill:#FFB84D
-        style B1 fill:#4B7BFF
-        style B2 fill:#4B7BFF
-        style B3 fill:#4B7BFF
-    ```
-
-    **Key behaviors:**
-    - Base tools (Bucket A) are replaced when `provideContext()` is called
-    - Dynamic tools (Bucket B) persist independently
-    - Each `registerTool()` returns an `unregister()` function
-    - Tool name collisions throw errors
-
-    **Why this matters:** If you use `provideContext()`, be aware it replaces all base tools. Tools registered with `registerTool()` are unaffected.
-  </Accordion>
-</AccordionGroup>
 
 ## Transport Types
 
@@ -556,56 +501,30 @@ const schema = {
 - ❌ Don't block the main thread
 - ❌ Avoid heavy computations in handlers
 
-## External Standards & Specifications
-
-Learn more about the underlying protocols:
+## Related Documentation
 
 <CardGroup cols={2}>
-  <Card title="MCP Specification" icon="book" href="https://modelcontextprotocol.io">
-    Official Model Context Protocol documentation from Anthropic
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with WebMCP in minutes
   </Card>
 
-  <Card title="MCP SDK" icon="code" href="https://github.com/modelcontextprotocol/typescript-sdk">
-    TypeScript SDK for building MCP servers and clients
-  </Card>
-</CardGroup>
-
-## Related Resources
-
-<CardGroup cols={2}>
   <Card title="Glossary" icon="book" href="/glossary">
     Key terminology and definitions
   </Card>
 
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Get started in minutes
-  </Card>
-
   <Card title="API Reference" icon="code" href="/packages/global">
-    Detailed API documentation
+    @mcp-b/global package documentation
   </Card>
 
   <Card title="Security Guide" icon="shield" href="/security">
     Security best practices
   </Card>
+
+  <Card title="MCP Specification" icon="book" href="https://modelcontextprotocol.io">
+    Official Model Context Protocol docs
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    Real-world implementations
+  </Card>
 </CardGroup>
-
-## Next Steps
-
-<Steps>
-  <Step title="Understand the glossary">
-    Review [key terminology](/glossary) used throughout the documentation
-  </Step>
-
-  <Step title="Follow the quickstart">
-    Build your first WebMCP integration in [Quick Start](/quickstart)
-  </Step>
-
-  <Step title="Explore examples">
-    See real-world implementations in [Examples](/examples)
-  </Step>
-
-  <Step title="Deep dive into packages">
-    Learn about specific packages in the [NPM Packages](/packages/global) section
-  </Step>
-</Steps>
