@@ -7,7 +7,7 @@ The WebMCP documentation is organized into the following main sections:
 - **Root pages**: Introduction, quickstart, and core concepts (index.mdx, what-is-webmcp.mdx, etc.)
 - **Getting Started**: Installation guides, basic setup, and first steps
 - **Guides**: In-depth tutorials and how-to content for specific use cases
-- **API Reference**: Technical API documentation and specifications
+- **SDK Reference**: SDK documentation, TypeScript types, and usage patterns
 - **Examples**: Code examples and real-world implementations
 - **Resources**: Additional materials, FAQs, and community links
 
@@ -16,7 +16,6 @@ The WebMCP documentation is organized into the following main sections:
 - `*.mdx`: Documentation pages with frontmatter (title, description, sidebarTitle, icon)
 - `/snippets/`: Reusable content fragments used across multiple pages
 - `/images/`: Static image assets referenced in documentation
-- `/api/`: OpenAPI/API reference files and configurations
 
 ## Contributing to the docs
 
@@ -33,7 +32,7 @@ The WebMCP documentation is organized into the following main sections:
 
 ### Common workflows
 - **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
-- **Updating API docs**: Modify OpenAPI spec or MDX API page → Verify playground functionality → Update examples
+- **Updating SDK documentation**: Update MDX content → Test code examples → Verify TypeScript types are accurate
 - **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
 - **Adding code examples**: Include language tag, test the code, provide context, show both basic and advanced usage
 
@@ -121,12 +120,6 @@ Use these official Mintlify resources when working on documentation:
 - **[Code groups](https://mintlify.com/docs/components/code-groups)**: Display multiple code examples
 - **[Accordions](https://mintlify.com/docs/components/accordions)**: Collapsible content sections
 - **[Steps](https://mintlify.com/docs/components/steps)**: Sequential procedural content
-
-### API documentation
-- **[OpenAPI setup](https://mintlify.com/docs/api-playground/openapi-setup)**: Reference OpenAPI endpoints in docs
-- **[MDX configuration](https://mintlify.com/docs/api-playground/mdx/configuration)**: Generate API docs with MDX
-- **[API playground](https://mintlify.com/docs/api-playground/overview)**: Interactive API testing
-- **[Adding SDK examples](https://mintlify.com/docs/api-playground/adding-sdk-examples)**: Language-specific code samples
 
 ### Content creation
 - **[Reusable snippets](https://mintlify.com/docs/create/reusable-snippets)**: Keep content in sync across pages
