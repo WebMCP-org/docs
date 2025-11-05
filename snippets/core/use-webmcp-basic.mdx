@@ -1,0 +1,31 @@
+{/*
+# Basic useWebMCP Hook
+
+Basic React hook pattern for registering tools with automatic lifecycle management.
+
+## When to use:
+- React components that need to register tools
+- Automatic cleanup on unmount
+- Simple tool registration with Zod validation
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/use-webmcp-basic.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+useWebMCP({
+  name: 'my_tool',
+  description: 'What it does',
+  inputSchema: {
+    param: z.string()
+  },
+  handler: async ({ param }) => {
+    // Implementation here
+    return { success: true };
+  }
+});
+```

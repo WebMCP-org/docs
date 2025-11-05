@@ -1,0 +1,350 @@
+{/*
+# Vanilla JavaScript Tool Template
+
+Complete template for vanilla JavaScript tool registration (no React).
+
+## When to use:
+- Non-React applications
+- Vanilla JS/TypeScript projects
+- Static websites with tools
+
+## Features included:
+- JSON Schema validation
+- Error handling
+- DOM updates
+- Lifecycle cleanup
+- No framework dependencies
+
+## Example usage in docs:
+```mdx
+import VanillaToolTemplate from '/snippets/templates/vanilla-tool-template.mdx';
+
+<VanillaToolTemplate />
+```
+*/}
+
+```javascript "vanilla-tool.js" lines icon="square-js"
+import '@mcp-b/global';
+
+// State management
+let appState = {
+  items: [],
+  selectedId: null,
+  filters: {
+    category: 'all',
+    sortBy: 'date'
+  }
+};
+
+// Initialize tool registration
+function initializeTools() {
+  // Tool 1: Search/filter items
+  const searchTool = navigator.modelContext.registerTool({
+    name: 'items_search',
+    description: 'Search and filter items by query and category',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 100,
+          description: 'Search query for item title or description'
+        },
+        category: {
+          type: 'string',
+          enum: ['all', 'active', 'archived', 'favorites'],
+          default: 'all',
+          description: 'Filter by item category'
+        },
+        sortBy: {
+          type: 'string',
+          enum: ['date', 'title', 'priority'],
+          default: 'date',
+          description: 'Sort results by field'
+        }
+      },
+      required: ['query']
+    },
+    async execute({ query, category = 'all', sortBy = 'date' }) {
+      try {
+        // Update filters
+        appState.filters = { category, sortBy };
+
+        // Perform search
+        const results = searchItems(query, category, sortBy);
+        appState.items = results;
+
+        // Update DOM
+        renderItems(results);
+
+        // Return formatted response
+        return {
+          content: [{
+            type: 'text',
+            text: formatSearchResults(query, results, category)
+          }]
+        };
+      } catch (error) {
+        console.error('Search failed:', error);
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: ${error.message}`
+          }],
+          isError: true
+        };
+      }
+    }
+  });
+
+  // Tool 2: Select item
+  const selectTool = navigator.modelContext.registerTool({
+    name: 'items_select',
+    description: 'Select an item by ID to view details',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemId: {
+          type: 'string',
+          description: 'Unique identifier of the item'
+        }
+      },
+      required: ['itemId']
+    },
+    async execute({ itemId }) {
+      try {
+        const item = appState.items.find(i => i.id === itemId);
+
+        if (!item) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Item not found: ${itemId}`
+            }],
+            isError: true
+          };
+        }
+
+        appState.selectedId = itemId;
+
+        // Update DOM
+        highlightItem(itemId);
+        showDetails(item);
+
+        return {
+          content: [{
+            type: 'text',
+            text: `# ${item.title}\n\n**Status:** ${item.status}\n**Created:** ${new Date(item.createdAt).toLocaleDateString()}\n\n${item.description}`
+          }]
+        };
+      } catch (error) {
+        console.error('Selection failed:', error);
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: ${error.message}`
+          }],
+          isError: true
+        };
+      }
+    }
+  });
+
+  // Tool 3: Update item
+  const updateTool = navigator.modelContext.registerTool({
+    name: 'items_update',
+    description: 'Update an existing item',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemId: {
+          type: 'string',
+          description: 'Item ID to update'
+        },
+        title: {
+          type: 'string',
+          minLength: 1,
+          description: 'New title'
+        },
+        description: {
+          type: 'string',
+          description: 'New description'
+        },
+        status: {
+          type: 'string',
+          enum: ['active', 'archived', 'favorite'],
+          description: 'New status'
+        }
+      },
+      required: ['itemId']
+    },
+    async execute({ itemId, title, description, status }) {
+      try {
+        const index = appState.items.findIndex(i => i.id === itemId);
+
+        if (index === -1) {
+          return {
+            content: [{
+              type: 'text',
+              text: `Item not found: ${itemId}`
+            }],
+            isError: true
+          };
+        }
+
+        // Update item
+        const updatedItem = {
+          ...appState.items[index],
+          ...(title && { title }),
+          ...(description && { description }),
+          ...(status && { status }),
+          updatedAt: new Date().toISOString()
+        };
+
+        appState.items[index] = updatedItem;
+
+        // Update DOM
+        updateItemInDOM(updatedItem);
+
+        // Sync to backend
+        syncToBackend('update', updatedItem)
+          .catch(err => console.error('Sync failed:', err));
+
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Updated: ${updatedItem.title}`
+          }]
+        };
+      } catch (error) {
+        console.error('Update failed:', error);
+        return {
+          content: [{
+            type: 'text',
+            text: `Error: ${error.message}`
+          }],
+          isError: true
+        };
+      }
+    }
+  });
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    searchTool.unregister();
+    selectTool.unregister();
+    updateTool.unregister();
+  });
+
+  return { searchTool, selectTool, updateTool };
+}
+
+// Helper functions
+
+function searchItems(query, category, sortBy) {
+  let results = appState.items;
+
+  // Filter by query
+  if (query) {
+    const lowerQuery = query.toLowerCase();
+    results = results.filter(item =>
+      item.title.toLowerCase().includes(lowerQuery) ||
+      item.description.toLowerCase().includes(lowerQuery)
+    );
+  }
+
+  // Filter by category
+  if (category !== 'all') {
+    results = results.filter(item => item.status === category);
+  }
+
+  // Sort
+  results.sort((a, b) => {
+    switch (sortBy) {
+      case 'title':
+        return a.title.localeCompare(b.title);
+      case 'priority':
+        return (b.priority || 0) - (a.priority || 0);
+      case 'date':
+      default:
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
+
+  return results;
+}
+
+function formatSearchResults(query, results, category) {
+  if (results.length === 0) {
+    return `No results found for "${query}" in ${category}`;
+  }
+
+  return `# Search Results: "${query}"\n\nFound ${results.length} items:\n\n${results.map((item, i) =>
+    `${i + 1}. **${item.title}** (${item.status})\n   ${item.description.substring(0, 100)}...`
+  ).join('\n\n')}`;
+}
+
+function renderItems(items) {
+  const container = document.getElementById('items-container');
+  if (!container) return;
+
+  container.innerHTML = items.map(item => `
+    <div class="item" data-id="${item.id}">
+      <h3>${item.title}</h3>
+      <p>${item.description}</p>
+      <span class="status">${item.status}</span>
+    </div>
+  `).join('');
+}
+
+function highlightItem(itemId) {
+  document.querySelectorAll('.item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === itemId);
+  });
+}
+
+function showDetails(item) {
+  const detailsPanel = document.getElementById('details-panel');
+  if (!detailsPanel) return;
+
+  detailsPanel.innerHTML = `
+    <h2>${item.title}</h2>
+    <p><strong>Status:</strong> ${item.status}</p>
+    <p><strong>Created:</strong> ${new Date(item.createdAt).toLocaleDateString()}</p>
+    <p>${item.description}</p>
+  `;
+  detailsPanel.classList.add('visible');
+}
+
+function updateItemInDOM(item) {
+  const itemEl = document.querySelector(`[data-id="${item.id}"]`);
+  if (!itemEl) return;
+
+  itemEl.querySelector('h3').textContent = item.title;
+  itemEl.querySelector('p').textContent = item.description;
+  itemEl.querySelector('.status').textContent = item.status;
+}
+
+async function syncToBackend(operation, data) {
+  const response = await fetch('/api/items', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operation, data })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Sync failed: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeTools);
+} else {
+  initializeTools();
+}
+```

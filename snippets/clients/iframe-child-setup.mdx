@@ -1,0 +1,68 @@
+{/*
+# Iframe Child Transport Setup
+
+Setup pattern for MCP server inside an iframe (child side).
+
+## When to use:
+- Creating MCP server inside an iframe
+- Cross-origin communication with parent
+- Embedded app exposing tools to parent
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/iframe-child-setup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```typescript
+import { IframeChildTransport } from "@mcp-b/transports";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+
+// Create MCP server
+const server = new Server(
+  {
+    name: "IframeApp",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
+
+// Register tools
+server.setRequestHandler('tools/list', async () => {
+  return {
+    tools: [
+      {
+        name: "iframe_tool",
+        description: "Tool from iframe",
+        inputSchema: {
+          type: "object",
+          properties: {
+            key: { type: "string" }
+          }
+        }
+      }
+    ]
+  };
+});
+
+server.setRequestHandler('tools/call', async (request) => {
+  // Handle tool execution
+  return {
+    content: [{ type: "text", text: "Result" }]
+  };
+});
+
+// Connect to iframe transport
+const transport = new IframeChildTransport({
+  allowedOrigins: ["https://parent-app.com"], // Parent page origin
+  // or use ['*'] to allow any origin (less secure)
+});
+
+await server.connect(transport);
+```

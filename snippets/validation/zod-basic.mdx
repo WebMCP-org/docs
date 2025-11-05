@@ -1,0 +1,24 @@
+{/*
+# Basic Zod Schema
+
+Basic Zod schema pattern for tool input validation.
+
+## When to use:
+- Simple input validation
+- Type-safe parameter definitions
+- Parameter descriptions for AI models
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/validation/zod-basic.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+inputSchema: {
+  query: z.string().min(1).describe('Search query'),
+  limit: z.number().optional().describe('Number of results (default: 10)')
+}
+```

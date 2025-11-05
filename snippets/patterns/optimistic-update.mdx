@@ -1,0 +1,46 @@
+{/*
+# Optimistic Update Pattern
+
+Pattern for immediate UI updates with background sync (for voice models and real-time UX).
+
+## When to use:
+- Voice model interactions requiring instant feedback
+- Real-time UI updates
+- Tools that modify in-app state
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/patterns/optimistic-update.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+async execute({ productId, quantity }) {
+  // Update in-app state immediately
+  const cartState = getCartState();
+  const product = cartState.addItem({ productId, quantity });
+
+  // Return success instantly
+  const cartItems = cartState.getItems();
+  const markdown = `**Added to cart!**
+
+${product.name} x${quantity}
+
+## Current Cart (${cartItems.length} items)
+${cartItems.map(item => `- ${item.name} x${item.quantity} - $${item.price * item.quantity}`).join('\n')}
+
+**Total:** $${cartState.getTotal()}`;
+
+  // Sync to backend in background (don't await)
+  syncCartToBackend(cartState).catch(err => {
+    console.error('Background sync failed:', err);
+    // Handle sync errors appropriately
+  });
+
+  return {
+    content: [{ type: "text", text: markdown }]
+  };
+}
+```

@@ -1,0 +1,30 @@
+{/*
+# Basic Tool Registration
+
+Use this pattern for simple tools with basic or no input parameters.
+
+## When to use:
+- Tools that perform simple operations
+- Tools with minimal input requirements
+- Quick setup for standard tool registration
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/register-tool-basic.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript "tool-registration.js" lines icon="square-js"
+navigator.modelContext.registerTool({
+  name: "example_tool",
+  description: "Tool description here",
+  inputSchema: { type: "object", properties: {} },
+  async execute() {
+    return {
+      content: [{ type: "text", text: "Result" }]
+    };
+  }
+});
+```

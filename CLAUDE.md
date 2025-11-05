@@ -58,90 +58,20 @@ The WebMCP documentation is organized into the following main sections:
 - Start by making the smallest reasonable changes
 
 ## Reusable snippets
-
-**Goal:** Maintain consistency and reduce duplication through reusable code patterns.
-
-See the [Snippets Implementation Plan](SNIPPETS_IMPLEMENTATION_PLAN.md) for the complete strategy.
-
-### When to use snippets
-
-**Use snippets for:**
-- ✅ Code patterns that appear **3+ times** across different pages
-- ✅ Foundational patterns (imports, basic setup, common responses)
-- ✅ Code that must stay **consistent** (security patterns, best practices)
-- ✅ Code likely to **change** (API updates, deprecations)
-
-**Don't use snippets for:**
-- ❌ Code that appears only 1-2 times
-- ❌ Page-specific context or examples
-- ❌ Code that benefits from inline explanation
-
-### Snippet organization
-
-Snippets are organized by category in `/snippets/`:
-
-```
-snippets/
-├── core/          # registerTool(), useWebMCP(), responses
-├── imports/       # Common import statements
-├── validation/    # Zod and JSON Schema patterns
-├── clients/       # Transport/client setup
-├── patterns/      # Error handling, lifecycle, fetch
-└── examples/      # Full working tool examples
-```
-
-### Using snippets
-
-Import and use snippets in MDX files:
-
-```mdx
----
-title: My Page
----
-
-import { RegisterToolBasic } from '/snippets/core/register-tool-basic.mdx';
-
-## Tool Registration
-
-<RegisterToolBasic toolName="my_tool" description="My tool description" />
-```
-
-### Creating new snippets
-
-Before creating a snippet:
-1. **Check if it exists**: Search `/snippets/` directory
-2. **Verify duplication**: Confirm pattern appears 3+ times
-3. **Choose category**: Place in appropriate subdirectory
-4. **Add variables**: Support customization via props
-5. **Document usage**: Include comments explaining when to use
-
-**Snippet template:**
-```mdx
-{/*
-# Pattern Name
-
-Brief description of what this snippet does.
-
-## When to use:
-- Use case 1
-- Use case 2
-
-## Props:
-- propName (default): Description
-*/}
-
-export const PatternName = ({ prop1 = "default", prop2 = "default" }) => {
-  return `code here with ${prop1} and ${prop2}`;
-};
-```
-
-### Maintaining snippets
-
-When updating a snippet:
-1. **Check usage**: Find all pages importing the snippet
-2. **Test changes**: Preview all affected pages locally
-3. **Update docs**: Modify snippet comments if behavior changes
-4. **Communicate**: Note breaking changes in commit message
+- Use snippets from `/snippets/` directory for common code patterns
+- **See [USING_SNIPPETS.md](USING_SNIPPETS.md) for complete usage guide with examples**
+- 33 snippets available covering all common WebMCP patterns
+- If a code pattern appears 3+ times, consider creating a snippet
+- When to use snippets:
+  - Tool registration patterns (registerTool, useWebMCP)
+  - Response formats (success, error, markdown)
+  - Import statements (React, vanilla JS, client)
+  - Validation schemas (Zod, JSON Schema)
+  - Client setup (McpClientProvider, transports)
+- When NOT to use snippets:
+  - Page-specific examples that benefit from inline context
+  - One-off code examples (appears only 1-2 times)
+  - Tutorial walkthroughs where step-by-step explanation is key
 
 ## mint.json
 

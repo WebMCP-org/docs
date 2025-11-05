@@ -1,0 +1,45 @@
+{/*
+# Extension Client Transport Setup
+
+Setup pattern for extension UI (sidebar/popup) connecting to background hub.
+
+## When to use:
+- Extension sidebar or popup
+- Connecting to extension background script
+- Consuming tools from all connected tabs
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/extension-client-setup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```typescript
+import { ExtensionClientTransport } from "@mcp-b/transports";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
+// Create transport - connects to the extension's background script
+const transport = new ExtensionClientTransport({
+  portName: "mcp",
+});
+
+// Create MCP client
+const client = new Client({
+  name: "Extension Sidepanel",
+  version: "1.0.0",
+});
+
+// Connect and use
+await client.connect(transport);
+
+// List all available tools from all connected tabs
+const tools = await client.listTools();
+
+// Call a tool from a specific website
+const result = await client.callTool({
+  name: "website_tool_name",
+  arguments: { param: "value" }
+});
+```

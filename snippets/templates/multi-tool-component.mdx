@@ -1,0 +1,242 @@
+{/*
+# Multi-Tool Component Template
+
+Template for a React component that registers multiple related tools.
+
+## When to use:
+- Component needs to register several related tools
+- Grouping tools by feature area
+- Managing multiple tool registrations
+
+## Features included:
+- Multiple tool registrations in one component
+- Shared state between tools
+- Organized tool grouping
+- Best practices for cleanup
+
+## Example usage in docs:
+```mdx
+import MultiToolComponent from '/snippets/templates/multi-tool-component.mdx';
+
+<MultiToolComponent />
+```
+*/}
+
+```tsx "multi-tool-component.tsx" twoslash lines icon="react"
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+import { useState } from 'react';
+
+function ProductManager() {
+  // Shared state across all tools
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Tool 1: Search products
+  const searchTool = useWebMCP({
+    name: 'products_search',
+    description: 'Search products by name or category',
+    inputSchema: {
+      query: z.string().min(1).describe('Search query'),
+      category: z.string().optional().describe('Filter by category')
+    },
+    handler: async ({ query, category }) => {
+      const results = await searchProducts(query, category);
+      setProducts(results);
+
+      return {
+        content: [{
+          type: "text",
+          text: `Found ${results.length} products for "${query}"`
+        }]
+      };
+    }
+  });
+
+  // Tool 2: Get product details
+  const detailsTool = useWebMCP({
+    name: 'products_get_details',
+    description: 'Get detailed information about a specific product',
+    inputSchema: {
+      productId: z.string().uuid().describe('Product ID')
+    },
+    handler: async ({ productId }) => {
+      const product = products.find(p => p.id === productId);
+
+      if (!product) {
+        return {
+          content: [{
+            type: "text",
+            text: `Product not found: ${productId}`
+          }],
+          isError: true
+        };
+      }
+
+      setSelectedProduct(product);
+
+      return {
+        content: [{
+          type: "text",
+          text: `# ${product.name}\n\n**Price:** $${product.price}\n**Stock:** ${product.stock} units\n\n${product.description}`
+        }]
+      };
+    }
+  });
+
+  // Tool 3: Add to cart
+  const addToCartTool = useWebMCP({
+    name: 'cart_add_item',
+    description: 'Add a product to the shopping cart',
+    inputSchema: {
+      productId: z.string().uuid().describe('Product ID'),
+      quantity: z.number().int().min(1).max(99).describe('Quantity to add')
+    },
+    handler: async ({ productId, quantity }) => {
+      const product = products.find(p => p.id === productId);
+
+      if (!product) {
+        return {
+          content: [{
+            type: "text",
+            text: `Product not found: ${productId}`
+          }],
+          isError: true
+        };
+      }
+
+      if (product.stock < quantity) {
+        return {
+          content: [{
+            type: "text",
+            text: `Insufficient stock. Available: ${product.stock}, Requested: ${quantity}`
+          }],
+          isError: true
+        };
+      }
+
+      // Optimistic update
+      setCart(prev => {
+        const existing = prev.find(item => item.productId === productId);
+        if (existing) {
+          return prev.map(item =>
+            item.productId === productId
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
+        }
+        return [...prev, { productId, product, quantity }];
+      });
+
+      // Background sync
+      syncCartToBackend(cart).catch(console.error);
+
+      return {
+        content: [{
+          type: "text",
+          text: `✅ Added ${quantity}x ${product.name} to cart`
+        }]
+      };
+    }
+  });
+
+  // Tool 4: View cart
+  const viewCartTool = useWebMCP({
+    name: 'cart_view',
+    description: 'View current shopping cart contents',
+    inputSchema: {},
+    handler: async () => {
+      if (cart.length === 0) {
+        return {
+          content: [{
+            type: "text",
+            text: '🛒 Your cart is empty'
+          }]
+        };
+      }
+
+      const total = cart.reduce(
+        (sum, item) => sum + (item.product.price * item.quantity),
+        0
+      );
+
+      const markdown = `# Shopping Cart (${cart.length} items)
+
+${cart.map((item, i) => `
+${i + 1}. **${item.product.name}**
+   Quantity: ${item.quantity}
+   Price: $${item.product.price} each
+   Subtotal: $${(item.product.price * item.quantity).toFixed(2)}
+`).join('\n')}
+
+---
+
+**Total:** $${total.toFixed(2)}`;
+
+      return {
+        content: [{ type: "text", text: markdown }]
+      };
+    }
+  });
+
+  // Tool 5: Clear cart
+  const clearCartTool = useWebMCP({
+    name: 'cart_clear',
+    description: 'Remove all items from the shopping cart',
+    inputSchema: {},
+    handler: async () => {
+      const itemCount = cart.length;
+      setCart([]);
+      syncCartToBackend([]).catch(console.error);
+
+      return {
+        content: [{
+          type: "text",
+          text: `🗑️ Cleared ${itemCount} item(s) from cart`
+        }]
+      };
+    }
+  });
+
+  return (
+    <div className="product-manager">
+      {/* UI for products and cart */}
+      <div className="products">
+        {products.map(product => (
+          <div key={product.id} className="product-card">
+            <h3>{product.name}</h3>
+            <p>${product.price}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="cart">
+        <h2>Cart ({cart.length})</h2>
+        {cart.map(item => (
+          <div key={item.productId}>
+            {item.quantity}x {item.product.name}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Helper functions
+async function searchProducts(query: string, category?: string) {
+  // Implement search
+  return [];
+}
+
+async function syncCartToBackend(cart: any[]) {
+  // Implement sync
+  await fetch('/api/cart', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cart })
+  });
+}
+```

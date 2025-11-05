@@ -1,0 +1,42 @@
+{/*
+# Fetch API Pattern
+
+Standard fetch pattern for making authenticated API calls from tools.
+
+## When to use:
+- Tools that need to call backend APIs
+- Authenticated requests with credentials
+- Standard POST/GET patterns
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/patterns/fetch-api.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+async handler({ param }) {
+  try {
+    const response = await fetch('/api/endpoint', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ param })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error) {
+    console.error('API call failed:', error);
+    throw error;
+  }
+}
+```

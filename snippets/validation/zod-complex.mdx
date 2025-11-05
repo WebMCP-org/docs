@@ -1,0 +1,54 @@
+{/*
+# Advanced Zod Schema with Complex Validation
+
+Advanced Zod schema pattern with nested objects, arrays, and detailed validation.
+
+## When to use:
+- Complex data structures with nested objects
+- Multiple validation rules per field
+- Advanced type constraints
+- Detailed parameter descriptions for AI
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/validation/zod-complex.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+inputSchema: {
+  query: z.string()
+    .min(1, "Required")
+    .max(100, "Too long")
+    .describe("Search query (1-100 characters). Can be product name, category, or SKU."),
+
+  category: z.enum(["electronics", "clothing", "books", "home"])
+    .optional()
+    .describe("Product category to filter by"),
+
+  minPrice: z.number()
+    .min(0, "Minimum is 0")
+    .optional()
+    .describe("Minimum price in USD"),
+
+  maxPrice: z.number()
+    .min(0, "Minimum is 0")
+    .optional()
+    .describe("Maximum price in USD"),
+
+  limit: z.number()
+    .int("Must be integer")
+    .min(1)
+    .max(100)
+    .default(10)
+    .describe("Number of results (1-100, default: 10)"),
+
+  tags: z.array(z.string())
+    .min(1, "At least one tag required")
+    .max(10, "Maximum 10 tags")
+    .optional()
+    .describe("Filter by tags")
+}
+```

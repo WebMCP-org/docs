@@ -1,0 +1,34 @@
+{/*
+# Nested Object Zod Schema
+
+Zod schema pattern for nested objects with address/contact information.
+
+## When to use:
+- Forms with address data
+- Nested object structures
+- Complex user input data
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/validation/zod-nested.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+inputSchema: {
+  user: z.object({
+    name: z.string().min(1).describe("User's full name"),
+    email: z.string().email().describe("Valid email address"),
+    age: z.number().int().positive().optional().describe("Age in years")
+  }).describe("User information"),
+
+  address: z.object({
+    street: z.string().describe("Street address"),
+    city: z.string().describe("City name"),
+    state: z.string().length(2).describe("2-letter state code"),
+    zip: z.string().regex(/^\d{5}$/, "Invalid ZIP").describe("5-digit ZIP code")
+  }).optional().describe("Mailing address")
+}
+```

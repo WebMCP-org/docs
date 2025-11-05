@@ -1,0 +1,37 @@
+{/*
+# Error Handling Pattern
+
+Standard error handling pattern for tool execution.
+
+## When to use:
+- Handling exceptions in tools
+- Providing clear error messages
+- Graceful error recovery
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/patterns/error-handling.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+async execute({ param }) {
+  try {
+    const result = await performOperation(param);
+    return {
+      content: [{ type: "text", text: `Success: ${result}` }]
+    };
+  } catch (error) {
+    console.error('Tool execution error:', error);
+    return {
+      content: [{
+        type: "text",
+        text: `Failed to execute: ${error.message}`
+      }],
+      isError: true
+    };
+  }
+}
+```

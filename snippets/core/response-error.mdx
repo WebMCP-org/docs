@@ -1,0 +1,27 @@
+{/*
+# Error Response Format
+
+Standard error response format for WebMCP tools.
+
+## When to use:
+- Returning error messages from tool execution
+- Handling exceptions
+- Validation failures
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/response-error.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+return {
+  content: [{
+    type: "text",
+    text: `Error: ${error.message}`
+  }],
+  isError: true
+};
+```

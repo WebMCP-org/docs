@@ -1,0 +1,23 @@
+{/*
+# Success Response Format
+
+Standard success response format for WebMCP tools.
+
+## When to use:
+- Returning successful results from tool execution
+- Standard text responses
+- Simple operation results
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/response-success.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+return {
+  content: [{ type: "text", text: "Operation completed successfully" }]
+};
+```

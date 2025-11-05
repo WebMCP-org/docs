@@ -1,0 +1,217 @@
+{/*
+# Provider with Tools Template
+
+Template for a context provider that manages tools across the application.
+
+## When to use:
+- Need to share tool state across components
+- Global tool management
+- Application-level tool configuration
+
+## Features included:
+- React Context for tool state
+- Centralized tool registration
+- State sharing between components
+- Custom hooks for tool access
+
+## Example usage in docs:
+```mdx
+import ProviderWithTools from '/snippets/templates/provider-with-tools.mdx';
+
+<ProviderWithTools />
+```
+*/}
+
+```tsx "tool-provider.tsx" twoslash lines icon="react"
+import '@mcp-b/global';
+import { createContext, useContext, useState, ReactNode } from 'react';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+// Define the context shape
+interface AppToolsContextType {
+  data: any[];
+  setData: (data: any[]) => void;
+  selectedItem: any | null;
+  setSelectedItem: (item: any | null) => void;
+  filters: {
+    category: string;
+    searchQuery: string;
+  };
+  setFilters: (filters: any) => void;
+}
+
+// Create context
+const AppToolsContext = createContext<AppToolsContextType | undefined>(undefined);
+
+// Provider component
+export function AppToolsProvider({ children }: { children: ReactNode }) {
+  // Shared state
+  const [data, setData] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [filters, setFilters] = useState({
+    category: 'all',
+    searchQuery: ''
+  });
+
+  // Register application-level tools
+
+  // Tool 1: Get app state
+  useWebMCP({
+    name: 'app_get_state',
+    description: 'Get current application state including data, filters, and selected item',
+    inputSchema: {},
+    handler: async () => {
+      return {
+        content: [{
+          type: "text",
+          text: `# Application State
+
+**Data items:** ${data.length}
+**Selected:** ${selectedItem?.title || 'None'}
+**Filters:**
+- Category: ${filters.category}
+- Search: "${filters.searchQuery || 'None'}"`
+        }]
+      };
+    }
+  });
+
+  // Tool 2: Update filters
+  useWebMCP({
+    name: 'app_set_filters',
+    description: 'Update application filters for data display',
+    inputSchema: {
+      category: z.string().optional().describe('Category filter'),
+      searchQuery: z.string().optional().describe('Search query filter')
+    },
+    handler: async ({ category, searchQuery }) => {
+      const newFilters = {
+        ...filters,
+        ...(category !== undefined && { category }),
+        ...(searchQuery !== undefined && { searchQuery })
+      };
+
+      setFilters(newFilters);
+
+      return {
+        content: [{
+          type: "text",
+          text: `✅ Filters updated:\n- Category: ${newFilters.category}\n- Search: "${newFilters.searchQuery}"`
+        }]
+      };
+    }
+  });
+
+  // Tool 3: Select item
+  useWebMCP({
+    name: 'app_select_item',
+    description: 'Select an item by ID to view details',
+    inputSchema: {
+      itemId: z.string().describe('Item ID to select')
+    },
+    handler: async ({ itemId }) => {
+      const item = data.find(d => d.id === itemId);
+
+      if (!item) {
+        return {
+          content: [{
+            type: "text",
+            text: `Item not found: ${itemId}`
+          }],
+          isError: true
+        };
+      }
+
+      setSelectedItem(item);
+
+      return {
+        content: [{
+          type: "text",
+          text: `# Selected: ${item.title}\n\n${item.description || 'No description available'}`
+        }]
+      };
+    }
+  });
+
+  // Tool 4: Clear selection
+  useWebMCP({
+    name: 'app_clear_selection',
+    description: 'Clear the currently selected item',
+    inputSchema: {},
+    handler: async () => {
+      const previousItem = selectedItem;
+      setSelectedItem(null);
+
+      return {
+        content: [{
+          type: "text",
+          text: previousItem
+            ? `Cleared selection: ${previousItem.title}`
+            : 'No item was selected'
+        }]
+      };
+    }
+  });
+
+  const value: AppToolsContextType = {
+    data,
+    setData,
+    selectedItem,
+    setSelectedItem,
+    filters,
+    setFilters
+  };
+
+  return (
+    <AppToolsContext.Provider value={value}>
+      {children}
+    </AppToolsContext.Provider>
+  );
+}
+
+// Custom hook to use the context
+export function useAppTools() {
+  const context = useContext(AppToolsContext);
+  if (context === undefined) {
+    throw new Error('useAppTools must be used within AppToolsProvider');
+  }
+  return context;
+}
+
+// Example usage in App component
+export function App() {
+  return (
+    <AppToolsProvider>
+      <MainContent />
+      <Sidebar />
+    </AppToolsProvider>
+  );
+}
+
+// Child components can access shared state and tools
+function MainContent() {
+  const { data, selectedItem, filters } = useAppTools();
+
+  return (
+    <div>
+      <h1>Main Content</h1>
+      <p>Showing {data.length} items</p>
+      {selectedItem && <div>Selected: {selectedItem.title}</div>}
+    </div>
+  );
+}
+
+function Sidebar() {
+  const { filters, selectedItem } = useAppTools();
+
+  return (
+    <aside>
+      <h2>Filters</h2>
+      <p>Category: {filters.category}</p>
+      <p>Search: {filters.searchQuery}</p>
+      {selectedItem && <p>Viewing: {selectedItem.title}</p>}
+    </aside>
+  );
+}
+```

@@ -1,0 +1,34 @@
+{/*
+# Tool Registration with Cleanup
+
+Use this pattern when you need to track the registration for later cleanup.
+
+## When to use:
+- Tools that need to be unregistered later
+- Dynamic tool registration scenarios
+- Lifecycle management needed
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/register-tool-with-cleanup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript "tool-with-cleanup.js" lines icon="square-js"
+const registration = navigator.modelContext.registerTool({
+  name: "my_tool",
+  description: "What my tool does",
+  inputSchema: { type: "object", properties: {} },
+  async execute(args) {
+    // Implementation here
+    return {
+      content: [{ type: "text", text: "Result" }]
+    };
+  }
+});
+
+// Later, unregister if needed
+// registration.unregister();
+```

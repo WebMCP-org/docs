@@ -1,0 +1,43 @@
+{/*
+# Tab Server Transport Setup
+
+Setup pattern for MCP server using TabServerTransport (in-page communication).
+
+## When to use:
+- Creating an MCP server in a web page
+- Exposing tools via window.postMessage
+- Same-origin or configured CORS communication
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/tab-server-setup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```typescript
+import { TabServerTransport } from "@mcp-b/transports";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// Create MCP server
+const server = new McpServer(
+  {
+    name: "MyApp",
+    version: "1.0.0",
+  },
+  {
+    instructions: "Helpful assistant description"
+  }
+);
+
+// Register tools here...
+// server.tool(...)
+
+// Connect to transport with CORS configuration
+const transport = new TabServerTransport({
+  allowedOrigins: ["*"], // Configure based on your security needs
+});
+
+await server.connect(transport);
+```
