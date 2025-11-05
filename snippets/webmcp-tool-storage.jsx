@@ -47,7 +47,7 @@ export const StorageTool = () => {
             },
             required: ['key', 'value'],
           },
-          handler: async ({ key, value }) => {
+          async execute({ key, value }) {
             try {
               const prefixedKey = `webmcp_demo_${key}`;
 
@@ -101,7 +101,7 @@ export const StorageTool = () => {
             },
             required: ['key'],
           },
-          handler: async ({ key }) => {
+          async execute({ key }) {
             try {
               const prefixedKey = `webmcp_demo_${key}`;
 
@@ -156,7 +156,7 @@ export const StorageTool = () => {
             type: 'object',
             properties: {},
           },
-          handler: async () => {
+          async execute() {
             try {
               setToolCalls(prev => [...prev, {
                 time: new Date().toISOString(),

@@ -32,7 +32,7 @@ export const DOMQueryTool = () => {
             },
             required: ['selector'],
           },
-          handler: async ({ selector, action = 'all' }) => {
+          async execute({ selector, action = 'all' }) {
             try {
               setToolCalls(prev => [...prev, {
                 time: new Date().toISOString(),

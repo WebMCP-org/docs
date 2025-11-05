@@ -9,22 +9,98 @@ import { CalculatorTool } from '/snippets/webmcp-tool-calculator.jsx';
 import { ColorConverterTool } from '/snippets/webmcp-tool-color-converter.jsx';
 import { StorageTool } from '/snippets/webmcp-tool-storage.jsx';
 import { DOMQueryTool } from '/snippets/webmcp-tool-dom-query.jsx';
+import { PolyfillSetup } from '/snippets/webmcp-polyfill-setup.jsx';
 
 # Live WebMCP Tool Examples
 
 This page demonstrates **live, interactive WebMCP tools** embedded directly in the documentation. Each tool registers itself with `navigator.modelContext` and can be called by AI agents in real-time.
 
+## Setup Requirements
+
+To use these live tools, you need the **WebMCP polyfill** which provides the `navigator.modelContext` API:
+
+<PolyfillSetup />
+
 <Note>
-  These examples require the **MCP-B browser extension** to enable AI agent integration. The tools will still work manually without the extension.
+  **For AI agent integration**: Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa). The tools will still work manually without the extension.
 </Note>
 
-## Prerequisites
+## Adding WebMCP to Your Project
 
-To use these tools with AI agents:
+### Quick Start (CDN)
+
+The easiest way to add WebMCP to your project is via CDN. Just add one script tag:
+
+```html theme={null}
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Add WebMCP polyfill -->
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+</head>
+<body>
+  <h1>My App</h1>
+
+  <script>
+    // window.navigator.modelContext is now available!
+    navigator.modelContext.registerTool({
+      name: "greet",
+      description: "Greet the user",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name to greet" }
+        }
+      },
+      async execute({ name }) {
+        return {
+          content: [{
+            type: "text",
+            text: `Hello, ${name}!`
+          }]
+        };
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+### NPM Installation
+
+For projects using a bundler (Vite, Webpack, React, etc.):
+
+```bash theme={null}
+npm install @mcp-b/global
+```
+
+```javascript theme={null}
+import '@mcp-b/global';
+
+// Now navigator.modelContext is available
+navigator.modelContext.registerTool({
+  name: "my_tool",
+  description: "Tool description",
+  inputSchema: { type: "object", properties: {} },
+  async execute(args) {
+    return {
+      content: [{ type: "text", text: "Result" }]
+    };
+  }
+});
+```
+
+<Tip>
+  The polyfill auto-initializes when loaded. No configuration needed!
+</Tip>
+
+## Testing with AI Agents
+
+Once the polyfill is loaded:
 
 1. Install the [MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
 2. Open your AI assistant (Claude, ChatGPT, etc.)
-3. Try the example prompts provided with each tool
+3. The AI can now discover and call your tools!
 
 ## Interactive Tool Examples
 
@@ -155,22 +231,25 @@ Queries page elements using CSS selectors and returns information about matched 
 
 ### Basic Tool Structure
 
-Every WebMCP tool follows this pattern:
+Every WebMCP tool follows this pattern using the `@mcp-b/global` polyfill:
 
 ```jsx theme={null}
 export const MyTool = () => {
   const [isRegistered, setIsRegistered] = useState(false);
+  const [registration, setRegistration] = useState(null);
 
   useEffect(() => {
     const registerTool = async () => {
-      // Check if WebMCP is available
+      // Check if WebMCP polyfill is loaded
       if (!window.navigator?.modelContext) {
-        console.log('WebMCP not available');
+        console.log('WebMCP polyfill not loaded. Add:');
+        console.log('<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>');
         return;
       }
 
       try {
-        await window.navigator.modelContext.registerTool({
+        // Use the recommended registerTool() method
+        const reg = await window.navigator.modelContext.registerTool({
           name: 'my_tool',
           description: 'Clear description of what this tool does',
           inputSchema: {
@@ -183,7 +262,8 @@ export const MyTool = () => {
             },
             required: ['param1'],
           },
-          handler: async (params) => {
+          // Use 'execute' method (not 'handler')
+          async execute(params) {
             try {
               // Tool logic here
               const result = doSomething(params.param1);
@@ -206,6 +286,7 @@ export const MyTool = () => {
           },
         });
 
+        setRegistration(reg);
         setIsRegistered(true);
       } catch (error) {
         console.error('Failed to register tool:', error);
@@ -214,10 +295,10 @@ export const MyTool = () => {
 
     registerTool();
 
-    // Cleanup on unmount
+    // Cleanup on unmount - use the registration object
     return () => {
-      if (window.navigator?.modelContext?.unregisterTool) {
-        window.navigator.modelContext.unregisterTool('my_tool');
+      if (registration?.unregister) {
+        registration.unregister();
       }
     };
   }, []);
@@ -230,6 +311,14 @@ export const MyTool = () => {
   );
 };
 ```
+
+<Info>
+  **Key Points:**
+  - Use `registerTool()` method from the polyfill (returns a registration object)
+  - Use `execute` (not `handler`) for the tool function
+  - Call `registration.unregister()` for cleanup
+  - The polyfill must be loaded via script tag or npm import
+</Info>
 
 ### Tool Registration Best Practices
 

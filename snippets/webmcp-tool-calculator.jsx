@@ -28,7 +28,7 @@ export const CalculatorTool = () => {
             },
             required: ['expression'],
           },
-          handler: async ({ expression }) => {
+          async execute({ expression }) {
             try {
               // Track the tool call
               setToolCalls(prev => [...prev, {

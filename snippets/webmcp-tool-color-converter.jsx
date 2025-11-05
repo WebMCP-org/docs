@@ -69,7 +69,7 @@ export const ColorConverterTool = () => {
             },
             required: ['color'],
           },
-          handler: async ({ color, outputFormat = 'all' }) => {
+          async execute({ color, outputFormat = 'all' }) {
             try {
               setToolCalls(prev => [...prev, {
                 time: new Date().toISOString(),
