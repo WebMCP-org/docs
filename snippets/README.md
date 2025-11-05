@@ -4,23 +4,33 @@ Reusable code snippets for consistent documentation across the WebMCP docs.
 
 ## Purpose
 
-This directory contains reusable code snippets that appear frequently throughout the documentation. Using snippets:
 - **Reduces duplication** - Update once, reflect everywhere
 - **Improves consistency** - Single source of truth for common patterns
 - **Simplifies maintenance** - Easier to update and maintain code examples
 - **Speeds up authoring** - Ready-to-use components for documentation
 
+## Documentation
+
+📖 **[USING_SNIPPETS.md](../USING_SNIPPETS.md)** - Complete guide for documentation authors
+
+This guide covers:
+- When to use snippets vs. inline code
+- How to import and display snippets
+- Real-world migration examples
+- Best practices and troubleshooting
+- Common patterns and quick reference
+
 ## Directory Structure
 
 ```
 snippets/
-├── core/           # Essential patterns (tool registration, hooks, responses)
-├── imports/        # Common import statements
-├── validation/     # Schema patterns (Zod, JSON Schema)
-├── clients/        # Transport/client setup
-├── patterns/       # Advanced patterns (error handling, lifecycle)
-├── templates/      # Complete example templates
-└── examples/       # Full working examples (React components)
+├── core/           # Tool registration, hooks, responses (7 snippets)
+├── imports/        # Import statements (3 snippets)
+├── validation/     # Zod and JSON Schema (6 snippets)
+├── clients/        # Transport setup (7 snippets)
+├── patterns/       # Advanced patterns (4 snippets)
+├── templates/      # Complete examples (6 templates)
+└── examples/       # Full working components (4 examples)
 ```
 
 ## Available Snippets
@@ -52,7 +62,7 @@ snippets/
 - `zod-basic.mdx` - Basic Zod schema
 - `json-schema-basic.mdx` - Basic JSON Schema
 
-**Advanced Validation (Phase 2):**
+**Advanced Validation:**
 - `zod-complex.mdx` - Advanced Zod schema with complex validation
 - `zod-nested.mdx` - Nested object Zod schema
 - `zod-discriminated-union.mdx` - Discriminated union pattern
@@ -63,15 +73,15 @@ snippets/
 **React Client:**
 - `mcp-client-provider.mdx` - MCP client provider setup (React)
 
-**Tab Transports (Phase 2):**
+**Tab Transports:**
 - `tab-server-setup.mdx` - Tab server transport setup
 - `tab-client-setup.mdx` - Tab client transport setup
 
-**Iframe Transports (Phase 2):**
+**Iframe Transports:**
 - `iframe-parent-setup.mdx` - Iframe parent transport setup
 - `iframe-child-setup.mdx` - Iframe child transport setup
 
-**Extension Transports (Phase 2):**
+**Extension Transports:**
 - `extension-client-setup.mdx` - Extension client transport setup
 - `extension-server-setup.mdx` - Extension server transport setup
 
@@ -81,21 +91,21 @@ snippets/
 - `error-handling.mdx` - Standard error handling pattern
 - `fetch-api.mdx` - Fetch API pattern for backend calls
 
-**Lifecycle & Performance (Phase 2):**
+**Lifecycle & Performance:**
 - `lifecycle-cleanup.mdx` - Lifecycle cleanup pattern
 - `optimistic-update.mdx` - Optimistic update pattern for instant UX
 
 ### Templates (`snippets/templates/`)
 
-**Complete Tool Templates (Phase 3):**
-- `basic-tool-template.mdx` - Ready-to-use basic tool with all best practices
-- `crud-tool-template.mdx` - Full CRUD operations with action-based pattern
-- `search-tool-template.mdx` - Search with filters, pagination, and sorting
-- `vanilla-tool-template.mdx` - Complete vanilla JS tool (no React)
+**Complete Tool Templates:**
+- `basic-tool-template.mdx` - Ready-to-use basic tool with all best practices (~100 lines)
+- `crud-tool-template.mdx` - Full CRUD operations with action-based pattern (~200 lines)
+- `search-tool-template.mdx` - Search with filters, pagination, and sorting (~150 lines)
+- `vanilla-tool-template.mdx` - Complete vanilla JS tool (no React) (~250 lines)
 
-**Component Templates (Phase 3):**
-- `multi-tool-component.mdx` - Component registering multiple related tools
-- `provider-with-tools.mdx` - Context provider with application-level tools
+**Component Templates:**
+- `multi-tool-component.mdx` - Component registering multiple related tools (~180 lines)
+- `provider-with-tools.mdx` - Context provider with application-level tools (~200 lines)
 
 ### Examples (`snippets/examples/`)
 
@@ -105,19 +115,35 @@ Full working React components:
 - `webmcp-tool-color-converter.jsx` - Color converter
 - `webmcp-tool-dom-query.jsx` - DOM query tool
 
-## Usage in Documentation
+## Quick Start
 
-Each snippet file is a standalone MDX file containing a code block. Import and use them in your documentation:
+### Using a Snippet
 
 ```mdx
 import RegisterTool from '/snippets/core/register-tool-basic.mdx';
 
+## Tool Registration
+
+Here's the basic pattern:
+
 <RegisterTool />
 ```
 
-Or reference the code directly:
+### Using a Template
+
 ```mdx
-See [basic tool registration](/snippets/core/register-tool-basic.mdx) for the pattern.
+import CrudTemplate from '/snippets/templates/crud-tool-template.mdx';
+
+## Building a CRUD Tool
+
+Start with this complete template:
+
+<CrudTemplate />
+
+**Customize:**
+1. Change tool name
+2. Update schema
+3. Connect to your API
 ```
 
 ## Creating New Snippets
@@ -181,72 +207,43 @@ import CodeBlock from '/snippets/category/snippet-name.mdx';
 ### Updating Snippets
 
 When updating a snippet:
-1. **Review all usages** - Search for imports of this snippet
-2. **Test changes** - Preview affected pages with `mintlify dev`
-3. **Document changes** - Update comments in snippet file
-4. **Communicate impact** - Note in commit message
+1. Find all usages: `grep -r "snippet-name" docs/`
+2. Update the snippet file
+3. Test all affected pages: `mintlify dev`
+4. Document changes in commit message
 
 ### Version Control
 
-Track snippet changes in commit messages:
-```
+```bash
+# Good commit messages
 feat(snippets): add basic tool registration snippet
 fix(snippets): update error response format
 docs(snippets): improve zod schema example
 ```
 
-## Phase 1 Implementation (Completed)
+## Summary
 
-**Created snippets:**
-- ✅ Core tool registration (2 snippets)
-- ✅ React hooks (2 snippets)
-- ✅ Response formats (3 snippets)
-- ✅ Import statements (3 snippets)
-- ✅ Validation patterns (2 snippets)
-- ✅ Client setup (1 snippet)
-- ✅ Error handling (1 snippet)
+**Total:** 33 reusable snippets and templates
 
-**Total:** 14 foundational snippets
+**Categories:**
+- 7 core patterns
+- 3 import statements
+- 6 validation patterns
+- 7 client/transport setups
+- 4 advanced patterns
+- 6 complete templates
 
-## Phase 2 Implementation (Completed)
-
-**Created snippets:**
-- ✅ Advanced Zod schemas (3 snippets: complex, nested, discriminated union)
-- ✅ Complex JSON Schema (1 snippet)
-- ✅ Tab transports (2 snippets: server, client)
-- ✅ Iframe transports (2 snippets: parent, child)
-- ✅ Extension transports (2 snippets: client, server)
-- ✅ Advanced patterns (3 snippets: fetch API, lifecycle, optimistic updates)
-
-**Total:** 13 additional snippets
-
-## Phase 3 Implementation (Completed)
-
-**Created templates:**
-- ✅ Complete tool templates (4 templates: basic, CRUD, search, vanilla)
-- ✅ Component templates (2 templates: multi-tool, provider with tools)
-
-**Total:** 6 complete templates
-
-**Grand Total:** 33 reusable snippets and templates
-
-## Next Steps
-
-### Phase 4: Documentation Migration (Ready to Begin)
-- Pilot migration of high-traffic pages (quickstart.mdx, best-practices.mdx)
-- Replace duplicated code site-wide
-- Test rendering with `mintlify dev`
-- Achieve 90%+ adoption target across documentation
+**Impact:**
+- ~2,000 lines of reusable code
+- Reduces duplication by 60-87% when adopted
+- Single source of truth for common patterns
+- Faster documentation authoring
 
 ## Contributing
 
 When adding new snippets:
 1. Follow the file structure template above
 2. Add entry to this README
-3. Update CLAUDE.md if introducing new patterns
+3. Update USING_SNIPPETS.md if introducing new patterns
 4. Test snippet in at least one doc page
 5. Commit with descriptive message
-
-## Questions?
-
-See the full [Reusable Snippets Implementation Plan](../IMPLEMENTATION_PLAN.md) for detailed strategy and migration approach.

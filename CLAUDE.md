@@ -22,9 +22,9 @@
 
 ## Reusable snippets
 - Use snippets from `/snippets/` directory for common code patterns
+- **See [USING_SNIPPETS.md](USING_SNIPPETS.md) for complete usage guide with examples**
+- 33 snippets available covering all common WebMCP patterns
 - If a code pattern appears 3+ times, consider creating a snippet
-- Available snippet categories: core, imports, validation, clients, patterns, templates, examples
-- See `/snippets/README.md` for full catalog and usage guidelines
 - When to use snippets:
   - Tool registration patterns (registerTool, useWebMCP)
   - Response formats (success, error, markdown)
