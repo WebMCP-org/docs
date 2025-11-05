@@ -1,0 +1,41 @@
+{/*
+# Extension Server Transport Setup
+
+Setup pattern for extension background script handling MCP connections.
+
+## When to use:
+- Extension background script
+- Hub aggregating tools from multiple tabs
+- Central MCP server in extension
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/extension-server-setup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```typescript
+import { ExtensionServerTransport } from "@mcp-b/transports";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+// Create MCP server
+const server = new McpServer({
+  name: "Extension-Hub",
+  version: "1.0.0",
+});
+
+// Setup connection listener
+chrome.runtime.onConnect.addListener(async (port) => {
+  if (port.name === "mcp") {
+    // Handle UI connection (sidebar/popup)
+    const transport = new ExtensionServerTransport(port, {
+      keepAlive: true,
+      keepAliveInterval: 25_000,
+    });
+
+    await server.connect(transport);
+  }
+});
+```

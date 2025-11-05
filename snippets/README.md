@@ -48,16 +48,42 @@ snippets/
 
 ### Validation (`snippets/validation/`)
 
+**Basic Validation:**
 - `zod-basic.mdx` - Basic Zod schema
 - `json-schema-basic.mdx` - Basic JSON Schema
 
+**Advanced Validation (Phase 2):**
+- `zod-complex.mdx` - Advanced Zod schema with complex validation
+- `zod-nested.mdx` - Nested object Zod schema
+- `zod-discriminated-union.mdx` - Discriminated union pattern
+- `json-schema-complex.mdx` - Complex JSON Schema with nested objects
+
 ### Clients (`snippets/clients/`)
 
-- `mcp-client-provider.mdx` - MCP client provider setup
+**React Client:**
+- `mcp-client-provider.mdx` - MCP client provider setup (React)
+
+**Tab Transports (Phase 2):**
+- `tab-server-setup.mdx` - Tab server transport setup
+- `tab-client-setup.mdx` - Tab client transport setup
+
+**Iframe Transports (Phase 2):**
+- `iframe-parent-setup.mdx` - Iframe parent transport setup
+- `iframe-child-setup.mdx` - Iframe child transport setup
+
+**Extension Transports (Phase 2):**
+- `extension-client-setup.mdx` - Extension client transport setup
+- `extension-server-setup.mdx` - Extension server transport setup
 
 ### Patterns (`snippets/patterns/`)
 
+**Error & API Handling:**
 - `error-handling.mdx` - Standard error handling pattern
+- `fetch-api.mdx` - Fetch API pattern for backend calls
+
+**Lifecycle & Performance (Phase 2):**
+- `lifecycle-cleanup.mdx` - Lifecycle cleanup pattern
+- `optimistic-update.mdx` - Optimistic update pattern for instant UX
 
 ### Examples (`snippets/examples/`)
 
@@ -170,22 +196,31 @@ docs(snippets): improve zod schema example
 
 **Total:** 14 foundational snippets
 
+## Phase 2 Implementation (Completed)
+
+**Created snippets:**
+- ✅ Advanced Zod schemas (3 snippets: complex, nested, discriminated union)
+- ✅ Complex JSON Schema (1 snippet)
+- ✅ Tab transports (2 snippets: server, client)
+- ✅ Iframe transports (2 snippets: parent, child)
+- ✅ Extension transports (2 snippets: client, server)
+- ✅ Advanced patterns (3 snippets: fetch API, lifecycle, optimistic updates)
+
+**Total:** 13 additional snippets
+
+**Grand Total:** 27 reusable snippets
+
 ## Next Steps
 
-### Phase 2: Validation & Client Setup
-- Create advanced Zod schemas
-- Add more client transport examples
-- Transport-specific snippets
-
-### Phase 3: Advanced Patterns
-- Lifecycle management
-- Optimistic updates
-- Fetch API patterns
-
-### Phase 4: Templates & Migration
+### Phase 3: Templates & Examples (Planned)
 - Complete tool templates
 - React component templates
-- Full migration of high-traffic pages
+- Ready-to-use starting points
+
+### Phase 4: Documentation Migration (Planned)
+- Update high-traffic pages to use snippets
+- Replace duplicated code across docs
+- Achieve 90%+ adoption target
 
 ## Contributing
 

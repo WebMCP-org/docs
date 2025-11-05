@@ -1,0 +1,68 @@
+{/*
+# Complex JSON Schema
+
+Advanced JSON Schema pattern with nested objects, arrays, and detailed validation.
+
+## When to use:
+- Non-TypeScript projects
+- Vanilla JavaScript tools
+- Complex nested data structures
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/validation/json-schema-complex.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+inputSchema: {
+  type: "object",
+  properties: {
+    query: {
+      type: "string",
+      minLength: 1,
+      maxLength: 100,
+      description: "Search query text"
+    },
+    category: {
+      type: "string",
+      enum: ["electronics", "clothing", "books", "home"],
+      description: "Product category to filter by"
+    },
+    priceRange: {
+      type: "object",
+      properties: {
+        min: {
+          type: "number",
+          minimum: 0,
+          description: "Minimum price in dollars"
+        },
+        max: {
+          type: "number",
+          minimum: 0,
+          description: "Maximum price in dollars"
+        }
+      },
+      description: "Price range filter"
+    },
+    tags: {
+      type: "array",
+      items: { type: "string" },
+      minItems: 1,
+      maxItems: 10,
+      uniqueItems: true,
+      description: "Filter by tags"
+    },
+    limit: {
+      type: "number",
+      minimum: 1,
+      maximum: 100,
+      default: 10,
+      description: "Maximum number of results"
+    }
+  },
+  required: ["query"]
+}
+```

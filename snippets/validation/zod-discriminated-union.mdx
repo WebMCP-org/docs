@@ -1,0 +1,40 @@
+{/*
+# Discriminated Union Zod Schema
+
+Zod discriminated union pattern for handling different action types.
+
+## When to use:
+- Tools with multiple action modes
+- Different input schemas based on action type
+- Type-safe action handlers
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/validation/zod-discriminated-union.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+inputSchema: {
+  action: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("email"),
+      address: z.string().email().describe("Email address"),
+      subject: z.string().describe("Email subject")
+    }),
+    z.object({
+      type: z.literal("sms"),
+      phoneNumber: z.string().regex(/^\d{10}$/).describe("10-digit phone number"),
+      message: z.string().max(160).describe("SMS message (max 160 chars)")
+    }),
+    z.object({
+      type: z.literal("push"),
+      deviceId: z.string().uuid().describe("Device UUID"),
+      title: z.string().describe("Notification title"),
+      body: z.string().describe("Notification body")
+    })
+  ])
+}
+```

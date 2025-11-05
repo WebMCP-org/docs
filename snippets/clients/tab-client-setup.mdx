@@ -1,0 +1,47 @@
+{/*
+# Tab Client Transport Setup
+
+Setup pattern for MCP client using TabClientTransport (same-page communication).
+
+## When to use:
+- Connecting to an MCP server in the same page
+- Content script connecting to page server
+- Same-origin client-server setup
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/tab-client-setup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```typescript
+import { TabClientTransport } from "@mcp-b/transports";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
+// Create transport with target origin
+const transport = new TabClientTransport({
+  targetOrigin: window.location.origin,
+});
+
+// Discover available servers
+const availableServers = await transport.discover();
+if (availableServers.length > 0) {
+  console.log(`Found server: ${availableServers[0].implementation.name}`);
+}
+
+// Create and connect client
+const client = new Client({
+  name: "MyClient",
+  version: "1.0.0",
+});
+
+await client.connect(transport);
+
+// Use the client
+const result = await client.callTool({
+  name: "tool_name",
+  arguments: { param: "value" }
+});
+```

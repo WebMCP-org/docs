@@ -1,0 +1,58 @@
+{/*
+# Iframe Parent Transport Setup
+
+Setup pattern for parent page connecting to iframe MCP server.
+
+## When to use:
+- Parent page needs to consume tools from iframe
+- Cross-origin iframe communication
+- Embedded app integration
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/iframe-parent-setup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```typescript
+import { IframeParentTransport } from "@mcp-b/transports";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+
+// Get reference to iframe element
+const iframe = document.querySelector('iframe');
+
+// Wait for iframe to load
+iframe.addEventListener('load', async () => {
+  // Create transport targeting the iframe
+  const transport = new IframeParentTransport({
+    iframe: iframe,
+    targetOrigin: 'https://iframe-app.com', // Iframe page origin
+  });
+
+  // Create MCP client
+  const client = new Client(
+    {
+      name: "ParentPage",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {}
+    }
+  );
+
+  // Connect and use
+  await client.connect(transport);
+
+  // List available tools from iframe
+  const tools = await client.listTools();
+  console.log("Tools from iframe:", tools.tools);
+
+  // Call a tool from the iframe
+  const result = await client.callTool({
+    name: "iframe_tool",
+    arguments: { key: "value" }
+  });
+});
+```

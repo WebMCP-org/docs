@@ -1,0 +1,38 @@
+{/*
+# Lifecycle Cleanup Pattern
+
+Standard cleanup pattern for tool registration with lifecycle management.
+
+## When to use:
+- React components with tool registration
+- Dynamic tool registration/unregistration
+- Cleanup on component unmount
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/patterns/lifecycle-cleanup.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+useEffect(() => {
+  const registration = navigator.modelContext.registerTool({
+    name: 'my_tool',
+    description: 'Tool description',
+    inputSchema: { type: "object", properties: {} },
+    async execute(args) {
+      // Implementation
+      return {
+        content: [{ type: "text", text: "Result" }]
+      };
+    }
+  });
+
+  // Cleanup on unmount
+  return () => {
+    registration.unregister();
+  };
+}, []);
+```
