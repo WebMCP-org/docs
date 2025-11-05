@@ -6,10 +6,10 @@ icon: 'arrows-left-right-to-line'
 
 ## Overview
 
-**MCP UI + WebMCP** enables a powerful pattern where AI assistants invoke tools that render interactive web applications, and those embedded apps can dynamically register new tools back to the AI in real-time. This creates a bidirectional feedback loop between conversational interfaces and embedded applications.
+MCP UI + WebMCP enables AI assistants to invoke tools that render interactive web applications. These embedded apps can dynamically register new tools back to the AI, creating bidirectional interaction between conversational interfaces and embedded applications.
 
 <Note>
-This pattern combines **MCP UI resources** (tools that return visual interfaces) with **WebMCP tool registration** (apps registering new tools via `navigator.modelContext`).
+Combines MCP UI resources (tools that return visual interfaces) with WebMCP tool registration (apps registering tools via `navigator.modelContext`).
 </Note>
 
 ## Quick Navigation
@@ -208,15 +208,9 @@ sequenceDiagram
 
 ## MCP UI Resource Types
 
-<Info>
-MCP servers can return three types of UI resources, each optimized for different use cases.
-</Info>
-
 <Tabs>
   <Tab title="externalUrl" icon="window">
-    **Iframe Embedding**
-
-    Load a complete web application in an iframe:
+    Load a complete web application in an iframe (most common):
 
     ```typescript
     createUIResource({
@@ -229,21 +223,11 @@ MCP servers can return three types of UI resources, each optimized for different
     })
     ```
 
-    **Best for:**
-    - Full-featured applications
-    - Existing web apps
-    - Complex interactions
-    - Production apps with build processes
-
-    <Tip>
-    This is the most common type for MCP-UI + WebMCP integration.
-    </Tip>
+    Use for full-featured applications and complex interactions.
   </Tab>
 
   <Tab title="rawHtml" icon="code">
-    **Sanitized Markup**
-
-    Inject sanitized HTML directly into the page:
+    Inject sanitized HTML directly:
 
     ```typescript
     createUIResource({
@@ -256,17 +240,11 @@ MCP servers can return three types of UI resources, each optimized for different
     })
     ```
 
-    **Best for:**
-    - Simple widgets
-    - Static content
-    - Lightweight components
-    - Quick prototypes
+    Use for simple widgets and static content.
   </Tab>
 
   <Tab title="remoteDom" icon="satellite-dish">
-    **Dynamic Content**
-
-    Stream dynamic DOM updates to the parent:
+    Stream dynamic DOM updates:
 
     ```typescript
     createUIResource({
@@ -280,63 +258,35 @@ MCP servers can return three types of UI resources, each optimized for different
     })
     ```
 
-    **Best for:**
-    - Real-time updates
-    - Streaming data
-    - Live visualizations
-    - Server-driven UI
+    Use for real-time updates and streaming data.
   </Tab>
 </Tabs>
 
 ## WebMCP vs MCP-B
 
-It's important to understand the distinction:
-
-- **WebMCP**: The W3C standard specification defining `navigator.modelContext` API
-- **MCP-B**: Reference implementation providing polyfills and npm packages before native browser support
-
-The MCP-B packages (`@mcp-b/react-webmcp`, `@mcp-b/transports`, `@mcp-b/global`) enable WebMCP functionality today by:
-1. Polyfilling `navigator.modelContext` for current browsers
-2. Providing transport layers (iframe, tab, extension)
-3. Bridging between WebMCP and MCP protocols
+- **WebMCP**: W3C standard specification defining `navigator.modelContext` API
+- **MCP-B**: Reference implementation providing polyfills before native browser support
 
 <Warning>
-  **Critical Implementation Detail**: When using `@mcp-b/global`, you must call `initializeWebModelContext()` BEFORE React renders. This initialization must happen at module scope in your main.tsx entry point:
+When using `@mcp-b/global`, call `initializeWebModelContext()` before React renders:
 
-  ```typescript
-  import { initializeWebModelContext } from '@mcp-b/global';
+```typescript
+import { initializeWebModelContext } from '@mcp-b/global';
 
-  // MUST run before React
-  initializeWebModelContext({
-    transport: {
-      tabServer: {
-        allowedOrigins: ['*'], // Restrict in production
-      },
-    },
-  });
-
-  // Then render React
-  createRoot(document.getElementById('root')!).render(<App />);
-  ```
+initializeWebModelContext();
+createRoot(document.getElementById('root')!).render(<App />);
+```
 </Warning>
 
 ## Getting Started
 
-<Info>
-The fastest way to start building is with the `create-webmcp-app` CLI tool, which scaffolds a complete project with all necessary configuration.
-</Info>
-
 <Steps>
   <Step title="Create Project">
-    Run the interactive CLI:
-
     ```bash
     npx create-webmcp-app
     ```
 
-    Choose between:
-    - **Vanilla template**: HTML/CSS/JS with no build step
-    - **React template**: TypeScript + Vite + React 19
+    Choose Vanilla (HTML/CSS/JS) or React (TypeScript + Vite) template.
   </Step>
 
   <Step title="Install Dependencies">
@@ -350,19 +300,12 @@ The fastest way to start building is with the `create-webmcp-app` CLI tool, whic
     ```bash
     pnpm dev
     ```
-
-    Your MCP server and embedded app are now running locally!
   </Step>
 
   <Step title="Explore the Code">
-    Check out:
     - `worker/mcpServer.ts` - MCP server implementation
     - `public/` or `src/` - Embedded app code
     - `.dev.vars` - Environment configuration
-
-    <Tip>
-    Modify the template to add your own tools and UI features.
-    </Tip>
   </Step>
 </Steps>
 
@@ -388,30 +331,24 @@ The fastest way to start building is with the `create-webmcp-app` CLI tool, whic
 
 ## Use Cases
 
-<Note>
-This bidirectional pattern unlocks powerful use cases where AI agents can both see and interact with complex interfaces.
-</Note>
-
-**Ideal applications include:**
-
 <CardGroup cols={2}>
   <Card title="Interactive Games" icon="gamepad">
-    AI plays games by calling dynamically registered moves (see TicTacToe demo)
+    AI plays games via dynamically registered moves
   </Card>
   <Card title="Data Visualization" icon="chart-line">
-    Charts and graphs that expose filtering/manipulation tools
+    Charts with filtering/manipulation tools
   </Card>
   <Card title="Form Builders" icon="list-check">
-    Dynamic forms that register validation and submission tools
+    Forms with validation and submission tools
   </Card>
   <Card title="Collaboration Tools" icon="users">
-    Whiteboards, document editors with AI-accessible operations
+    Whiteboards and editors with AI operations
   </Card>
   <Card title="Configuration UIs" icon="sliders">
-    Settings panels that expose configuration tools to AI
+    Settings panels with configuration tools
   </Card>
   <Card title="Real-time Dashboards" icon="dashboard">
-    Live data displays with AI-controlled filters and actions
+    Live data with AI-controlled filters
   </Card>
 </CardGroup>
 
@@ -419,80 +356,59 @@ This bidirectional pattern unlocks powerful use cases where AI agents can both s
 
 <AccordionGroup>
   <Accordion title="Dynamic Tool Discovery">
-    Tools are registered based on app state, user context, or loaded features. The AI automatically discovers new capabilities as they become available.
+    AI automatically discovers tools as they become available based on app state.
   </Accordion>
 
   <Accordion title="Separation of Concerns">
-    UI logic stays in the embedded app, while the parent manages the conversation. Each component has clear responsibilities.
+    UI logic stays in embedded app, parent manages conversation.
   </Accordion>
 
   <Accordion title="Reusable Components">
-    Apps can be embedded in multiple contexts (chat UIs, extensions, native apps) without modification.
+    Embed apps in multiple contexts without modification.
   </Accordion>
 
   <Accordion title="Security Isolation">
-    Iframes provide security boundaries while postMessage enables controlled communication.
+    Iframes provide security boundaries with controlled postMessage communication.
   </Accordion>
 
   <Accordion title="Progressive Enhancement">
-    Apps work as standalone web pages and gain AI capabilities when embedded in supporting contexts.
+    Apps work standalone and gain AI capabilities when embedded.
   </Accordion>
 </AccordionGroup>
 
 ## Best Practices
 
-When building MCP UI + WebMCP applications:
-
 <AccordionGroup>
   <Accordion title="Keep iframes lightweight">
-    - Minimize bundle size for fast loading
-    - Use code splitting for large applications
-    - Lazy load features as needed
+    Minimize bundle size, use code splitting, lazy load features.
   </Accordion>
 
   <Accordion title="Handle transport failures gracefully">
-    - Detect when MCP-B transport is unavailable
-    - Provide fallback UI for standalone usage
-    - Show connection status to users
+    Detect unavailable transport, provide fallback UI, show connection status.
   </Accordion>
 
   <Accordion title="Design tools for AI consumption">
-    - Use clear, descriptive tool names and descriptions
-    - Return structured data (JSON) in tool results
-    - Include success/error states in responses
-    - Use annotations to provide hints: `idempotentHint`, `readOnlyHint`, `destructiveHint`
+    Use clear names, return structured data, include success/error states, use annotations (`idempotentHint`, `readOnlyHint`, `destructiveHint`).
   </Accordion>
 
   <Accordion title="Manage tool lifecycle carefully">
-    - Register tools when features are available
-    - Unregister tools when features are removed
-    - Use React hooks (useWebMCP) for automatic cleanup
+    Register tools when available, unregister when removed, use `useWebMCP` for automatic cleanup.
   </Accordion>
 
-  <Accordion title="Test both standalone and embedded modes">
-    - Ensure apps work without MCP-B polyfill
-    - Test iframe communication in different browsers
-    - Verify tool calls work end-to-end
+  <Accordion title="Test both modes">
+    Test standalone and embedded modes, verify iframe communication, ensure tool calls work end-to-end.
   </Accordion>
 </AccordionGroup>
 
 ## Technical Requirements
 
-**Minimum versions:**
 - Node.js 24.3.0+
 - pnpm 10.14.0+
 
-**Key dependencies:**
-- `@mcp-b/react-webmcp` - React hooks for WebMCP
-- `@mcp-b/transports` - Iframe transport implementation
-- `@mcp-b/global` - Core WebMCP polyfill (navigator.modelContext)
-- `@modelcontextprotocol/sdk` - MCP protocol implementation
-- `@mcp-ui/server` - MCP UI resource creation utilities
-
-**Deployment targets:**
-- Cloudflare Workers (MCP server)
-- Cloudflare Pages (Chat UI)
-- Any static hosting (embedded apps)
+**Key packages:**
+- `@mcp-b/react-webmcp`, `@mcp-b/transports`, `@mcp-b/global`
+- `@modelcontextprotocol/sdk`
+- `@mcp-ui/server`
 
 ## Related Topics
 

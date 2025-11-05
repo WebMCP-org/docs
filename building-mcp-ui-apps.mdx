@@ -4,21 +4,15 @@ description: 'Complete guide to building interactive apps that AI agents can con
 icon: 'hammer'
 ---
 
-<Info>
-**New to MCP-UI?** This guide walks you through building complete bidirectional applications where AI agents can both display interfaces and interact with them through dynamically registered tools.
-</Info>
+## What You're Building
 
-## What You're Actually Building
-
-When you run `npx create-webmcp-app`, you're scaffolding a **complete bidirectional system** with three main components:
+`npx create-webmcp-app` scaffolds a bidirectional system with three components:
 
 1. **MCP Server** (Cloudflare Worker) - Exposes tools to AI agents
 2. **Embedded Web App** (React or Vanilla JS) - Runs in an iframe, registers its own tools
 3. **Communication Layer** - IframeParentTransport ↔ IframeChildTransport
 
-<Tip>
-**The magic:** Your embedded app can register tools that the AI can call, creating true bidirectional interaction where the UI is also an API.
-</Tip>
+Your embedded app registers tools that AI can call, creating bidirectional interaction.
 
 ## Quick Navigation
 
@@ -51,11 +45,7 @@ npx create-webmcp-app
 
 <Tabs>
   <Tab title="Vanilla Template" icon="code">
-    **Pure HTML/CSS/JavaScript**
-    - No build step required
-    - Instant development
-    - Perfect for simple apps
-    - Uses CDN for dependencies
+    HTML/CSS/JavaScript with no build step. Uses CDN for dependencies.
 
     ```bash
     # Select "vanilla" when prompted
@@ -67,11 +57,7 @@ npx create-webmcp-app
   </Tab>
 
   <Tab title="React Template" icon="react">
-    **React + TypeScript + Vite**
-    - Full type safety
-    - Hot module replacement
-    - Modern React 19 features
-    - Professional tooling
+    React + TypeScript + Vite with hot module replacement.
 
     ```bash
     # Select "react" when prompted
@@ -83,11 +69,7 @@ npx create-webmcp-app
   </Tab>
 </Tabs>
 
-## The Complete Architecture
-
-<Info>
-**Understanding the flow:** The following diagram shows how AI agents, MCP servers, host applications, and embedded apps work together to enable bidirectional tool interaction.
-</Info>
+## Architecture
 
 ```mermaid
 sequenceDiagram
@@ -126,9 +108,7 @@ sequenceDiagram
 
 ## Part 1: The MCP Server
 
-<Note>
-Your MCP server (`worker/mcpServer.ts`) provides the **entry point** for AI agents. It exposes tools that return UI resources, which then register their own tools back to the AI.
-</Note>
+The MCP server (`worker/mcpServer.ts`) exposes tools that return UI resources.
 
 ### Example: Template MCP Server
 
@@ -196,18 +176,12 @@ Try calling these tools to interact with the app!`,
 ```
 
 <Warning>
-**Critical Understanding:**
-- The MCP server returns a `UIResource` with `type: 'externalUrl'`
-- The `iframeUrl` points to your embedded app
-- The host application (Claude Desktop, chat-ui) renders this as an iframe
-- **The tools mentioned in the description are registered BY THE IFRAME**, not by this server!
+The tools mentioned in the description are registered by the iframe, not by this server.
 </Warning>
 
 ## Part 2: The Embedded App (Vanilla)
 
-<Tip>
-**No build step required!** The Vanilla template uses `@mcp-b/global` via CDN to register tools. Your app runs inside an iframe and communicates with the parent via `postMessage`.
-</Tip>
+The Vanilla template uses `@mcp-b/global` via CDN. No build step required.
 
 ### Example: Vanilla Template (`public/index.html`)
 
@@ -382,23 +356,13 @@ Try calling these tools to interact with the app!`,
 ```
 
 <Note>
-**Implementation Highlights:**
-- `@mcp-b/global` IIFE provides `window.navigator.modelContext` globally
-- Call `provideContext({ tools: [...] })` to register tools with the parent
-- **Tool handlers and UI buttons share the same state management logic**
-- Parent-child ready protocol ensures reliable bidirectional communication
+Key points: `@mcp-b/global` provides `navigator.modelContext`. Tool handlers and UI buttons should share state management logic.
 </Note>
 
 ## Part 3: The Embedded App (React)
 
-<Info>
-**Modern React approach:** Use `initializeWebModelContext()` before React renders, then register tools with the `useWebMCP` hook. Zod schemas provide type-safe validation.
-</Info>
-
-### Example: React Template
-
 <Warning>
-**CRITICAL:** Call `initializeWebModelContext()` **BEFORE** React renders. This must happen at module scope in your entry point.
+`initializeWebModelContext()` must be called before React renders.
 </Warning>
 
 **src/main.tsx** - Initialize WebMCP:
@@ -544,11 +508,7 @@ export default function App() {
 ```
 
 <Note>
-**React Implementation Highlights:**
-- `initializeWebModelContext()` **must run BEFORE React renders** (critical timing!)
-- `useWebMCP` hook automatically registers tools on mount and unregisters on unmount
-- Zod schemas provide **type-safe validation** with excellent DX
-- **Single source of truth:** Tool handlers and UI share the same React state
+`useWebMCP` hook automatically registers and unregisters tools. Tool handlers and UI should share the same React state.
 </Note>
 
 ## Part 4: How the Host Application Integrates This
@@ -724,28 +684,18 @@ async function setupIframe(iframe: HTMLIFrameElement, sourceId: string) {
   </Step>
 
   <Step title="Test the Interaction">
-    1. AI calls `showTemplateApp` → iframe appears in side panel
-    2. AI calls `template_get_message` → reads current state from iframe
-    3. AI calls `template_update_message` → updates the UI dynamically
-    4. You can also click UI buttons - they use the same logic!
-
-    <Tip>
-    The bidirectional flow means both AI and humans can interact with your app seamlessly.
-    </Tip>
+    1. AI calls `showTemplateApp` → iframe appears
+    2. AI calls `template_get_message` → reads current state
+    3. AI calls `template_update_message` → updates the UI
+    4. UI buttons use the same logic as tool handlers
   </Step>
 </Steps>
 
 ## Best Practices
 
-<Info>
-Following these patterns ensures your app is maintainable, secure, and provides a great experience for both AI and human users.
-</Info>
-
 ### 1. Share Logic Between UI and Tools
 
-<Tip>
-**Single source of truth:** Both your UI handlers and WebMCP tools should call the same underlying functions. This ensures consistency and reduces bugs.
-</Tip>
+UI handlers and WebMCP tools should call the same underlying functions.
 
 **❌ Bad:** Duplicate logic
 ```typescript
@@ -861,10 +811,6 @@ useWebMCP({
 
 ## Deployment
 
-<Note>
-Deploy your MCP-UI app to Cloudflare Workers for production use. The build process creates optimized bundles for both your MCP server and embedded app.
-</Note>
-
 <Steps>
   <Step title="Build for Production">
     ```bash
@@ -884,10 +830,6 @@ Deploy your MCP-UI app to Cloudflare Workers for production use. The build proce
     # Deploy
     pnpm deploy
     ```
-
-    <Tip>
-    Your Worker URL becomes the iframe URL that MCP servers return in UI resources.
-    </Tip>
   </Step>
 
   <Step title="Update MCP Client Configuration">
