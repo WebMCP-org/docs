@@ -34,7 +34,8 @@ The WebMCP documentation is organized into the following main sections:
 - **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
 - **Updating SDK documentation**: Update MDX content → Test code examples → Verify TypeScript types are accurate
 - **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
-- **Adding code examples**: Follow [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) → Test the code → Use appropriate options (twoslash for TS, icons, titles, etc.)
+- **Adding code examples**: Check for existing snippet → If none exists, follow [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) → Test the code → Consider creating snippet if used 3+ times
+- **Using reusable snippets**: Search `/snippets/` directory → Import snippet → Use with props → Preview locally to verify rendering
 
 ## Working relationship
 - You can push back on ideas-this can lead to better documentation. Cite sources and explain your reasoning when you do so
@@ -55,6 +56,92 @@ The WebMCP documentation is organized into the following main sections:
 - Search for existing information before adding new content. Avoid duplication unless it is done for a strategic reason
 - Check existing patterns for consistency
 - Start by making the smallest reasonable changes
+
+## Reusable snippets
+
+**Goal:** Maintain consistency and reduce duplication through reusable code patterns.
+
+See the [Snippets Implementation Plan](SNIPPETS_IMPLEMENTATION_PLAN.md) for the complete strategy.
+
+### When to use snippets
+
+**Use snippets for:**
+- ✅ Code patterns that appear **3+ times** across different pages
+- ✅ Foundational patterns (imports, basic setup, common responses)
+- ✅ Code that must stay **consistent** (security patterns, best practices)
+- ✅ Code likely to **change** (API updates, deprecations)
+
+**Don't use snippets for:**
+- ❌ Code that appears only 1-2 times
+- ❌ Page-specific context or examples
+- ❌ Code that benefits from inline explanation
+
+### Snippet organization
+
+Snippets are organized by category in `/snippets/`:
+
+```
+snippets/
+├── core/          # registerTool(), useWebMCP(), responses
+├── imports/       # Common import statements
+├── validation/    # Zod and JSON Schema patterns
+├── clients/       # Transport/client setup
+├── patterns/      # Error handling, lifecycle, fetch
+└── examples/      # Full working tool examples
+```
+
+### Using snippets
+
+Import and use snippets in MDX files:
+
+```mdx
+---
+title: My Page
+---
+
+import { RegisterToolBasic } from '/snippets/core/register-tool-basic.mdx';
+
+## Tool Registration
+
+<RegisterToolBasic toolName="my_tool" description="My tool description" />
+```
+
+### Creating new snippets
+
+Before creating a snippet:
+1. **Check if it exists**: Search `/snippets/` directory
+2. **Verify duplication**: Confirm pattern appears 3+ times
+3. **Choose category**: Place in appropriate subdirectory
+4. **Add variables**: Support customization via props
+5. **Document usage**: Include comments explaining when to use
+
+**Snippet template:**
+```mdx
+{/*
+# Pattern Name
+
+Brief description of what this snippet does.
+
+## When to use:
+- Use case 1
+- Use case 2
+
+## Props:
+- propName (default): Description
+*/}
+
+export const PatternName = ({ prop1 = "default", prop2 = "default" }) => {
+  return `code here with ${prop1} and ${prop2}`;
+};
+```
+
+### Maintaining snippets
+
+When updating a snippet:
+1. **Check usage**: Find all pages importing the snippet
+2. **Test changes**: Preview all affected pages locally
+3. **Update docs**: Modify snippet comments if behavior changes
+4. **Communicate**: Note breaking changes in commit message
 
 ## mint.json
 
