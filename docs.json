@@ -175,9 +175,24 @@
         "icon": "wand-magic-sparkles",
         "groups": [
           {
-            "group": "Frontend Tool Calling",
+            "group": "Overview",
             "pages": [
-              "frontend-tools"
+              "ai-frameworks/index"
+            ]
+          },
+          {
+            "group": "Frontend Frameworks",
+            "pages": [
+              "ai-frameworks/assistant-ui",
+              "ai-frameworks/ag-ui",
+              "ai-frameworks/custom-runtime"
+            ]
+          },
+          {
+            "group": "Integration Guides",
+            "pages": [
+              "ai-frameworks/setup",
+              "ai-frameworks/best-practices"
             ]
           }
         ]

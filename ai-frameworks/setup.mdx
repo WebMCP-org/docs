@@ -1,0 +1,187 @@
+---
+title: 'Setup & Installation'
+description: 'Install packages and configure MCP client for frontend AI integration'
+icon: 'gear'
+---
+
+## Installation
+
+Install the required packages:
+
+<Tabs>
+  <Tab title="npm">
+```bash
+npm install @mcp-b/react-webmcp @mcp-b/transports @modelcontextprotocol/sdk
+```
+  </Tab>
+  <Tab title="yarn">
+```bash
+yarn add @mcp-b/react-webmcp @mcp-b/transports @modelcontextprotocol/sdk
+```
+  </Tab>
+  <Tab title="pnpm">
+```bash
+pnpm add @mcp-b/react-webmcp @mcp-b/transports @modelcontextprotocol/sdk
+```
+  </Tab>
+</Tabs>
+
+<Note>
+  You'll also need `zod` for schema validation if you don't already have it installed.
+</Note>
+
+## Register WebMCP Tools
+
+First, register tools that your AI can call using the `useWebMCP` hook:
+
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function ShoppingCart() {
+  // Register a tool
+  useWebMCP({
+    name: 'add_to_cart',
+    description: 'Add a product to the shopping cart',
+    inputSchema: {
+      productId: z.string(),
+      quantity: z.number().min(1)
+    },
+    handler: async (input) => {
+      // Add to cart logic
+      const cart = await addToCart(input.productId, input.quantity);
+
+      return {
+        message: `Added ${input.quantity}x product ${input.productId} to cart`,
+        cart
+      };
+    }
+  });
+
+  return <div>{/* Your cart UI */}</div>;
+}
+```
+
+<Note>
+  The `useWebMCP` hook automatically handles tool registration and cleanup when the component unmounts.
+</Note>
+
+## Set Up MCP Client
+
+Use the `McpClientProvider` to connect to your website's tools:
+
+```tsx
+import { McpClientProvider, useMcpClient } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+
+// Create client and transport
+const client = new Client({
+  name: 'MyAIAssistant',
+  version: '1.0.0'
+});
+
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'my-ai-assistant'
+});
+
+// Wrap your app with the provider
+function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <AIAssistant />
+    </McpClientProvider>
+  );
+}
+
+// Use the client in your components
+function AIAssistant() {
+  const { client, tools, isConnected, isLoading } = useMcpClient();
+
+  if (isLoading) return <div>Connecting...</div>;
+  if (!isConnected) return <div>Not connected</div>;
+
+  return (
+    <div>
+      <p>Available tools: {tools.length}</p>
+      <ul>
+        {tools.map(tool => (
+          <li key={tool.name}>{tool.name} - {tool.description}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Configuration Options
+
+### Client Configuration
+
+```tsx
+const client = new Client({
+  name: 'MyAIAssistant',      // Your application name
+  version: '1.0.0',            // Your application version
+});
+```
+
+### Transport Options
+
+The `TabClientTransport` accepts configuration options:
+
+```tsx
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'unique-client-id',  // Unique identifier for this client
+  timeout: 5000,                          // Optional: request timeout in ms
+});
+```
+
+## Verify Connection
+
+Check the connection status in your components:
+
+```tsx
+function ConnectionStatus() {
+  const { isConnected, isLoading, error, tools } = useMcpClient();
+
+  if (isLoading) {
+    return <div>Connecting to WebMCP...</div>;
+  }
+
+  if (error) {
+    return <div>Connection error: {error.message}</div>;
+  }
+
+  if (!isConnected) {
+    return <div>Not connected</div>;
+  }
+
+  return (
+    <div>
+      ✅ Connected - {tools.length} tools available
+    </div>
+  );
+}
+```
+
+## Next Steps
+
+Now that you have the basic setup complete, choose your framework integration:
+
+<CardGroup cols={2}>
+  <Card title="Assistant-UI" icon="robot" href="/ai-frameworks/assistant-ui">
+    Integrate with Assistant-UI framework
+  </Card>
+
+  <Card title="AG-UI" icon="sparkles" href="/ai-frameworks/ag-ui">
+    Integrate with AG-UI framework
+  </Card>
+
+  <Card title="Custom Runtime" icon="code" href="/ai-frameworks/custom-runtime">
+    Build your own integration
+  </Card>
+
+  <Card title="Best Practices" icon="stars" href="/ai-frameworks/best-practices">
+    Learn optimization patterns
+  </Card>
+</CardGroup>
