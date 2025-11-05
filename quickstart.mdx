@@ -91,6 +91,23 @@ Before you begin, ensure you have:
   </Tab>
 </Tabs>
 
+## Building Interactive Apps with MCP-UI + WebMCP
+
+Want to build interactive apps that AI agents can control? Use `create-webmcp-app`:
+
+```bash
+npx create-webmcp-app
+cd your-project
+pnpm dev
+```
+
+This scaffolds a complete system:
+- **MCP Server** (Cloudflare Workers) - Exposes tools to AI
+- **Embedded App** (React or Vanilla) - Runs in iframe, registers tools
+- **Bidirectional Communication** - AI controls your app, your app notifies AI
+
+See the [Building MCP-UI Apps guide](/building-mcp-ui-apps) for the complete walkthrough.
+
 ## Real-World Example
 
 Wrap your existing application logic as tools:

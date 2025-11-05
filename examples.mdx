@@ -33,6 +33,59 @@ icon: 'code'
   Additional examples available in the [WebMCP Examples Repository](https://github.com/WebMCP-org/examples)
 </Info>
 
+## MCP-UI + WebMCP Examples
+
+**[MCP-UI-WebMCP Repository](https://github.com/WebMCP-org/mcp-ui-webmcp)** demonstrates bidirectional integration between AI assistants and embedded web applications.
+
+<CardGroup cols={2}>
+  <Card
+    title="TicTacToe with AI"
+    icon="grid"
+    href="https://beattheclankers.com"
+  >
+    Interactive game where AI plays using dynamically registered WebMCP tools
+  </Card>
+
+  <Card
+    title="Chat UI Demo"
+    icon="message"
+    href="https://mcp-ui.mcp-b.ai"
+  >
+    Live chat interface showcasing MCP-UI resource rendering and WebMCP integration
+  </Card>
+
+  <Card
+    title="create-webmcp-app"
+    icon="rocket"
+    href="https://github.com/WebMCP-org/mcp-ui-webmcp/tree/main/create-webmcp-app"
+  >
+    Interactive CLI to scaffold MCP-UI + WebMCP apps (Vanilla or React)
+  </Card>
+
+  <Card
+    title="Vanilla Template"
+    icon="js"
+    href="https://github.com/WebMCP-org/mcp-ui-webmcp/tree/main/webmcp-template-vanilla"
+  >
+    Pure HTML/CSS/JavaScript template with no build step required
+  </Card>
+</CardGroup>
+
+**Why MCP-UI + WebMCP?**
+- **Bidirectional**: AI invokes tools that render UIs, which register new tools back to the AI
+- **Production-ready**: Deployed on Cloudflare Workers with Durable Objects
+- **Real-time stats**: WebSocket-powered game statistics tracking
+- **Multiple patterns**: React with hooks + Vanilla JavaScript approaches
+
+**Quick start:**
+```bash
+npx create-webmcp-app
+cd your-project
+pnpm dev
+```
+
+See the [MCP-UI + WebMCP Integration Guide](/mcpui-webmcp-integration) for complete documentation.
+
 ## Additional Examples
 
 <CardGroup cols={2}>
