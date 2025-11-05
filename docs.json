@@ -171,22 +171,16 @@
             "icon": "cubes",
             "expanded": true,
             "pages": [
+              "native-host-setup",
               "extension/agents",
               "extension/managing-userscripts"
             ]
           },
           {
-            "group": "Advanced Topics",
-            "icon": "graduation-cap",
-            "pages": [
-              "native-host-setup",
-              "concepts/extension"
-            ]
-          },
-          {
-            "group": "Developer Resources",
+            "group": "Architecture & Development",
             "icon": "code",
             "pages": [
+              "concepts/extension",
               "packages/extension-tools"
             ]
           }
