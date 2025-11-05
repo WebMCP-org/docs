@@ -1,0 +1,28 @@
+{/*
+# Basic JSON Schema
+
+Basic JSON Schema pattern for tool input validation (vanilla JS).
+
+## When to use:
+- Non-TypeScript projects
+- Standard JSON Schema validation
+- Vanilla JavaScript tools
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/validation/json-schema-basic.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+inputSchema: {
+  type: "object",
+  properties: {
+    query: { type: "string", description: "Search query" },
+    limit: { type: "number", description: "Number of results" }
+  },
+  required: ["query"]
+}
+```

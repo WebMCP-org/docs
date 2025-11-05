@@ -1,0 +1,22 @@
+{/*
+# MCP Client Imports
+
+Standard import statements for MCP client setup.
+
+## When to use:
+- Consuming tools from MCP servers
+- Setting up client-side connections
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/imports/client-imports.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+import { McpClientProvider, useMcpClient } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+```

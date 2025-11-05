@@ -1,0 +1,32 @@
+{/*
+# Markdown Response Format
+
+Markdown-formatted response for rich, structured output.
+
+## When to use:
+- Returning formatted results with structure
+- Lists, headings, or formatted data
+- Better readability for AI models
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/response-markdown.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```javascript
+const markdown = `# Search Results
+
+Found ${results.length} items:
+
+${results.map((r, i) => `${i + 1}. **${r.name}** - $${r.price}`).join('\n')}
+
+---
+*Showing ${results.length} results*`;
+
+return {
+  content: [{ type: "text", text: markdown }]
+};
+```

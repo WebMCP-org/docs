@@ -20,6 +20,22 @@
 - Check existing patterns for consistency
 - Start by making the smallest reasonable changes
 
+## Reusable snippets
+- Use snippets from `/snippets/` directory for common code patterns
+- If a code pattern appears 3+ times, consider creating a snippet
+- Available snippet categories: core, imports, validation, clients, patterns, templates, examples
+- See `/snippets/README.md` for full catalog and usage guidelines
+- When to use snippets:
+  - Tool registration patterns (registerTool, useWebMCP)
+  - Response formats (success, error, markdown)
+  - Import statements (React, vanilla JS, client)
+  - Validation schemas (Zod, JSON Schema)
+  - Client setup (McpClientProvider, transports)
+- When NOT to use snippets:
+  - Page-specific examples that benefit from inline context
+  - One-off code examples (appears only 1-2 times)
+  - Tutorial walkthroughs where step-by-step explanation is key
+
 ## mint.json
 
 - Refer to the [mint.json schema](https://mintlify.com/docs/settings/global) when building the mint.json file and site navigation

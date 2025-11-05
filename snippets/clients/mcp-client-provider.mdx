@@ -1,0 +1,54 @@
+{/*
+# MCP Client Provider Setup
+
+Standard setup for consuming MCP tools using React.
+
+## When to use:
+- Connecting to MCP servers
+- Consuming tools from other sources
+- Client-side MCP integration
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/clients/mcp-client-provider.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+import { McpClientProvider, useMcpClient } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+
+const client = new Client({ name: 'MyApp', version: '1.0.0' });
+const transport = new TabClientTransport('mcp');
+
+function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <ToolConsumer />
+    </McpClientProvider>
+  );
+}
+
+function ToolConsumer() {
+  const { client, tools, isConnected } = useMcpClient();
+
+  const callTool = async () => {
+    const result = await client.callTool({
+      name: 'tool_name',
+      arguments: { param: 'value' }
+    });
+    console.log(result.content[0].text);
+  };
+
+  return (
+    <div>
+      <button onClick={callTool} disabled={!isConnected}>
+        Call Tool
+      </button>
+    </div>
+  );
+}
+```

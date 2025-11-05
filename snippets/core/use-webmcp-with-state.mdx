@@ -1,0 +1,38 @@
+{/*
+# useWebMCP with Execution State
+
+React hook pattern with execution state tracking for UI feedback.
+
+## When to use:
+- Need to show loading spinners
+- Track execution errors
+- Display execution results in UI
+
+## Example usage in docs:
+```mdx
+import CodeBlock from '/snippets/core/use-webmcp-with-state.mdx';
+
+<CodeBlock />
+```
+*/}
+
+```tsx
+const tool = useWebMCP({
+  name: 'my_tool',
+  description: 'What it does',
+  inputSchema: {
+    param: z.string()
+  },
+  handler: async ({ param }) => {
+    // Implementation here
+    return { success: true };
+  }
+});
+
+return (
+  <div>
+    {tool.state.isExecuting && <Spinner />}
+    {tool.state.error && <Error message={tool.state.error.message} />}
+  </div>
+);
+```
