@@ -20,8 +20,8 @@ Your embedded app registers tools that AI can call, creating bidirectional inter
   <Card title="Quick Start" icon="bolt" href="#quick-start">
     Get started in minutes with npx
   </Card>
-  <Card title="Architecture" icon="diagram-project" href="#the-complete-architecture">
-    Understand the system design
+  <Card title="Architecture" icon="diagram-project" href="/concepts/mcp-ui-integration">
+    Understand how it works
   </Card>
   <Card title="MCP Server" icon="server" href="#part-1-the-mcp-server">
     Build the backend tools
@@ -69,42 +69,9 @@ npx create-webmcp-app
   </Tab>
 </Tabs>
 
-## Architecture
-
-```mermaid
-sequenceDiagram
-    participant AI as AI Agent
-    participant MCP as Your MCP Server
-    participant Host as Host Application<br/>(Claude Desktop, Chat UI, etc.)
-    participant Iframe as Your Embedded App<br/>(in iframe)
-
-    Note over AI,Iframe: Step 1: AI requests your app
-    AI->>MCP: callTool("showTemplateApp")
-    MCP-->>AI: UIResource {<br/>  type: "externalUrl",<br/>  iframeUrl: "http://your-app/"<br/>}
-
-    Note over AI,Iframe: Step 2: Host renders iframe
-    AI->>Host: Display this UIResource
-    Host->>Iframe: Load iframe src="http://your-app/"
-
-    Note over AI,Iframe: Step 3: Iframe registers tools
-    Iframe->>Iframe: initializeWebModelContext()
-    Iframe->>Iframe: navigator.modelContext.provideContext({<br/>  tools: [...]<br/>})
-    Iframe->>Host: postMessage("iframe-ready")
-    Host->>Iframe: postMessage("parent-ready")
-
-    Note over AI,Iframe: Step 4: Host discovers tools
-    Host->>Iframe: MCP: listTools()
-    Iframe-->>Host: Tools: [<br/>  {name: "template_get_message"},<br/>  {name: "template_update_message"},<br/>  {name: "template_reset"}<br/>]
-    Host->>Host: registerWebMcpTools(tools, sourceId)
-
-    Note over AI,Iframe: Step 5: AI can now call iframe tools!
-    AI->>Host: callTool("template_update_message", {<br/>  newMessage: "Hello!"<br/>})
-    Host->>Iframe: MCP: callTool via IframeParentTransport
-    Iframe->>Iframe: Execute tool handler
-    Iframe->>Iframe: Update UI state
-    Iframe-->>Host: Result: "Message updated to: Hello!"
-    Host-->>AI: Success!
-```
+<Info>
+**How it works:** See [MCP-UI Architecture](/concepts/mcp-ui-integration) for detailed diagrams and communication flow between the AI agent, MCP server, host application, and your embedded app.
+</Info>
 
 ## Part 1: The MCP Server
 

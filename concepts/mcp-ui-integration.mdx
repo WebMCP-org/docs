@@ -1,25 +1,21 @@
 ---
-title: 'MCP UI + WebMCP Integration'
-description: 'How tools that render UIs can dynamically register new tools back to AI'
+title: 'MCP-UI Architecture'
+description: 'Architecture and communication flow for bidirectional AI-app integration'
 icon: 'arrows-left-right-to-line'
 ---
 
 ## Overview
 
-MCP UI + WebMCP creates **bidirectional AI integration**: AI agents invoke tools that render interactive web applications, and those embedded apps dynamically register new tools back to the AI.
+MCP-UI + WebMCP creates **bidirectional AI integration**: AI agents invoke tools that render interactive web applications, and those embedded apps dynamically register new tools back to the AI.
 
-This combines:
-- **MCP UI**: Tools that return visual interfaces (UI resources)
-- **WebMCP**: Apps registering tools via `navigator.modelContext`
+**The pattern combines:**
+- **MCP-UI**: Tools that return visual interfaces (UI resources with iframes)
+- **WebMCP**: Embedded apps registering tools via `navigator.modelContext`
+- **IframeTransports**: Bidirectional MCP communication between parent and iframe
 
-<CardGroup cols={2}>
-  <Card title="Build Your First App" icon="rocket" href="/building-mcp-ui-apps">
-    Implementation guide with code examples
-  </Card>
-  <Card title="Live Demo" icon="globe" href="https://beattheclankers.com">
-    Try the TicTacToe example
-  </Card>
-</CardGroup>
+<Card title="Build Your First App" icon="rocket" href="/building-mcp-ui-apps">
+  Ready to build? Follow the step-by-step implementation guide with code examples.
+</Card>
 
 ## The Core Workflow
 
@@ -158,22 +154,22 @@ UI resources can be rendered three ways:
 - **Configuration UIs**: Settings panels with AI-controlled configuration
 - **Real-time Dashboards**: Live data with AI-controlled filters
 
-## Learn More
+## Related Topics
 
 <CardGroup cols={2}>
   <Card title="Build Your First App" icon="hammer" href="/building-mcp-ui-apps">
-    Step-by-step implementation guide
+    Step-by-step implementation guide with code examples
   </Card>
 
-  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
-    Overall WebMCP architecture
+  <Card title="WebMCP Architecture" icon="diagram-project" href="/concepts/architecture">
+    Overall WebMCP system architecture
   </Card>
 
   <Card title="Transports" icon="tower-broadcast" href="/concepts/transports">
-    Understanding transport layers
+    Deep dive into transport layer communication
   </Card>
 
-  <Card title="GitHub Repository" icon="github" href="https://github.com/WebMCP-org/mcp-ui-webmcp">
-    Source code and examples
+  <Card title="Examples & Source Code" icon="github" href="https://github.com/WebMCP-org/mcp-ui-webmcp">
+    TicTacToe game and template repository
   </Card>
 </CardGroup>
