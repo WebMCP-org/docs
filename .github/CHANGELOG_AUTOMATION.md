@@ -133,6 +133,16 @@ The RSS feed is generated automatically by Mintlify from the `Update` components
 - **Content**: The full markdown content
 - **Link**: Direct link to the changelog section
 
+## Security Considerations
+
+The workflow is designed to safely handle user-provided content from release notes:
+
+- **Content isolation**: User content is written to a temporary file using heredoc with single quotes (`<<'EOF'`) to prevent command substitution
+- **No shell expansion**: The content is copied with `cat` instead of being embedded in variables, preventing injection attacks
+- **Limited permissions**: The workflow only has write access to the docs repository
+
+**Never** modify the workflow to directly interpolate `${{ }}` expressions into shell strings without proper escaping.
+
 ## Troubleshooting
 
 ### Workflow doesn't trigger

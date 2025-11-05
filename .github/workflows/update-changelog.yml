@@ -58,12 +58,18 @@ jobs:
             echo "content=${{ inputs.content }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Write content to file
+        run: |
+          # Write user-provided content to a file to prevent command injection
+          cat > /tmp/content.txt <<'EOF'
+          ${{ steps.release_info.outputs.content }}
+          EOF
+
       - name: Update changelog
         run: |
           VERSION="${{ steps.release_info.outputs.version }}"
           LABEL="${{ steps.release_info.outputs.label }}"
           TAGS="${{ steps.release_info.outputs.tags }}"
-          CONTENT="${{ steps.release_info.outputs.content }}"
 
           # Format tags for MDX
           if [ -n "$TAGS" ]; then
@@ -84,15 +90,6 @@ jobs:
             TAG_ARRAY=""
           fi
 
-          # Create the new Update component
-          NEW_UPDATE="<Update label=\"${LABEL}\" description=\"v${VERSION}\" ${TAG_ARRAY}>
-
-${CONTENT}
-
-</Update>
-
-"
-
           # Find the line number where to insert (after frontmatter)
           # Insert after the closing --- of frontmatter
           LINE_NUM=$(grep -n "^---$" changelog.mdx | head -2 | tail -1 | cut -d: -f1)
@@ -101,7 +98,20 @@ ${CONTENT}
           # Create temp file with the new content
           head -n $LINE_NUM changelog.mdx > changelog.tmp
           echo "" >> changelog.tmp
-          echo "$NEW_UPDATE" >> changelog.tmp
+
+          # Write the Update component opening with safe string interpolation
+          echo "<Update label=\"${LABEL}\" description=\"v${VERSION}\" ${TAG_ARRAY}>" >> changelog.tmp
+          echo "" >> changelog.tmp
+
+          # Safely append the user content from file (no command substitution)
+          cat /tmp/content.txt >> changelog.tmp
+
+          # Write the Update component closing
+          echo "" >> changelog.tmp
+          echo "</Update>" >> changelog.tmp
+          echo "" >> changelog.tmp
+
+          # Append the rest of the original file
           tail -n +$INSERT_LINE changelog.mdx >> changelog.tmp
 
           # Replace the original file
