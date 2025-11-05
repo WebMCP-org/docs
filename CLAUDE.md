@@ -1,5 +1,42 @@
 # Mintlify documentation
 
+## Documentation structure overview
+
+The WebMCP documentation is organized into the following main sections:
+
+- **Root pages**: Introduction, quickstart, and core concepts (index.mdx, what-is-webmcp.mdx, etc.)
+- **Getting Started**: Installation guides, basic setup, and first steps
+- **Guides**: In-depth tutorials and how-to content for specific use cases
+- **SDK Reference**: SDK documentation, TypeScript types, and usage patterns
+- **Examples**: Code examples and real-world implementations
+- **Resources**: Additional materials, FAQs, and community links
+
+### Key files
+- `mint.json`: Site configuration, navigation structure, theme settings, and global metadata
+- `*.mdx`: Documentation pages with frontmatter (title, description, sidebarTitle, icon)
+- `/snippets/`: Reusable content fragments used across multiple pages
+- `/images/`: Static image assets referenced in documentation
+
+## Contributing to the docs
+
+### Before you start
+1. **Search existing content**: Check if similar information already exists to avoid duplication
+2. **Understand the audience**: Documentation targets developers working with MCP in browsers
+3. **Review existing patterns**: Look at similar pages to maintain consistency
+
+### Making changes
+1. **Start small**: Make the smallest reasonable change that solves the problem
+2. **Test thoroughly**: Verify all code examples work before publishing
+3. **Check links**: Ensure all internal links use relative paths and are valid
+4. **Preview locally**: Use `mintlify dev` to preview changes before committing
+
+### Common workflows
+- **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
+- **Updating SDK documentation**: Update MDX content → Test code examples → Verify TypeScript types are accurate
+- **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
+- **Adding code examples**: Check for existing snippet → If none exists, follow [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) → Test the code → Consider creating snippet if used 3+ times
+- **Using reusable snippets**: Search `/snippets/` directory → Import snippet → Use with props → Preview locally to verify rendering
+
 ## Working relationship
 - You can push back on ideas-this can lead to better documentation. Cite sources and explain your reasoning when you do so
 - ALWAYS ask for clarification rather than making assumptions
@@ -54,9 +91,33 @@
 - Test all code examples before publishing
 - Match style and formatting of existing pages
 - Include both basic and advanced use cases
-- Language tags on all code blocks
 - Alt text on all images
 - Relative paths for internal links
+
+### Code blocks
+Follow the [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) for all code formatting. Key requirements:
+- **Always specify language** for syntax highlighting (e.g., `typescript`, `bash`, `tsx`)
+- **Use `twoslash`** for TypeScript/TSX examples to enable hover type information
+- **Add titles** to major code examples (3+ uses or complex): `"filename.ext"` or `"Description"`
+- **Use icons** to provide visual context (e.g., `icon="react"`, `icon="server"`, `icon="npm"`)
+- **Use `lines`** for reference documentation and tutorial content
+- **Make long examples expandable** (50+ lines): add `expandable` option
+- **Use diff syntax** for good vs. bad comparisons: `// [!code ++]` and `// [!code --]`
+- **Highlight key lines** in teaching examples: `highlight={5-12}`
+
+Example:
+````markdown
+```tsx "MyComponent.tsx" twoslash lines icon="react" highlight={5-7}
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+function MyComponent() {
+  useWebMCP({
+    name: 'my_tool',
+    handler: async (args) => { ... }
+  });
+}
+```
+````
 
 ## Git workflow
 - NEVER use --no-verify when committing
@@ -81,3 +142,41 @@
 - Make assumptions - always ask for clarification
 - Reference outdated MiguelsPizza organization links
 - Commit node_modules or build artifacts
+
+## Mintlify documentation reference
+
+Use these official Mintlify resources when working on documentation:
+
+### Essential references
+- **[Global settings](https://mintlify.com/docs/organize/settings)**: Complete mint.json configuration options
+- **[Navigation](https://mintlify.com/docs/organize/navigation)**: Structure and customize navigation hierarchy
+- **[Pages](https://mintlify.com/docs/organize/pages)**: Page creation and frontmatter requirements
+- **[Format text](https://mintlify.com/docs/create/text)**: Text formatting, headers, and styling
+- **[Format code](https://mintlify.com/docs/create/code)**: Inline code and code blocks with syntax highlighting
+
+### Components
+- **[Callouts](https://mintlify.com/docs/components/callouts)**: Info, warning, success, and error callouts
+- **[Cards](https://mintlify.com/docs/components/cards)**: Highlight main points with customizable layouts
+- **[Tabs](https://mintlify.com/docs/components/tabs)**: Toggle between different content views
+- **[Code groups](https://mintlify.com/docs/components/code-groups)**: Display multiple code examples
+- **[Accordions](https://mintlify.com/docs/components/accordions)**: Collapsible content sections
+- **[Steps](https://mintlify.com/docs/components/steps)**: Sequential procedural content
+
+### Content creation
+- **[Reusable snippets](https://mintlify.com/docs/create/reusable-snippets)**: Keep content in sync across pages
+- **[Images and embeds](https://mintlify.com/docs/create/image-embeds)**: Add images, videos, and iframes
+- **[Lists and tables](https://mintlify.com/docs/create/list-table)**: Display structured information
+- **[Redirects and broken links](https://mintlify.com/docs/create/broken-links)**: Prevent invalid links
+
+### Best practices
+- **[Style and tone](https://mintlify.com/docs/guides/style-and-tone)**: Writing effective technical documentation
+- **[Content types](https://mintlify.com/docs/guides/content-types)**: Create the right content for your users
+- **[Organize navigation](https://mintlify.com/docs/guides/navigation)**: Information architecture guidelines
+- **[Git concepts](https://mintlify.com/docs/guides/git-concepts)**: Git fundamentals for docs-as-code
+- **[Working with branches](https://mintlify.com/docs/guides/branches)**: Make changes without affecting live docs
+- **[SEO](https://mintlify.com/docs/guides/seo)**: Improve documentation discoverability
+
+### Deployment and tools
+- **[GitHub integration](https://mintlify.com/docs/deploy/github)**: Sync docs with GitHub repo
+- **[Preview deployments](https://mintlify.com/docs/deploy/preview-deployments)**: Preview changes before merging
+- **[CLI installation](https://mintlify.com/docs/installation)**: Preview and maintain docs locally
