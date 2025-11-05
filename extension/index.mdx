@@ -16,6 +16,41 @@ The MCP-B browser extension is a development and testing tool for WebMCP servers
   Get the extension from the Chrome Web Store
 </Card>
 
+## Quick Navigation
+
+Jump to the section that best matches your needs:
+
+<CardGroup cols={2}>
+  <Card
+    title="Understanding Agents"
+    icon="robot"
+    href="/extension/agents"
+  >
+    Learn about the 4 specialized agents and when to use each one
+  </Card>
+  <Card
+    title="Managing Userscripts"
+    icon="gear"
+    href="/extension/managing-userscripts"
+  >
+    Create, download, upload, and organize custom scripts
+  </Card>
+  <Card
+    title="Native Host Setup"
+    icon="server"
+    href="/native-host-setup"
+  >
+    Connect to local MCP servers on your machine
+  </Card>
+  <Card
+    title="Extension Architecture"
+    icon="sitemap"
+    href="/concepts/extension"
+  >
+    Deep dive into how the extension works
+  </Card>
+</CardGroup>
+
 ## What Can You Do?
 
 <CardGroup cols={2}>
@@ -405,6 +440,34 @@ Userscripts can access and modify website content. Only install scripts from tru
     Report bugs or request features
   </Card>
 </CardGroup>
+
+## Advanced Topics & Developer Resources
+
+<AccordionGroup>
+  <Accordion title="Extension Architecture" icon="sitemap">
+    Dive deep into how the extension works internally, including background workers, content scripts, and the MCP transport layer.
+
+    <Card title="View Extension Architecture" icon="arrow-right" href="/concepts/extension">
+      Technical architecture documentation
+    </Card>
+  </Accordion>
+
+  <Accordion title="Native Host Setup" icon="server">
+    Connect your browser's WebMCP tools to local MCP clients like Claude Code and Claude Desktop.
+
+    <Card title="Setup Native Host" icon="arrow-right" href="/native-host-setup">
+      Installation and configuration guide
+    </Card>
+  </Accordion>
+
+  <Accordion title="Extension Tools API" icon="code">
+    Build your own Chrome extensions using MCP wrappers for Chrome Extension APIs.
+
+    <Card title="View API Documentation" icon="arrow-right" href="/packages/extension-tools">
+      @mcp-b/extension-tools package docs
+    </Card>
+  </Accordion>
+</AccordionGroup>
 
 ## Next Steps
 
