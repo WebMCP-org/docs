@@ -91,6 +91,31 @@ Before you begin, ensure you have:
   </Tab>
 </Tabs>
 
+## Building with MCP-UI + WebMCP
+
+Want to build interactive apps that AI can control? Use `create-webmcp-app` to scaffold a complete MCP-UI + WebMCP application:
+
+```bash
+npx create-webmcp-app
+```
+
+Choose between:
+- **Vanilla** - Pure HTML/CSS/JavaScript (no build step!)
+- **React** - React + TypeScript + Vite (full-featured)
+
+Then:
+```bash
+cd your-project
+pnpm dev
+```
+
+This creates a complete setup with:
+- MCP server (Cloudflare Workers)
+- Interactive web app with bidirectional tools
+- Development and deployment configuration
+
+See the [MCP-UI + WebMCP guide](/mcpui-webmcp-integration) for details.
+
 ## Real-World Example
 
 Wrap your existing application logic as tools:

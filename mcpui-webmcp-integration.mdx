@@ -5,8 +5,17 @@ icon: 'heart'
 ---
 
 <Note>
-**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain MCP servers. The parent page can connect using either **IframeParentTransport** (for cross-origin) or **TabClientTransport** (for same-origin), and it **automatically discovers** all tools inside the iframe - no manual bridging needed!
+**Novel Integration Pattern**: MCP-UI serves HTML/iframes that contain MCP servers. The parent page can connect using **IframeParentTransport** (for cross-origin) or **TabClientTransport** (for same-origin), and it **automatically discovers** all tools inside the iframe - no manual bridging needed!
 </Note>
+
+## Try It Live
+
+**Live Demos:**
+- **Chat UI**: [mcp-ui.mcp-b.ai](https://mcp-ui.mcp-b.ai)
+- **Full App**: [beattheclankers.com](https://beattheclankers.com/)
+- **Source Code**: [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp)
+
+Test the tools yourself using the [MCP-B Chrome Extension](https://chromewebstore.google.com/detail/mcp-b/fkhbffeojcfadbkpldmbjlbfocgknjlj).
 
 ## The Simple Idea
 
@@ -37,160 +46,663 @@ graph TB
 
 **That's it.** The parent transport (either `IframeParentTransport` for cross-origin or `TabClientTransport` for same-origin) automatically discovers and connects to the MCP server inside the iframe.
 
-## How It Works
+## Quick Start with create-webmcp-app
 
-### Step 1: MCP-UI Server Returns HTML with WebMCP
+The fastest way to get started is using the interactive CLI:
+
+```bash
+npx create-webmcp-app
+```
+
+Choose between:
+- **Vanilla** - Pure HTML/CSS/JavaScript (no build step!)
+- **React** - React + TypeScript + Vite (full-featured)
+
+Then:
+```bash
+cd your-project
+pnpm dev
+```
+
+This scaffolds a complete MCP-UI + WebMCP application with:
+- MCP server implementation (Cloudflare Workers)
+- Interactive web app with WebMCP tools
+- Development and deployment setup
+
+## Real-World Example: TicTacToe Game
+
+Here's the complete production implementation from the [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp).
+
+###System Architecture
+
+```mermaid
+flowchart TB
+    subgraph ChatUI["Chat UI Browser Context"]
+        UI[AI Chat Interface]
+        HTTP_CLIENT["HTTP MCP Client<br/>@modelcontextprotocol/sdk"]
+        WEBMCP_MGR["WebMCP Integration<br/>useWebMCPIntegration"]
+        IFRAME["Iframe Container<br/>Side Panel"]
+
+        UI --> HTTP_CLIENT
+        UI --> WEBMCP_MGR
+        WEBMCP_MGR --> IFRAME
+    end
+
+    subgraph MCPServer["MCP Server - Cloudflare Worker"]
+        TOOLS["Tool Registry<br/>showTicTacToeGame, etc."]
+        ASSETS["Static Asset Server<br/>Serves mini-apps"]
+
+        TOOLS -.->|Returns UI Resource| ASSETS
+    end
+
+    subgraph EmbeddedApp["Embedded App Iframe Context"]
+        APP["Mini-App React<br/>TicTacToe, etc."]
+        WEBMCP_INIT["MCP-B Polyfill<br/>@mcp-b/global"]
+        HOOKS["useWebMCP Hooks<br/>@mcp-b/react-webmcp"]
+        TRANSPORT_CHILD["IframeChildTransport<br/>@mcp-b/transports"]
+
+        APP --> HOOKS
+        HOOKS --> WEBMCP_INIT
+        WEBMCP_INIT --> TRANSPORT_CHILD
+    end
+
+    HTTP_CLIENT <-->|HTTP/SSE MCP Protocol| TOOLS
+    ASSETS -->|iframe src| APP
+    WEBMCP_MGR <-->|IframeParentTransport postMessage| TRANSPORT_CHILD
+
+    style WEBMCP_INIT fill:#e1f5ff
+    style HOOKS fill:#e1f5ff
+    style TRANSPORT_CHILD fill:#e1f5ff
+    style WEBMCP_MGR fill:#e1f5ff
+```
+
+**Flow:**
+1. AI calls `showTicTacToeGame` tool
+2. MCP server returns UI resource with iframe URL
+3. Game loads and registers `tictactoe_move`, `tictactoe_reset`, etc.
+4. AI can now play the game using dynamically registered tools
+
+### Part 1: MCP Server Returns UI Resource
 
 ```typescript
 import { createUIResource } from '@mcp-ui/server';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-// MCP server returns a UIResource
-const uiResource = createUIResource({
-  uri: 'ui://shopping/cart',
-  content: {
-    type: 'rawHtml',
-    htmlString: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <script src="https://unpkg.com/@mcp-b/global"></script>
-        </head>
-        <body>
-          <h1>Shopping Cart</h1>
-          <div id="cart-items">Cart is empty</div>
+export class MyMCP {
+  server = new McpServer({
+    name: 'mcp-ui-webmcp-cloudflare',
+    version: '1.0.0',
+  });
 
-          <script>
-            // Register WebMCP tools in the iframe
-            navigator.modelContext.registerTool({
-              name: "add_to_cart",
-              description: "Add product to shopping cart",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  productId: { type: "string" },
-                  quantity: { type: "number" }
-                }
-              },
-              async execute({ productId, quantity }) {
-                // Add to cart logic
-                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                cart.push({ productId, quantity });
-                localStorage.setItem('cart', JSON.stringify(cart));
+  async init() {
+    // Tool that displays the TicTacToe game
+    this.server.tool(
+      'showTicTacToeGame',
+      `Displays an interactive Tic-Tac-Toe game where you (AI) can play as player O.
 
-                // Update UI
-                document.getElementById('cart-items').innerHTML =
-                  cart.map(item => \`<div>\${item.productId} x\${item.quantity}</div>\`).join('');
+After calling this tool, the game UI will appear. The game registers WebMCP tools:
+- tictactoe_get_state: Check current board state and whose turn it is
+- tictactoe_ai_move: Make a move as player O (call this when it's your turn)
+- tictactoe_reset: Start a new game
 
-                return {
-                  content: [{
-                    type: "text",
-                    text: JSON.stringify({ success: true, cartSize: cart.length })
-                  }]
-                };
-              }
-            });
+Use this tool when the user wants to play Tic-Tac-Toe.`,
+      {},
+      async () => {
+        const iframeUrl = `${this.env.APP_URL}/`;
+        const uiResource = createUIResource({
+          uri: 'ui://tictactoe-game',
+          content: {
+            type: 'externalUrl',
+            iframeUrl: iframeUrl,
+          },
+          encoding: 'blob',
+        });
 
-            navigator.modelContext.registerTool({
-              name: "get_cart_contents",
-              description: "Get current shopping cart contents",
-              async execute() {
-                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                return {
-                  content: [{
-                    type: "text",
-                    text: JSON.stringify({ items: cart, total: cart.length })
-                  }]
-                };
-              }
-            });
-          </script>
-        </body>
-      </html>
-    `
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `# Tic-Tac-Toe Game Started
+
+The game board is now displayed in the side panel.
+
+**How to play:**
+1. You are player **O** (AI)
+2. Human player is **X** and goes first
+3. After human makes their move, use \`tictactoe_get_state\` to see the board
+4. Then use \`tictactoe_ai_move\` with a position (0-8) to make your move
+
+**Available tools:**
+- \`tictactoe_get_state\` - View current board and game status
+- \`tictactoe_ai_move\` - Make your move as player O
+- \`tictactoe_reset\` - Start a new game`,
+            },
+            uiResource,
+          ],
+        };
+      }
+    );
   }
-});
-
-// Return in MCP response
-return { content: [uiResource] };
+}
 ```
 
-### Step 2: Parent Uses Tab Transport
+### Part 2: Embedded App Registers WebMCP Tools
+
+**main.tsx** - Initialize WebMCP with `@mcp-b/global`:
 
 ```typescript
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { TabClientTransport } from '@mcp-b/transports';
-import { UIResourceRenderer } from '@mcp-ui/client';
+import { initializeWebModelContext } from '@mcp-b/global';
+import { createRoot } from 'react-dom/client';
+import { StrictMode } from 'react';
+import App from './App';
+import ErrorBoundary from './ErrorBoundary';
 
-function ShoppingApp({ mcpResponse }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [tools, setTools] = useState([]);
+// CRITICAL: Initialize WebMCP BEFORE rendering React
+// This sets up the iframe child transport for bidirectional communication
+initializeWebModelContext();
 
-  useEffect(() => {
-    async function connectToIframe() {
-      // Create MCP client with tab transport
-      const client = new Client(
-        { name: 'host-app', version: '1.0.0' },
-        { capabilities: {} }
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>
+);
+```
+
+**App.tsx** - Register tools using `useWebMCP`:
+
+```typescript
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useCallback, useEffect, useState } from 'react';
+import { z } from 'zod';
+import { useGameState, useParentCommunication } from './hooks';
+import {
+  formatGameStateMarkdown,
+  formatMoveMarkdown,
+  formatResetMarkdown,
+} from './lib/tictactoe/formatters';
+
+export default function App() {
+  const game = useGameState();
+  const { isParentReady, postNotifyMarkdown } = useParentCommunication();
+  const [showRoleModal, setShowRoleModal] = useState(true);
+  const [isAIThinking, setIsAIThinking] = useState(false);
+
+  /**
+   * WebMCP Tool 1: Get Game State
+   * Read-only tool that returns current board state, roles, and status.
+   */
+  useWebMCP({
+    name: 'tictactoe_get_state',
+    description:
+      'Get the current Tic-Tac-Toe state including board layout, roles, and game status.',
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+    },
+    handler: async () =>
+      formatGameStateMarkdown(
+        game.board,
+        game.currentPlayer,
+        game.winner,
+        game.humanPlayer,
+        game.aiPlayer
+      ),
+  });
+
+  /**
+   * WebMCP Tool 2: Make AI Move
+   * Allows AI to make a move, using the same game.makeMove() logic as UI!
+   */
+  useWebMCP({
+    name: 'tictactoe_ai_move',
+    description: `Play as Player ${game.aiPlayer} (Clankers 🤖). Provide a board position (0-8) to place your ${game.aiPlayer}.`,
+    inputSchema: {
+      position: z
+        .number()
+        .int()
+        .min(0)
+        .max(8)
+        .describe('Cell position (0-8) where Clankers 🤖 should move.'),
+    },
+    annotations: {
+      idempotentHint: false,
+    },
+    handler: async ({ position }) => {
+      if (showRoleModal) {
+        throw new Error('Cannot move yet: waiting for the human to start a new game.');
+      }
+
+      const result = game.makeMove(position, game.aiPlayer);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setIsAIThinking(false);
+
+      return formatMoveMarkdown(
+        game.aiPlayer,
+        position,
+        result.board,
+        result.status,
+        result.nextPlayer,
+        game.humanPlayer,
+        game.aiPlayer
       );
+    },
+  });
 
-      const transport = new TabClientTransport({
-        targetOrigin: window.location.origin
-      });
+  /**
+   * WebMCP Tool 3: Reset Game
+   * Resets the board using the same game.reset() logic as UI!
+   */
+  useWebMCP({
+    name: 'tictactoe_reset',
+    description: 'Reset the board and keep the current human/AI role assignments.',
+    annotations: {
+      destructiveHint: true,
+      idempotentHint: true,
+    },
+    handler: async () => {
+      game.reset();
+      setIsAIThinking(false);
+      setShowRoleModal(true);
+      return formatResetMarkdown(game.board, game.humanPlayer, game.aiPlayer);
+    },
+  });
 
-      await client.connect(transport);
-
-      // ✨ Automatically discover tools from iframe
-      const { tools } = await client.listTools();
-      setTools(tools);
-
-      console.log('Found tools:', tools);
-      // Output: [
-      //   { name: 'add_to_cart', description: '...' },
-      //   { name: 'get_cart_contents', description: '...' }
-      // ]
-    }
-
-    if (iframeRef.current) {
-      // Wait for iframe to load
-      iframeRef.current.addEventListener('load', () => {
-        setTimeout(connectToIframe, 300);
-      });
-    }
-  }, []);
-
+  // UI rendering code...
   return (
-    <div>
-      <h2>Shopping Cart</h2>
-      <p>Discovered {tools.length} tools from iframe</p>
-
-      <UIResourceRenderer
-        ref={iframeRef}
-        resource={mcpResponse.content[0].resource}
-      />
+    <div className="flex flex-col gap-1.5 font-sans">
+      {/* Game UI components */}
     </div>
   );
 }
 ```
 
-### That's It!
-
-The parent now has full access to all tools registered in the iframe via standard MCP calls:
+**hooks/useParentCommunication.ts** - Handle parent window communication:
 
 ```typescript
-// Call tools from the iframe
-const result = await client.callTool({
-  name: 'add_to_cart',
-  arguments: { productId: 'laptop-123', quantity: 1 }
-});
+import { useCallback, useEffect, useState } from 'react';
 
-console.log(result); // { success: true, cartSize: 1 }
+export function useParentCommunication() {
+  const [isParentReady, setIsParentReady] = useState<boolean>(false);
+
+  /**
+   * Parent Readiness Protocol
+   * Establishes communication readiness with parent window.
+   * Handles multiple ready signal types from different MCP-UI clients.
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const embedded = window.parent !== window;
+    if (!embedded) {
+      setIsParentReady(true);
+      return;
+    }
+
+    const markReady = () => {
+      setIsParentReady((prev) => (prev ? prev : true));
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object') return;
+
+      const { type, payload } = data as { type?: string; payload?: unknown };
+
+      // Handle multiple ready signal types
+      if (type === 'ui-lifecycle-iframe-render-data') {
+        markReady();
+      } else if (type === 'parent-ready') {
+        markReady();
+      } else if (type === 'ui-message-response' || type === 'ui-message-received') {
+        markReady();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
+
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  /**
+   * Send markdown notification to parent window
+   */
+  const postNotifyMarkdown = useCallback(
+    (content: string, logLabel: string) => {
+      if (!isParentReady || typeof window === 'undefined' || window.parent === window) {
+        return;
+      }
+
+      window.parent.postMessage(
+        {
+          type: 'notify',
+          payload: { message: content },
+        },
+        '*'
+      );
+    },
+    [isParentReady]
+  );
+
+  return { isParentReady, postNotifyMarkdown };
+}
 ```
 
-## Why This Is Powerful
+### Part 3: Chat UI Connects to Iframe
+
+**hooks/useWebMCPIntegration.ts** - Manages WebMCP clients and tools:
+
+```typescript
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type {
+  CallToolRequest,
+  CallToolResult,
+  Tool as MCPTool,
+} from '@modelcontextprotocol/sdk/types.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+type ToolWithSource = MCPTool & { _sourceId: string };
+
+/**
+ * Manage WebMCP iframe clients and dynamic tool registration
+ *
+ * Handles registration of WebMCP clients from iframes, manages their tools,
+ * and routes tool calls to the appropriate client based on source ID.
+ */
+export function useWebMCPIntegration() {
+  const [webMcpTools, setWebMcpTools] = useState<MCPTool[]>([]);
+  const webMcpClients = useRef<Map<string, Client>>(new Map());
+
+  const registerWebMcpClient = useCallback((sourceId: string, webMcpClient: Client) => {
+    webMcpClients.current.set(sourceId, webMcpClient);
+  }, []);
+
+  const registerWebMcpTools = useCallback((tools: MCPTool[], sourceId: string) => {
+    setWebMcpTools((prev) => {
+      const filtered = prev.filter((t) => (t as ToolWithSource)._sourceId !== sourceId);
+      const tagged = tools.map((t) => ({ ...t, _sourceId: sourceId }) as ToolWithSource);
+      return [...filtered, ...tagged];
+    });
+  }, []);
+
+  const unregisterWebMcpClient = useCallback((sourceId: string) => {
+    const webMcpClient = webMcpClients.current.get(sourceId);
+    if (webMcpClient) {
+      webMcpClient.close?.();
+      webMcpClients.current.delete(sourceId);
+    }
+    setWebMcpTools((prev) => prev.filter((t) => (t as ToolWithSource)._sourceId !== sourceId));
+  }, []);
+
+  const callTool = useCallback(
+    async (request: CallToolRequest['params'], sourceId?: string): Promise<CallToolResult> => {
+      if (!sourceId) {
+        throw new Error('Source ID is required for WebMCP tool calls');
+      }
+
+      const webMcpClient = webMcpClients.current.get(sourceId);
+      if (!webMcpClient) {
+        throw new Error(`WebMCP client not found for source: ${sourceId}`);
+      }
+
+      try {
+        const result = await webMcpClient.callTool(request);
+        return result as CallToolResult;
+      } catch (error) {
+        console.error(`WebMCP tool call failed for ${sourceId}:`, error);
+        throw error;
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    const clients = webMcpClients;
+    return () => {
+      clients.current.forEach((client) => {
+        client.close().catch(console.error);
+      });
+      clients.current.clear();
+    };
+  }, []);
+
+  return {
+    webMcpTools,
+    webMcpClients,
+    registerWebMcpClient,
+    registerWebMcpTools,
+    unregisterWebMcpClient,
+    callTool,
+  };
+}
+```
+
+**hooks/useIframeLifecycle.ts** - Setup iframe WebMCP connection:
+
+```typescript
+import { IframeParentTransport } from '@mcp-b/transports';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { useCallback } from 'react';
+
+/**
+ * Handle iframe WebMCP setup, tool registration, and cleanup
+ *
+ * Provides a function to set up WebMCP connection for an iframe, including:
+ * - UI lifecycle protocol handshake
+ * - Client and transport creation
+ * - Tool registration and list change handling
+ * - Cleanup function registration
+ */
+export function useIframeLifecycle() {
+  const { registerWebMcpClient, registerWebMcpTools, unregisterWebMcpClient } = useMCP();
+  const { setResourceCleanup } = useUIResources();
+
+  const setupIframe = useCallback(
+    async (iframe: HTMLIFrameElement, sourceId: string) => {
+      // Handle UI lifecycle protocol handshake
+      const handleIframeLifecycleMessage = (event: MessageEvent) => {
+        if (event.source !== iframe.contentWindow) return;
+
+        if (event.data?.type === 'ui-lifecycle-iframe-ready') {
+          console.log('[useIframeLifecycle] Iframe ready, sending parent-ready signal');
+          iframe.contentWindow?.postMessage({ type: 'parent-ready', payload: {} }, '*');
+        }
+      };
+
+      window.addEventListener('message', handleIframeLifecycleMessage);
+
+      // Create MCP client with iframe parent transport
+      const client = new Client({
+        name: 'WebMCP Client',
+        version: '1.0.0',
+      });
+
+      const transport = new IframeParentTransport({
+        targetOrigin: new URL(serverUrl).origin,
+        iframe: iframe,
+      });
+
+      try {
+        // Connect to iframe's MCP server
+        await client.connect(transport);
+        registerWebMcpClient(sourceId, client);
+
+        // List and register tools from iframe
+        const toolsResponse = await client.listTools();
+        registerWebMcpTools(toolsResponse.tools, sourceId);
+
+        // Listen for dynamic tool changes
+        client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
+          const updated = await client.listTools();
+          registerWebMcpTools(updated.tools, sourceId);
+        });
+
+        // Setup cleanup function
+        setResourceCleanup(sourceId, async () => {
+          try {
+            window.removeEventListener('message', handleIframeLifecycleMessage);
+            await client.close();
+            await transport.close();
+          } catch (error) {
+            console.error(`Error closing client/transport for ${sourceId}:`, error);
+          }
+          unregisterWebMcpClient(sourceId);
+        });
+      } catch (error) {
+        console.error('[useIframeLifecycle] WebMCP connection failed:', error);
+      }
+    },
+    [registerWebMcpClient, registerWebMcpTools, unregisterWebMcpClient, setResourceCleanup]
+  );
+
+  return { setupIframe };
+}
+```
+
+### Key Implementation Details
+
+**Shared Logic Pattern**: The TicTacToe app demonstrates best practices where UI handlers and WebMCP tools call the same underlying functions (`game.makeMove()`, `game.reset()`). This ensures:
+- Consistency between UI and API behavior
+- Single source of truth for business logic
+- Easier testing and maintenance
+
+**Tool Annotations** provide metadata for better AI interaction:
+- `readOnlyHint`: Tool doesn't modify state (safe to call anytime)
+- `idempotentHint`: Calling multiple times has same effect
+- `destructiveHint`: Operation destroys or significantly modifies data
+
+**Parent-Ready Protocol**: Ensures reliable communication by waiting for parent to signal readiness. The implementation handles multiple ready signal types to work with different MCP-UI clients:
+- `ui-lifecycle-iframe-ready` → sent by iframe on load
+- `parent-ready` → parent confirms it's listening
+- `ui-lifecycle-iframe-render-data` → alternative ready signal
+- `ui-message-response` / `ui-message-received` → fallback signals
+
+**Iframe Lifecycle Management**: The `useIframeLifecycle` hook manages the complete lifecycle:
+1. Wait for iframe-ready signal from child
+2. Send parent-ready response
+3. Create MCP client and IframeParentTransport
+4. Connect and discover tools via `listTools()`
+5. Listen for tool list changes via notifications
+6. Setup cleanup on unmount (close client, transport, unregister)
+
+**Dynamic Tool Updates**: The integration listens for `tools/list_changed` notifications, allowing embedded apps to add or remove tools dynamically. This is perfect for applications with conditional features.
+
+## Vanilla JavaScript Example
+
+You can also build MCP-UI apps with pure HTML/CSS/JavaScript - no build step required!
+
+**public/index.html**:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- @mcp-b/global IIFE build via CDN -->
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+</head>
+<body>
+  <div class="p-8">
+    <h1 class="text-3xl font-bold">My WebMCP App</h1>
+    <p id="message">Hello!</p>
+    <button onclick="updateMessage()" class="rounded bg-blue-600 px-4 py-2 text-white">
+      Update Message
+    </button>
+  </div>
+
+  <script>
+    // window.navigator.modelContext is already available!
+    window.navigator.modelContext.provideContext({
+      tools: [
+        {
+          name: 'get_message',
+          description: 'Get the current message',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          },
+          async execute() {
+            return {
+              content: [{
+                type: 'text',
+                text: document.getElementById('message').textContent
+              }]
+            };
+          }
+        },
+        {
+          name: 'update_message',
+          description: 'Update the message',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              newMessage: { type: 'string' }
+            }
+          },
+          async execute({ newMessage }) {
+            document.getElementById('message').textContent = newMessage;
+            return {
+              content: [{
+                type: 'text',
+                text: `Message updated to: ${newMessage}`
+              }]
+            };
+          }
+        }
+      ]
+    });
+
+    function updateMessage() {
+      const newMsg = prompt('Enter new message:');
+      if (newMsg) {
+        document.getElementById('message').textContent = newMsg;
+      }
+    }
+  </script>
+</body>
+</html>
+```
+
+**That's it!** No `npm install`, no bundler, no transpiler. Just open the HTML file and start coding.
+
+## Deployment Architecture
+
+The production setup uses:
+- **Cloudflare Workers** for MCP server (Durable Objects for state)
+- **Vite** for building React mini-apps
+- **Static hosting** for game assets
+- **HTTP/SSE transport** for MCP communication
+- **IframeParentTransport / IframeChildTransport** for WebMCP bidirectional communication
+
+### Environment Variables
+
+**`.dev.vars` (development)**:
+```env
+APP_URL=http://localhost:8888
+```
+
+**`.prod.vars` (production)**:
+```env
+APP_URL=https://your-worker.workers.dev
+# Or custom domain:
+APP_URL=https://beattheclankers.com
+```
+
+The MCP server uses `APP_URL` to construct iframe URLs that work in any environment.
+
+## Why This Pattern Is Powerful
 
 <CardGroup cols={2}>
   <Card title="Zero Manual Bridging" icon="magic-wand-sparkles">
-    Tab transport handles all communication automatically
+    IframeParentTransport handles all communication automatically
   </Card>
 
   <Card title="Standard MCP Protocol" icon="file-contract">
@@ -204,228 +716,13 @@ console.log(result); // { success: true, cartSize: 1 }
   <Card title="Auto-Discovery" icon="magnifying-glass">
     Parent instantly sees all tools registered in iframe
   </Card>
-</CardGroup>
 
-## The Magic: Tab Transport
-
-The `@mcp-b/transports` package provides `TabClientTransport` and `TabServerTransport`.
-
-**How it works:**
-1. WebMCP's `@mcp-b/global` polyfill automatically creates an MCP server in any context with `navigator.modelContext`
-2. When you register tools via `navigator.modelContext.registerTool()`, they're added to that MCP server
-3. Tab transport bridges `window.postMessage` events to MCP protocol
-4. Parent's MCP client can discover and call those tools
-
-```
-Parent: client.listTools()
-   ↓ (Tab Transport)
-Iframe: MCP server receives tools/list
-   ↓ (Checks navigator.modelContext)
-Iframe: Returns registered tools
-   ↓ (Tab Transport)
-Parent: Receives tool list
-```
-
-## Using Iframe Transports for Cross-Origin
-
-When your MCP-UI iframe is hosted on a different origin than the parent page, use `IframeParentTransport` and `IframeChildTransport` instead of Tab transports. These provide proper cross-origin security and handle iframe loading timing automatically.
-
-### Step 1: MCP-UI Server Returns HTML with IframeChildTransport
-
-```typescript
-import { createUIResource } from '@mcp-ui/server';
-
-// MCP server returns a UIResource with iframe transport
-const uiResource = createUIResource({
-  uri: 'ui://shopping/cart',
-  content: {
-    type: 'rawHtml',
-    htmlString: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <script type="module">
-            import { IframeChildTransport } from 'https://esm.sh/@mcp-b/transports';
-            import { Server } from 'https://esm.sh/@modelcontextprotocol/sdk/server/index.js';
-
-            // Create MCP server
-            const server = new Server(
-              { name: 'ShoppingCart', version: '1.0.0' },
-              { capabilities: { tools: {} } }
-            );
-
-            // Register tool handlers
-            server.setRequestHandler('tools/list', async () => {
-              return {
-                tools: [
-                  {
-                    name: 'add_to_cart',
-                    description: 'Add product to shopping cart',
-                    inputSchema: {
-                      type: 'object',
-                      properties: {
-                        productId: { type: 'string' },
-                        quantity: { type: 'number' }
-                      },
-                      required: ['productId', 'quantity']
-                    }
-                  },
-                  {
-                    name: 'get_cart_contents',
-                    description: 'Get current shopping cart contents',
-                    inputSchema: { type: 'object', properties: {} }
-                  }
-                ]
-              };
-            });
-
-            server.setRequestHandler('tools/call', async (request) => {
-              const { name, arguments: args } = request.params;
-
-              if (name === 'add_to_cart') {
-                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                cart.push({ productId: args.productId, quantity: args.quantity });
-                localStorage.setItem('cart', JSON.stringify(cart));
-
-                // Update UI
-                document.getElementById('cart-items').innerHTML =
-                  cart.map(item => \`<div>\${item.productId} x\${item.quantity}</div>\`).join('');
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: JSON.stringify({ success: true, cartSize: cart.length })
-                  }]
-                };
-              }
-
-              if (name === 'get_cart_contents') {
-                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                return {
-                  content: [{
-                    type: 'text',
-                    text: JSON.stringify({ items: cart, total: cart.length })
-                  }]
-                };
-              }
-
-              throw new Error(\`Unknown tool: \${name}\`);
-            });
-
-            // Connect with iframe child transport
-            const transport = new IframeChildTransport({
-              allowedOrigins: ['https://your-app.com'], // Parent origin
-            });
-
-            await server.connect(transport);
-          </script>
-        </head>
-        <body>
-          <h1>Shopping Cart</h1>
-          <div id="cart-items">Cart is empty</div>
-        </body>
-      </html>
-    `
-  }
-});
-```
-
-### Step 2: Parent Uses IframeParentTransport
-
-```typescript
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { IframeParentTransport } from '@mcp-b/transports';
-import { UIResourceRenderer } from '@mcp-ui/client';
-
-function ShoppingApp({ mcpResponse }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [tools, setTools] = useState([]);
-  const [client, setClient] = useState<Client | null>(null);
-
-  useEffect(() => {
-    async function connectToIframe() {
-      if (!iframeRef.current) return;
-
-      // Create MCP client with iframe parent transport
-      const mcpClient = new Client(
-        { name: 'host-app', version: '1.0.0' },
-        { capabilities: {} }
-      );
-
-      const transport = new IframeParentTransport({
-        iframe: iframeRef.current,
-        targetOrigin: 'https://iframe-origin.com' // Iframe's origin
-      });
-
-      await mcpClient.connect(transport);
-
-      // ✨ Automatically discover tools from iframe
-      const { tools } = await mcpClient.listTools();
-      setTools(tools);
-      setClient(mcpClient);
-
-      console.log('Found tools:', tools);
-    }
-
-    if (iframeRef.current) {
-      // Wait for iframe to load
-      iframeRef.current.addEventListener('load', () => {
-        // Small delay to ensure iframe is fully initialized
-        setTimeout(connectToIframe, 300);
-      });
-    }
-
-    return () => {
-      client?.close();
-    };
-  }, []);
-
-  const handleAddToCart = async (productId: string) => {
-    if (!client) return;
-
-    const result = await client.callTool({
-      name: 'add_to_cart',
-      arguments: { productId, quantity: 1 }
-    });
-
-    console.log('Added to cart:', result);
-  };
-
-  return (
-    <div>
-      <h2>Shopping Cart</h2>
-      <p>Discovered {tools.length} tools from iframe</p>
-
-      <button onClick={() => handleAddToCart('laptop-123')}>
-        Add Laptop to Cart
-      </button>
-
-      <UIResourceRenderer
-        ref={iframeRef}
-        resource={mcpResponse.content[0].resource}
-      />
-    </div>
-  );
-}
-```
-
-### Benefits of Iframe Transports
-
-<CardGroup cols={2}>
-  <Card title="Cross-Origin Security" icon="shield">
-    Proper origin validation on both parent and child sides
+  <Card title="Bidirectional" icon="arrows-left-right">
+    AI calls tools, tools notify AI of updates
   </Card>
 
-  <Card title="Automatic Ready Handshake" icon="handshake">
-    Built-in retry mechanism handles iframe loading timing
-  </Card>
-
-  <Card title="Isolated Communication" icon="diagram-project">
-    Dedicated channel prevents interference with other postMessage usage
-  </Card>
-
-  <Card title="Production Ready" icon="check-circle">
-    Designed specifically for parent-child iframe scenarios
+  <Card title="Dynamic Updates" icon="arrows-rotate">
+    Tools can be added/removed at runtime via notifications
   </Card>
 </CardGroup>
 
@@ -437,301 +734,14 @@ function ShoppingApp({ mcpResponse }) {
 - You're working with multiple servers in the same context
 
 **Use Iframe Transports when:**
-- Parent and iframe are on different origins
+- Parent and iframe are on different origins (most common)
 - You need explicit parent-child communication
 - You want dedicated channel isolation
 - You need robust iframe loading handling
 
-## Real-World Example: TicTacToe Game with WebMCP
-
-Here's a complete production example from the WebMCP e2e test suite showing how to build an interactive game that works with AI assistants.
-
-### Architecture Overview
-
-1. **MCP Server** returns a UIResource pointing to the game
-2. **Game iframe** registers tools using `useWebMCP` hook
-3. **Chat UI** connects to iframe with `IframeParentTransport`
-4. **AI** can call game tools to play
-
-### Part 1: MCP Server Returns the UI Resource
-
-```typescript
-import { createUIResource } from '@mcp-ui/server';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-
-export class MyMCP {
-  server = new McpServer({
-    name: 'mcp-ui-webmcp-server',
-    version: '1.0.0',
-  });
-
-  async init() {
-    // Register tool that shows the game
-    this.server.tool(
-      'showTicTacToeGame',
-      `Displays an interactive Tic-Tac-Toe game where you (AI) can play as player O.
-
-After calling this tool, the game UI will appear. The game registers WebMCP tools:
-- tictactoe_get_state: Check current board state and whose turn it is
-- tictactoe_ai_move: Make a move as player O (call this when it's your turn)
-- tictactoe_reset: Start a new game`,
-      {},
-      async () => {
-        const iframeUrl = `${this.env.APP_URL}/mini-apps/tictactoe/`;
-
-        const uiResource = createUIResource({
-          uri: 'ui://tictactoe-game',
-          content: {
-            type: 'externalUrl',
-            iframeUrl: iframeUrl,
-          },
-          encoding: 'blob',
-        });
-
-        return {
-          content: [uiResource],
-        };
-      }
-    );
-  }
-}
-```
-
-### Part 2: Game Iframe Registers WebMCP Tools
-
-**main.tsx** - Initialize WebMCP transport:
-
-```typescript
-import { initializeWebModelContext } from '@mcp-b/global';
-import { createRoot } from 'react-dom/client';
-import { TicTacToeWithWebMCP } from './TicTacToeWithWebMCP';
-
-// CRITICAL: Initialize WebMCP BEFORE rendering React
-initializeWebModelContext({
-  transport: {
-    tabServer: {
-      allowedOrigins: ['*'], // Allow parent to connect
-    },
-  },
-});
-
-createRoot(document.getElementById('root')!).render(
-  <TicTacToeWithWebMCP />
-);
-```
-
-**TicTacToeWithWebMCP.tsx** - Register tools with `useWebMCP`:
-
-```typescript
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { useState, useCallback } from 'react';
-import { z } from 'zod';
-
-export const TicTacToeWithWebMCP = () => {
-  const [board, setBoard] = useState(Array(9).fill(null));
-  const [currentPlayer, setCurrentPlayer] = useState<'X' | 'O'>('X');
-  const [winner, setWinner] = useState<'X' | 'O' | 'Draw' | null>(null);
-
-  // Tool 1: Get game state (read-only, idempotent)
-  useWebMCP({
-    name: 'tictactoe_get_state',
-    description: 'Get the current Tic-Tac-Toe state including board layout and game status.',
-    annotations: {
-      readOnlyHint: true,
-      idempotentHint: true,
-    },
-    handler: async () => {
-      return formatGameStateMarkdown(board, currentPlayer, winner);
-    },
-  });
-
-  // Tool 2: AI makes a move (NOT idempotent)
-  useWebMCP({
-    name: 'tictactoe_ai_move',
-    description: 'Play as player O (AI). Provide a board position (0-8) to place your O.',
-    inputSchema: {
-      position: z
-        .number()
-        .int()
-        .min(0)
-        .max(8)
-        .describe('Cell position (0-8) where AI should move.'),
-    },
-    annotations: {
-      idempotentHint: false, // Making moves changes state!
-    },
-    handler: async ({ position }) => {
-      if (board[position]) {
-        throw new Error(`Cell ${position} is already occupied.`);
-      }
-
-      if (currentPlayer !== 'O') {
-        throw new Error("It's not your turn!");
-      }
-
-      // Make the move
-      const newBoard = [...board];
-      newBoard[position] = 'O';
-      setBoard(newBoard);
-
-      // Evaluate and update state
-      const gameStatus = evaluateBoard(newBoard);
-      setWinner(gameStatus.winner);
-      setCurrentPlayer('X');
-
-      return formatMoveMarkdown('O', position, newBoard, gameStatus);
-    },
-  });
-
-  // Tool 3: Reset game (destructive but idempotent)
-  useWebMCP({
-    name: 'tictactoe_reset',
-    description: 'Reset the board and start a new game.',
-    annotations: {
-      destructiveHint: true,  // Warns: destroys data
-      idempotentHint: true,   // Calling twice = same result
-    },
-    handler: async () => {
-      setBoard(Array(9).fill(null));
-      setWinner(null);
-      setCurrentPlayer('X');
-      return 'Game reset successfully!';
-    },
-  });
-
-  return (
-    <div>
-      <h1>Tic-Tac-Toe</h1>
-      {/* Game UI here */}
-    </div>
-  );
-};
-```
-
-### Part 3: Chat UI Connects to Iframe
-
-```typescript
-import { IframeParentTransport } from '@mcp-b/transports';
-import { UIResourceRenderer } from '@mcp-ui/client';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { useEffect, useRef } from 'react';
-
-function UIResourcePanel({ resource }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    // Unique ID for this iframe instance
-    const sourceId = `webmcp-${resource.uri}`;
-
-    // Wait for iframe to load
-    const handleLoad = async () => {
-      // Create MCP client
-      const client = new Client({
-        name: 'WebMCP Client',
-        version: '1.0.0',
-      });
-
-      // Create iframe parent transport
-      const transport = new IframeParentTransport({
-        targetOrigin: new URL(serverUrl).origin,
-        iframe: iframe,
-      });
-
-      try {
-        // Connect to iframe's MCP server
-        await client.connect(transport);
-
-        // List and register tools from iframe
-        const toolsResponse = await client.listTools();
-        console.log('Discovered tools:', toolsResponse.tools);
-        // Output: [
-        //   { name: 'tictactoe_get_state', ... },
-        //   { name: 'tictactoe_ai_move', ... },
-        //   { name: 'tictactoe_reset', ... }
-        // ]
-
-        // Register with app so AI can call them
-        registerWebMcpTools(toolsResponse.tools, sourceId);
-        registerWebMcpClient(sourceId, client);
-
-        // Listen for dynamic tool changes
-        client.setNotificationHandler('notifications/tools/list_changed', async () => {
-          const updated = await client.listTools();
-          registerWebMcpTools(updated.tools, sourceId);
-        });
-
-        // Cleanup when component unmounts
-        return () => {
-          client.close();
-          transport.close();
-          unregisterWebMcpClient(sourceId);
-        };
-      } catch (error) {
-        console.error('Failed to connect to iframe:', error);
-      }
-    };
-
-    iframe.addEventListener('load', handleLoad);
-    return () => iframe.removeEventListener('load', handleLoad);
-  }, [resource, serverUrl]);
-
-  return (
-    <UIResourceRenderer
-      ref={iframeRef}
-      resource={resource}
-    />
-  );
-}
-```
-
-### Key Implementation Details
-
-**Tool Annotations** provide metadata for better AI interaction:
-- `readOnlyHint`: Tool doesn't modify state (safe to call anytime)
-- `idempotentHint`: Calling multiple times has same effect
-- `destructiveHint`: Operation destroys or significantly modifies data
-
-**Parent-Ready Protocol**: The TicTacToe implementation waits for parent to signal readiness before sending notifications:
-
-```typescript
-useEffect(() => {
-  const handleMessage = (event) => {
-    if (event.data.type === 'parent-ready') {
-      setIsParentReady(true);
-    }
-  };
-
-  window.addEventListener('message', handleMessage);
-  window.parent.postMessage({ type: 'ui-lifecycle-iframe-ready' }, '*');
-
-  return () => window.removeEventListener('message', handleMessage);
-}, []);
-```
-
-**Notifications**: Games can send updates to the AI:
-
-```typescript
-// Notify parent of game events
-window.parent.postMessage({
-  type: 'notify',
-  payload: {
-    message: '# Move Complete\n\nPlayer O moved to position 4.'
-  }
-}, '*');
-```
-
-### Deployment Architecture
-
-The production setup uses:
-- **Cloudflare Workers** for MCP server (Durable Objects for state)
-- **Vite** for building mini-apps
-- **Static hosting** for game assets
-- **SSE transport** for real-time MCP communication
-
-See the [full example](https://github.com/WebMCP-org/npm-packages/tree/main/e2e/mcp-ui-with-webmcp) in the WebMCP repository.
+<Tip>
+The [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) uses IframeParentTransport and IframeChildTransport for production-ready cross-origin communication.
+</Tip>
 
 ## More Examples
 
@@ -855,71 +865,18 @@ const formHTML = `
     Full mini-apps (shopping cart, calendar, task list) with both UI and API surface
   </Accordion>
 
+  <Accordion title="Games & Simulations">
+    Interactive games like TicTacToe that AI agents can play through tool calls
+  </Accordion>
+
   <Accordion title="Third-Party Widgets">
     Embed external widgets (Stripe checkout, calendar booking) that expose tools for integration
   </Accordion>
+
+  <Accordion title="Configuration UIs">
+    Settings panels that both display current config and allow programmatic updates
+  </Accordion>
 </AccordionGroup>
-
-## Common Patterns
-
-### Loading State
-
-```typescript
-const [isConnected, setIsConnected] = useState(false);
-
-useEffect(() => {
-  if (iframeRef.current) {
-    const handleLoad = async () => {
-      const transport = new TabClientTransport({
-        targetOrigin: window.location.origin
-      });
-      await client.connect(transport);
-      setIsConnected(true);
-    };
-
-    iframeRef.current.addEventListener('load', handleLoad);
-  }
-}, []);
-
-return isConnected ? <div>Tools ready!</div> : <div>Loading...</div>;
-```
-
-### Error Handling
-
-```typescript
-async function connectToIframe() {
-  try {
-    const client = new Client({ name: 'host' }, { capabilities: {} });
-    const transport = new TabClientTransport({
-      targetOrigin: window.location.origin
-    });
-    await client.connect(transport);
-  } catch (error) {
-    console.error('Failed to connect:', error);
-    // Show error UI
-  }
-}
-```
-
-### Tool Calling with Feedback
-
-```typescript
-const [status, setStatus] = useState('');
-
-async function addToCart(productId) {
-  setStatus('Adding to cart...');
-
-  try {
-    const result = await client.callTool({
-      name: 'add_to_cart',
-      arguments: { productId, quantity: 1 }
-    });
-    setStatus('Added successfully!');
-  } catch (error) {
-    setStatus(`Error: ${error.message}`);
-  }
-}
-```
 
 ## Security Notes
 
@@ -933,20 +890,7 @@ async function addToCart(productId) {
 - For cross-origin scenarios, always use Iframe transports over Tab transports
 </Warning>
 
-**Tab Transport (same-origin):**
-```typescript
-// Good - specific origin
-const transport = new TabClientTransport({
-  targetOrigin: 'https://myapp.com'
-});
-
-// Bad - allows any origin (dev only!)
-const transport = new TabClientTransport({
-  targetOrigin: '*'
-});
-```
-
-**Iframe Transport (cross-origin):**
+**Iframe Transport (cross-origin) - Production Example:**
 ```typescript
 // Parent side - Good
 const transport = new IframeParentTransport({
@@ -969,27 +913,27 @@ const transport = new IframeChildTransport({
 
 <AccordionGroup>
   <Accordion title="Do I need to use WebMCP in the iframe?">
-    Yes! The iframe must use `navigator.modelContext.registerTool()` (via `@mcp-b/global`) for this pattern to work. That's what makes the tools discoverable via tab transport.
+    Yes! The iframe must use `navigator.modelContext` (via `@mcp-b/global`) for this pattern to work. That's what makes the tools discoverable via the iframe transport.
   </Accordion>
 
   <Accordion title="Can the iframe be on a different domain?">
-    Yes, but you need to set `targetOrigin` correctly for security. Tab transport works cross-origin.
+    Yes! Use `IframeParentTransport` and `IframeChildTransport` with proper `targetOrigin` and `allowedOrigins` configuration for security.
   </Accordion>
 
   <Accordion title="What if tools change dynamically?">
-    The parent can call `client.listTools()` again to refresh. Or implement an event system where the iframe notifies the parent.
+    The parent listens for `tools/list_changed` notifications and automatically refreshes the tool list. You can also manually call `client.listTools()` again.
   </Accordion>
 
   <Accordion title="Can I use React/Vue inside the iframe?">
-    Absolutely! The iframe is just HTML. Use any framework and register tools when your components mount.
+    Absolutely! The iframe is just HTML. Use any framework and register tools when your components mount using `useWebMCP` or `navigator.modelContext`.
   </Accordion>
 
   <Accordion title="Should I use Tab transports or Iframe transports?">
     Use **Iframe transports** (`IframeParentTransport`/`IframeChildTransport`) when your iframe is on a different origin than the parent page. Use **Tab transports** when they're on the same origin. Iframe transports provide better cross-origin security and handle iframe loading timing automatically.
   </Accordion>
 
-  <Accordion title="How do Iframe transports differ from Tab transports?">
-    Iframe transports are specifically designed for parent-child iframe communication with dedicated channels, ready handshake protocols, and explicit origin targeting. Tab transports work for same-context scenarios and support server discovery. Both use `postMessage` but with different messaging patterns.
+  <Accordion title="How do I deploy this to production?">
+    See the [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) for deployment scripts. The example uses Cloudflare Workers for the MCP server and Cloudflare Pages for the chat UI.
   </Accordion>
 </AccordionGroup>
 
@@ -1000,36 +944,44 @@ const transport = new IframeChildTransport({
     Learn about WebMCP's architecture and `navigator.modelContext`
   </Card>
 
-  <Card title="MCP-UI Docs" icon="window" href="https://docs.mcp-ui.org">
+  <Card title="MCP-UI Docs" icon="window" href="https://mcpui.dev">
     Complete MCP-UI documentation and UIResourceRenderer reference
   </Card>
 
-  <Card title="Tab Transport" icon="arrow-right-arrow-left" href="/packages/transports">
-    Deep dive into `@mcp-b/transports` and how tab transport works
+  <Card title="Iframe Transports" icon="arrow-right-arrow-left" href="/packages/transports">
+    Deep dive into `@mcp-b/transports` and how iframe transport works
   </Card>
 
   <Card title="Security Guide" icon="shield" href="/security">
     Security best practices for WebMCP integrations
+  </Card>
+
+  <Card title="@mcp-b/react-webmcp" icon="react" href="/packages/react-webmcp">
+    React hooks for WebMCP tool registration
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    More ready-to-use implementations
   </Card>
 </CardGroup>
 
 ## Next Steps
 
 <Steps>
-  <Step title="Set up MCP-UI">
-    Install `@mcp-ui/server` and create your first UIResource
+  <Step title="Try create-webmcp-app">
+    Run `npx create-webmcp-app` to scaffold your first MCP-UI + WebMCP app
   </Step>
 
-  <Step title="Add WebMCP to iframe">
-    Include `@mcp-b/global` and register tools with `navigator.modelContext`
+  <Step title="Explore the source">
+    Check out the [mcp-ui-webmcp repository](https://github.com/WebMCP-org/mcp-ui-webmcp) for production examples
   </Step>
 
-  <Step title="Connect from parent">
-    Use `TabClientTransport` to discover and call iframe tools
+  <Step title="Test with live demos">
+    Visit [beattheclankers.com](https://beattheclankers.com/) or [mcp-ui.mcp-b.ai](https://mcp-ui.mcp-b.ai) to see it in action
   </Step>
 
   <Step title="Build something cool">
-    Create interactive dashboards, forms, or mini-apps with this pattern!
+    Create interactive dashboards, forms, games, or mini-apps with this pattern!
   </Step>
 </Steps>
 
