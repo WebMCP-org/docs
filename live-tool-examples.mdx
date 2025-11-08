@@ -16,7 +16,7 @@ import { PolyfillSetup } from '/snippets/webmcp-polyfill-setup.jsx';
 This page demonstrates **live WebMCP tools** that register themselves with the browser and can be called by AI agents in real-time.
 
 <Note>
-**These tools work automatically!** This documentation site includes the WebMCP polyfill (`@mcp-b/global`), so the tools below are ready to use. Optionally, install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents to discover and call these tools.
+**These tools are live and ready!** The WebMCP polyfill is included with this documentation site. Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents (like Claude) to discover and call these tools directly.
 </Note>
 
 <CardGroup cols={3}>
@@ -44,6 +44,10 @@ Check if the WebMCP polyfill is loaded and ready:
 ## Calculator Tool
 
 <CalculatorTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask: "Use the calculator tool to compute 42 * 1.5 + 10"
+</Tip>
 
 <CodeGroup>
 ```jsx Calculator Tool Implementation
@@ -97,9 +101,13 @@ export const CalculatorTool = () => {
 
 <ColorConverterTool />
 
+<Tip>
+**Try it with your AI assistant:** Ask Claude or your AI: "Convert the color #FF5733 to RGB and HSL"
+</Tip>
+
 <CodeGroup>
 ```jsx Color Converter Tool Implementation
-// Converts colors between HEX, RGB, and HSL formats
+// Converts HEX colors to RGB and HSL formats
 export const ColorConverterTool = () => {
   useEffect(() => {
     const registerTool = async () => {
@@ -107,16 +115,24 @@ export const ColorConverterTool = () => {
 
       await window.navigator.modelContext.registerTool({
         name: 'color_converter',
-        description: 'Converts colors between HEX, RGB, and HSL formats',
+        description: 'Converts HEX colors to RGB and HSL formats. Input must be in HEX format.',
         inputSchema: {
           type: 'object',
           properties: {
-            color: { type: 'string', description: 'HEX color (e.g., #FF5733)' },
-            format: { type: 'string', enum: ['rgb', 'hsl'], description: 'Target format' }
+            color: {
+              type: 'string',
+              description: 'Color in HEX format (e.g., "#3b82f6" or "3b82f6"). Must be a valid HEX color code.'
+            },
+            outputFormat: {
+              type: 'string',
+              enum: ['rgb', 'hsl', 'all'],
+              description: 'Desired output format (rgb, hsl, or all)',
+              default: 'all'
+            }
           },
-          required: ['color', 'format']
+          required: ['color']
         },
-        handler: async ({ color, format }) => {
+        handler: async ({ color, outputFormat = 'all' }) => {
           // Conversion logic here
         }
       });
@@ -132,6 +148,10 @@ export const ColorConverterTool = () => {
 ## Storage Management Tool
 
 <StorageTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask: "Store 'Hello World' under the key 'greeting' using storage"
+</Tip>
 
 <CodeGroup>
 ```jsx Storage Tool Implementation
@@ -171,6 +191,10 @@ export const StorageTool = () => {
 ## DOM Query Tool
 
 <DOMQueryTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask: "How many navigation links are on this page?" or "Query for all h2 headings"
+</Tip>
 
 <CodeGroup>
 ```jsx DOM Query Tool Implementation
