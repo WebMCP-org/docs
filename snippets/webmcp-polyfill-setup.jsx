@@ -33,7 +33,7 @@ export const PolyfillSetup = () => {
   }, []);
 
   const copyScript = () => {
-    const scriptTag = '<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>';
+    const scriptTag = '<script src="https://unpkg.com/@mcp-b/global@1.1.2/dist/index.iife.js"></script>';
     navigator.clipboard.writeText(scriptTag);
   };
 
@@ -99,7 +99,7 @@ export const PolyfillSetup = () => {
           <div className="relative">
             <pre className="text-xs bg-white dark:bg-zinc-950 p-3 rounded border border-amber-300 dark:border-amber-700 overflow-x-auto">
               <code className="text-amber-900 dark:text-amber-100">
-                {`<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>`}
+                {`<script src="https://unpkg.com/@mcp-b/global@1.1.2/dist/index.iife.js"></script>`}
               </code>
             </pre>
             <button
@@ -120,7 +120,7 @@ export const PolyfillSetup = () => {
           <div>
             <strong>Via CDN (Easiest):</strong>
             <pre className="text-xs mt-1 bg-white dark:bg-blue-950 p-2 rounded border border-blue-200 dark:border-blue-700 overflow-x-auto">
-              <code>{`<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>`}</code>
+              <code>{`<script src="https://unpkg.com/@mcp-b/global@1.1.2/dist/index.iife.js"></script>`}</code>
             </pre>
           </div>
           <div>

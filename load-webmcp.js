@@ -13,7 +13,7 @@
 
   // Load the polyfill from CDN
   const script = document.createElement('script');
-  script.src = 'https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js';
+  script.src = 'https://unpkg.com/@mcp-b/global@1.1.2/dist/index.iife.js';
   script.async = false; // Load synchronously to ensure it's ready for tools
   script.onload = () => {
     console.log('WebMCP polyfill loaded successfully');

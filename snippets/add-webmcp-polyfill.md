@@ -22,7 +22,7 @@ Add a JavaScript file to your docs root that loads the polyfill:
 
   // Load the polyfill
   const script = document.createElement('script');
-  script.src = 'https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js';
+  script.src = 'https://unpkg.com/@mcp-b/global@1.1.2/dist/index.iife.js';
   script.async = false; // Load synchronously to ensure it's ready
   script.onload = () => {
     console.log('WebMCP polyfill loaded successfully');
@@ -42,7 +42,7 @@ Mintlify automatically includes all `.js` files in your docs root, so this will 
 If Mintlify supports custom head injection, add this to your configuration:
 
 ```html
-<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+<script src="https://unpkg.com/@mcp-b/global@1.1.2/dist/index.iife.js"></script>
 ```
 
 ## Method 3: NPM Package (For Custom Builds)
