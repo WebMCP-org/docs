@@ -243,8 +243,8 @@ export const ColorConverterTool = () => {
       </div>
 
       {toolCalls.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
-          <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
+        <div className="mt-6 pt-6 border-t dark:border-white/10">
+          <h4 className="text-sm font-semibold mb-3">
             Recent AI Tool Calls
           </h4>
           <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -253,22 +253,22 @@ export const ColorConverterTool = () => {
                 key={idx}
                 className={`p-3 rounded-lg border text-sm transition-all duration-300 ${
                   call.status === 'processing'
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 animate-pulse'
+                    ? 'bg-primary/10 border-primary/30 animate-pulse'
                     : call.status === 'success'
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                    ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
                     : call.status === 'error'
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                    : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                    ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                    : 'bg-background-light dark:bg-background-dark border dark:border-white/10'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   <div
-                    className="w-6 h-6 rounded border border-zinc-300 dark:border-zinc-700 flex-shrink-0"
+                    className="w-6 h-6 rounded border dark:border-white/10 flex-shrink-0"
                     style={{ backgroundColor: call.color }}
                   />
-                  <code className="text-blue-600 dark:text-blue-400 flex-1">{call.color}</code>
+                  <code className="text-primary flex-1">{call.color}</code>
                   {call.status === 'processing' && (
-                    <svg className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -285,7 +285,7 @@ export const ColorConverterTool = () => {
                   )}
                 </div>
                 {call.result && (
-                  <div className="space-y-1 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                  <div className="space-y-1 font-mono text-xs opacity-70">
                     <div>{call.result.rgb}</div>
                     <div>{call.result.hsl}</div>
                   </div>
@@ -300,12 +300,6 @@ export const ColorConverterTool = () => {
           </div>
         </div>
       )}
-
-      <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>Try it:</strong> Ask your AI: "Convert the color #FF5733 to RGB and HSL"
-        </p>
-      </div>
     </div>
   );
 };

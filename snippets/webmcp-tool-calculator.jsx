@@ -235,11 +235,6 @@ export const CalculatorTool = () => {
         </div>
       )}
 
-      <div className="mt-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>Try it:</strong> Open your AI assistant and ask: "Use the calculator tool to compute 42 * 1.5 + 10"
-        </p>
-      </div>
     </div>
   );
 };

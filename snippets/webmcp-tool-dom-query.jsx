@@ -327,11 +327,6 @@ export const DOMQueryTool = () => {
         </div>
       )}
 
-      <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>Try it:</strong> Ask your AI: "How many navigation links are on this page?" or "Query for all h2 headings"
-        </p>
-      </div>
     </div>
   );
 };
