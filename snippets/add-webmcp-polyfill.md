@@ -10,7 +10,7 @@ Add a JavaScript file to your docs root that loads the polyfill:
 
 ```javascript
 // load-webmcp.js
-// Loads the WebMCP polyfill from CDN
+// Loads the WebMCP polyfill from CDN with fallback support
 (function() {
   'use strict';
 
@@ -20,18 +20,39 @@ Add a JavaScript file to your docs root that loads the polyfill:
     return;
   }
 
-  // Load the polyfill
-  const script = document.createElement('script');
-  script.src = 'https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js';
-  script.async = false; // Load synchronously to ensure it's ready
-  script.onload = () => {
-    console.log('WebMCP polyfill loaded successfully');
-  };
-  script.onerror = () => {
-    console.error('Failed to load WebMCP polyfill');
-  };
+  // CDN sources to try (in order)
+  const cdnSources = [
+    'https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js',
+    'https://cdn.jsdelivr.net/npm/@mcp-b/global@latest/dist/index.iife.js'
+  ];
 
-  document.head.appendChild(script);
+  let currentIndex = 0;
+
+  function loadFromCDN(url) {
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = false;
+
+    script.onload = () => {
+      console.log('WebMCP polyfill loaded successfully');
+      window.dispatchEvent(new CustomEvent('webmcp-loaded'));
+    };
+
+    script.onerror = () => {
+      currentIndex++;
+      if (currentIndex < cdnSources.length) {
+        console.log(`Trying alternate CDN (${currentIndex + 1}/${cdnSources.length})...`);
+        script.remove();
+        loadFromCDN(cdnSources[currentIndex]);
+      } else {
+        console.error('Failed to load WebMCP polyfill from all CDNs');
+      }
+    };
+
+    document.head.appendChild(script);
+  }
+
+  loadFromCDN(cdnSources[currentIndex]);
 })();
 ```
 
