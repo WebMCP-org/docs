@@ -143,9 +143,14 @@ export const ColorConverterTool = () => {
       }
     };
 
+    // Try to register immediately if polyfill is already loaded
     registerTool();
 
+    // Listen for polyfill load event
+    window.addEventListener('webmcp-loaded', registerTool);
+
     return () => {
+      window.removeEventListener('webmcp-loaded', registerTool);
       if (window.navigator?.modelContext?.unregisterTool) {
         window.navigator.modelContext.unregisterTool('color_converter');
       }
