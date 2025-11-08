@@ -39,8 +39,7 @@ mintlify build
 
 ```
 .
-├── mint.json                      # Global configuration and navigation
-├── docs.json                      # Additional documentation metadata
+├── docs.json                      # Mintlify configuration, navigation, and theme settings
 ├── favicon.ico                    # Site favicon
 ├── style.css                      # Custom styles
 │
@@ -128,7 +127,7 @@ mintlify build
 
 ### Colors
 
-Edit the `colors` section in `mint.json`:
+Edit the `colors` section in `docs.json`:
 
 ```json
 {
@@ -142,7 +141,7 @@ Edit the `colors` section in `mint.json`:
 
 ### Navigation
 
-Update the `navigation` array in `mint.json` to customize the sidebar structure.
+Update the `navigation` array in `docs.json` to customize the sidebar structure.
 
 ### Logo
 

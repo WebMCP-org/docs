@@ -21,8 +21,7 @@ Specialized content is organized into directories:
 - **`/snippets/`**: Reusable code snippets organized by category (core, templates, validation, imports, patterns, clients)
 
 ### Key files & directories
-- `mint.json`: Site configuration, navigation structure, theme settings, and global metadata
-- `docs.json`: Additional documentation metadata
+- `docs.json`: Mintlify configuration, navigation structure, theme settings, and global metadata
 - `*.mdx`: Documentation pages with frontmatter (title, description, sidebarTitle, icon)
 - `/snippets/`: Reusable content fragments used across multiple pages (see USING_SNIPPETS.md)
   - Organized into subdirectories: `core/`, `templates/`, `validation/`, `imports/`, `patterns/`, `clients/`
@@ -30,10 +29,10 @@ Specialized content is organized into directories:
 - `/.github/`: GitHub workflows and automation documentation
 
 ### Navigation organization
-The site navigation (defined in mint.json) groups pages conceptually, which may differ from the file structure:
+The site navigation (defined in docs.json) groups pages conceptually, which may differ from the file structure:
 - Navigation groups like "Getting Started", "Guides", "SDK Reference" are organizational concepts
 - These groups pull from various locations (root pages and directories)
-- Always check mint.json to understand the published navigation structure
+- Always check docs.json to understand the published navigation structure
 
 ## Contributing to the docs
 
@@ -49,7 +48,7 @@ The site navigation (defined in mint.json) groups pages conceptually, which may 
 4. **Preview locally**: Use `mintlify dev` to preview changes before committing
 
 ### Common workflows
-- **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
+- **Adding a new page**: Create MDX file with proper frontmatter → Add to docs.json navigation → Test locally
 - **Updating SDK documentation**: Update MDX content → Test code examples → Verify TypeScript types are accurate
 - **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
 - **Adding code examples**: Check for existing snippet → If none exists, follow [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) → Test the code → Consider creating snippet if used 3+ times
@@ -62,7 +61,7 @@ The site navigation (defined in mint.json) groups pages conceptually, which may 
 
 ## Project context
 - Format: MDX files with YAML frontmatter
-- Config: mint.json for navigation, theme, settings
+- Config: docs.json for navigation, theme, settings
 - Components: Mintlify components
 - Organization: WebMCP-org GitHub organization
 - Main repository: https://github.com/WebMCP-org/docs
@@ -91,9 +90,9 @@ The site navigation (defined in mint.json) groups pages conceptually, which may 
   - One-off code examples (appears only 1-2 times)
   - Tutorial walkthroughs where step-by-step explanation is key
 
-## mint.json
+## docs.json
 
-- Refer to the [mint.json schema](https://mintlify.com/docs/settings/global) when building the mint.json file and site navigation
+- Refer to the [Mintlify configuration schema](https://mintlify.com/docs/settings/global) when building the docs.json file and site navigation
 - Navigation structure is defined in the "navigation" array
 - Each group has a "group" name and "pages" array
 
@@ -166,7 +165,7 @@ function MyComponent() {
 Use these official Mintlify resources when working on documentation:
 
 ### Essential references
-- **[Global settings](https://mintlify.com/docs/organize/settings)**: Complete mint.json configuration options
+- **[Global settings](https://mintlify.com/docs/organize/settings)**: Complete docs.json configuration options
 - **[Navigation](https://mintlify.com/docs/organize/navigation)**: Structure and customize navigation hierarchy
 - **[Pages](https://mintlify.com/docs/organize/pages)**: Page creation and frontmatter requirements
 - **[Format text](https://mintlify.com/docs/create/text)**: Text formatting, headers, and styling
