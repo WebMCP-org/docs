@@ -303,14 +303,14 @@ mintlify dev
 
 If the same pattern appears on other pages:
 
-- [ ] Find all occurrences: `grep -r "pattern" docs/`
+- [ ] Find all occurrences: `grep -r "pattern" .`
 - [ ] Update each occurrence
 - [ ] Test each page
 
 ### 6. Commit Changes
 
 ```bash
-git add docs/path/to/file.mdx
+git add path/to/file.mdx
 git commit -m "docs: use snippet for [pattern name]"
 ```
 
@@ -415,7 +415,7 @@ When you need to update a snippet:
 
 1. **Find all usages:**
    ```bash
-   grep -r "snippets/core/register-tool-basic" docs/
+   grep -r "snippets/core/register-tool-basic" .
    ```
 
 2. **Update the snippet file:**
@@ -440,7 +440,7 @@ When you identify a pattern that should become a snippet:
 
 1. **Verify it appears 3+ times:**
    ```bash
-   grep -r "pattern" docs/ | wc -l
+   grep -r "pattern" . | wc -l
    ```
 
 2. **Choose the right category:**
@@ -632,7 +632,7 @@ import ReactImports from '/snippets/imports/react-imports.mdx';
 ### File Locations
 
 ```
-docs/
+/home/user/docs/  (repository root)
 ├── snippets/
 │   ├── core/           # Tool registration, hooks, responses
 │   ├── imports/        # Import statements
@@ -640,7 +640,11 @@ docs/
 │   ├── clients/        # Transport setup
 │   ├── patterns/       # Advanced patterns
 │   └── templates/      # Complete examples
-└── [your-page].mdx     # Import snippets here
+├── concepts/           # Concept documentation
+├── packages/           # Package reference docs
+├── ai-frameworks/      # AI framework integration docs
+├── extension/          # Extension documentation
+└── [page].mdx          # Documentation pages (import snippets here)
 ```
 
 ---

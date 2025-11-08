@@ -145,7 +145,7 @@ Update the `navigation` array in `docs.json` to customize the sidebar structure.
 
 ### Logo
 
-Replace the SVG files in the `/logo` directory with your own logo files.
+Replace the logo file in the `/logo` directory with your own branding. Update the `logo` paths in `docs.json` to match your file format (PNG, SVG, etc.).
 
 ## 📚 Resources
 
