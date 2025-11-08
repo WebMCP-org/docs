@@ -12,7 +12,6 @@ export const CalculatorTool = () => {
     // Register the calculator tool with WebMCP
     const registerTool = async () => {
       if (typeof window === 'undefined' || !window.navigator?.modelContext) {
-        console.log('WebMCP not available');
         return;
       }
 
@@ -89,9 +88,14 @@ export const CalculatorTool = () => {
       }
     };
 
+    // Try to register immediately if polyfill is already loaded
     registerTool();
 
+    // Listen for polyfill load event
+    window.addEventListener('webmcp-loaded', registerTool);
+
     return () => {
+      window.removeEventListener('webmcp-loaded', registerTool);
       // Cleanup: unregister tool
       if (window.navigator?.modelContext?.unregisterTool) {
         window.navigator.modelContext.unregisterTool('calculator');
