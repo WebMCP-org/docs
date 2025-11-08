@@ -9,13 +9,14 @@ import { CalculatorTool } from '/snippets/webmcp-tool-calculator.jsx';
 import { ColorConverterTool } from '/snippets/webmcp-tool-color-converter.jsx';
 import { StorageTool } from '/snippets/webmcp-tool-storage.jsx';
 import { DOMQueryTool } from '/snippets/webmcp-tool-dom-query.jsx';
+import { PolyfillSetup } from '/snippets/webmcp-polyfill-setup.jsx';
 
 # Live WebMCP Tool Examples
 
 This page demonstrates **live WebMCP tools** that register themselves with the browser and can be called by AI agents in real-time.
 
 <Note>
-**To use these tools**: Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa), which injects the WebMCP polyfill and enables AI agents to discover and call the tools on this page.
+**These tools work automatically!** This documentation site includes the WebMCP polyfill (`@mcp-b/global`), so the tools below are ready to use. Optionally, install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents to discover and call these tools.
 </Note>
 
 <CardGroup cols={3}>
@@ -29,6 +30,14 @@ This page demonstrates **live WebMCP tools** that register themselves with the b
     SDK reference documentation
   </Card>
 </CardGroup>
+
+---
+
+## WebMCP Status
+
+Check if the WebMCP polyfill is loaded and ready:
+
+<PolyfillSetup />
 
 ---
 
