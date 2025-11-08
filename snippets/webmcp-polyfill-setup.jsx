@@ -1,5 +1,7 @@
 // WebMCP Polyfill Setup Component
 // Demonstrates how to integrate the @mcp-b/global polyfill
+import { useState, useEffect } from 'react';
+
 export const PolyfillSetup = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasExtension, setHasExtension] = useState(false);
@@ -21,8 +23,12 @@ export const PolyfillSetup = () => {
     checkPolyfill();
     window.addEventListener('load', checkPolyfill);
 
+    // Listen for custom event from load-webmcp.js
+    window.addEventListener('webmcp-loaded', checkPolyfill);
+
     return () => {
       window.removeEventListener('load', checkPolyfill);
+      window.removeEventListener('webmcp-loaded', checkPolyfill);
     };
   }, []);
 
