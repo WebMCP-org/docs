@@ -24,13 +24,14 @@ This guide covers:
 
 ```
 snippets/
-├── core/           # Tool registration, hooks, responses (7 snippets)
-├── imports/        # Import statements (3 snippets)
-├── validation/     # Zod and JSON Schema (6 snippets)
-├── clients/        # Transport setup (7 snippets)
-├── patterns/       # Advanced patterns (4 snippets)
-├── templates/      # Complete examples (6 templates)
-└── examples/       # Full working components (4 examples)
+├── core/                         # Tool registration, hooks, responses (7 snippets)
+├── imports/                      # Import statements (3 snippets)
+├── validation/                   # Zod and JSON Schema (6 snippets)
+├── clients/                      # Transport setup (7 snippets)
+├── patterns/                     # Advanced patterns (4 snippets)
+├── templates/                    # Complete examples (6 templates)
+├── webmcp-polyfill-setup.jsx     # Polyfill setup component
+└── webmcp-tool-*.jsx             # Full working tool examples (5 files)
 ```
 
 ## Available Snippets
@@ -107,13 +108,14 @@ snippets/
 - `multi-tool-component.mdx` - Component registering multiple related tools (~180 lines)
 - `provider-with-tools.mdx` - Context provider with application-level tools (~200 lines)
 
-### Examples (`snippets/examples/`)
+### Full Working Examples (root `.jsx` files)
 
-Full working React components:
-- `webmcp-tool-storage.jsx` - Storage management tool
-- `webmcp-tool-calculator.jsx` - Calculator tool
-- `webmcp-tool-color-converter.jsx` - Color converter
-- `webmcp-tool-dom-query.jsx` - DOM query tool
+Complete, production-ready React components in the snippets root directory:
+- `webmcp-tool-storage.jsx` - Storage management tool with CRUD operations
+- `webmcp-tool-calculator.jsx` - Calculator tool with validation
+- `webmcp-tool-color-converter.jsx` - Color format converter
+- `webmcp-tool-dom-query.jsx` - DOM query and manipulation tool
+- `webmcp-polyfill-setup.jsx` - Polyfill setup for non-WebMCP browsers
 
 ## Quick Start
 
@@ -200,7 +202,7 @@ import CodeBlock from '/snippets/category/snippet-name.mdx';
 - `clients/` - Client setup and transports
 - `patterns/` - Advanced patterns
 - `templates/` - Complete starting templates
-- `examples/` - Full working React components
+- Root `.jsx` files - Full working React components
 
 ## Maintenance
 

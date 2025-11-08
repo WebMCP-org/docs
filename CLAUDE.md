@@ -2,20 +2,37 @@
 
 ## Documentation structure overview
 
-The WebMCP documentation is organized into the following main sections:
+The WebMCP documentation uses a flat + organized directory structure:
 
-- **Root pages**: Introduction, quickstart, and core concepts (index.mdx, what-is-webmcp.mdx, etc.)
-- **Getting Started**: Installation guides, basic setup, and first steps
-- **Guides**: In-depth tutorials and how-to content for specific use cases
-- **SDK Reference**: SDK documentation, TypeScript types, and usage patterns
-- **Examples**: Code examples and real-world implementations
-- **Resources**: Additional materials, FAQs, and community links
+### Root-level pages
+Core documentation pages live in the repository root:
+- **Introduction & Getting Started**: `introduction.mdx`, `quickstart.mdx`, `development.mdx`
+- **Core Guides**: `best-practices.mdx`, `security.mdx`, `troubleshooting.mdx`, `advanced.mdx`
+- **Use Cases**: `building-mcp-ui-apps.mdx`, `connecting-agents.mdx`, `frontend-tools.mdx`
+- **Examples & Reference**: `examples.mdx`, `live-tool-examples.mdx`, `changelog.mdx`
 
-### Key files
-- `mint.json`: Site configuration, navigation structure, theme settings, and global metadata
+### Organized directories
+Specialized content is organized into directories:
+- **`/concepts/`**: Core concepts (architecture, tool design, schemas, security, performance, glossary)
+- **`/packages/`**: NPM package reference (react-webmcp, transports, smart-dom-reader, etc.)
+- **`/ai-frameworks/`**: AI framework integrations (assistant-ui, ag-ui, custom runtime)
+- **`/extension/`**: Browser extension documentation (agents, userscripts)
+- **`/tools/`**: Tools documentation (claude-code integration)
+- **`/snippets/`**: Reusable code snippets organized by category (core, templates, validation, imports, patterns, clients)
+
+### Key files & directories
+- `docs.json`: Mintlify configuration, navigation structure, theme settings, and global metadata
 - `*.mdx`: Documentation pages with frontmatter (title, description, sidebarTitle, icon)
-- `/snippets/`: Reusable content fragments used across multiple pages
-- `/images/`: Static image assets referenced in documentation
+- `/snippets/`: Reusable content fragments used across multiple pages (see USING_SNIPPETS.md)
+  - Organized into subdirectories: `core/`, `templates/`, `validation/`, `imports/`, `patterns/`, `clients/`
+- `/logo/`: Brand assets (mcp-b-logo.png)
+- `/.github/`: GitHub workflows and automation documentation
+
+### Navigation organization
+The site navigation (defined in docs.json) groups pages conceptually, which may differ from the file structure:
+- Navigation groups like "Getting Started", "Guides", "SDK Reference" are organizational concepts
+- These groups pull from various locations (root pages and directories)
+- Always check docs.json to understand the published navigation structure
 
 ## Contributing to the docs
 
@@ -31,7 +48,7 @@ The WebMCP documentation is organized into the following main sections:
 4. **Preview locally**: Use `mintlify dev` to preview changes before committing
 
 ### Common workflows
-- **Adding a new page**: Create MDX file with proper frontmatter → Add to mint.json navigation → Test locally
+- **Adding a new page**: Create MDX file with proper frontmatter → Add to docs.json navigation → Test locally
 - **Updating SDK documentation**: Update MDX content → Test code examples → Verify TypeScript types are accurate
 - **Fixing broken links**: Use relative paths like `./page-name` or `../section/page-name`
 - **Adding code examples**: Check for existing snippet → If none exists, follow [Code Blocks Style Guide](CODE_BLOCKS_STYLE_GUIDE.md) → Test the code → Consider creating snippet if used 3+ times
@@ -44,7 +61,7 @@ The WebMCP documentation is organized into the following main sections:
 
 ## Project context
 - Format: MDX files with YAML frontmatter
-- Config: mint.json for navigation, theme, settings
+- Config: docs.json for navigation, theme, settings
 - Components: Mintlify components
 - Organization: WebMCP-org GitHub organization
 - Main repository: https://github.com/WebMCP-org/docs
@@ -73,9 +90,9 @@ The WebMCP documentation is organized into the following main sections:
   - One-off code examples (appears only 1-2 times)
   - Tutorial walkthroughs where step-by-step explanation is key
 
-## mint.json
+## docs.json
 
-- Refer to the [mint.json schema](https://mintlify.com/docs/settings/global) when building the mint.json file and site navigation
+- Refer to the [Mintlify configuration schema](https://mintlify.com/docs/settings/global) when building the docs.json file and site navigation
 - Navigation structure is defined in the "navigation" array
 - Each group has a "group" name and "pages" array
 
@@ -148,7 +165,7 @@ function MyComponent() {
 Use these official Mintlify resources when working on documentation:
 
 ### Essential references
-- **[Global settings](https://mintlify.com/docs/organize/settings)**: Complete mint.json configuration options
+- **[Global settings](https://mintlify.com/docs/organize/settings)**: Complete docs.json configuration options
 - **[Navigation](https://mintlify.com/docs/organize/navigation)**: Structure and customize navigation hierarchy
 - **[Pages](https://mintlify.com/docs/organize/pages)**: Page creation and frontmatter requirements
 - **[Format text](https://mintlify.com/docs/create/text)**: Text formatting, headers, and styling
