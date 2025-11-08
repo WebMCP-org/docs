@@ -2,20 +2,38 @@
 
 ## Documentation structure overview
 
-The WebMCP documentation is organized into the following main sections:
+The WebMCP documentation uses a flat + organized directory structure:
 
-- **Root pages**: Introduction, quickstart, and core concepts (index.mdx, what-is-webmcp.mdx, etc.)
-- **Getting Started**: Installation guides, basic setup, and first steps
-- **Guides**: In-depth tutorials and how-to content for specific use cases
-- **SDK Reference**: SDK documentation, TypeScript types, and usage patterns
-- **Examples**: Code examples and real-world implementations
-- **Resources**: Additional materials, FAQs, and community links
+### Root-level pages
+Core documentation pages live in the repository root:
+- **Introduction & Getting Started**: `introduction.mdx`, `quickstart.mdx`, `development.mdx`
+- **Core Guides**: `best-practices.mdx`, `security.mdx`, `troubleshooting.mdx`, `advanced.mdx`
+- **Use Cases**: `building-mcp-ui-apps.mdx`, `connecting-agents.mdx`, `frontend-tools.mdx`
+- **Examples & Reference**: `examples.mdx`, `live-tool-examples.mdx`, `changelog.mdx`
 
-### Key files
+### Organized directories
+Specialized content is organized into directories:
+- **`/concepts/`**: Core concepts (architecture, tool design, schemas, security, performance, glossary)
+- **`/packages/`**: NPM package reference (react-webmcp, transports, smart-dom-reader, etc.)
+- **`/ai-frameworks/`**: AI framework integrations (assistant-ui, ag-ui, custom runtime)
+- **`/extension/`**: Browser extension documentation (agents, userscripts)
+- **`/tools/`**: Tools documentation (claude-code integration)
+- **`/snippets/`**: Reusable code snippets organized by category (core, templates, validation, imports, patterns, clients)
+
+### Key files & directories
 - `mint.json`: Site configuration, navigation structure, theme settings, and global metadata
+- `docs.json`: Additional documentation metadata
 - `*.mdx`: Documentation pages with frontmatter (title, description, sidebarTitle, icon)
-- `/snippets/`: Reusable content fragments used across multiple pages
-- `/images/`: Static image assets referenced in documentation
+- `/snippets/`: Reusable content fragments used across multiple pages (see USING_SNIPPETS.md)
+  - Organized into subdirectories: `core/`, `templates/`, `validation/`, `imports/`, `patterns/`, `clients/`
+- `/logo/`: Brand assets (mcp-b-logo.png)
+- `/.github/`: GitHub workflows and automation documentation
+
+### Navigation organization
+The site navigation (defined in mint.json) groups pages conceptually, which may differ from the file structure:
+- Navigation groups like "Getting Started", "Guides", "SDK Reference" are organizational concepts
+- These groups pull from various locations (root pages and directories)
+- Always check mint.json to understand the published navigation structure
 
 ## Contributing to the docs
 
