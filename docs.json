@@ -7,6 +7,12 @@
     "light": "/logo/mcp-b-logo.png"
   },
   "favicon": "/favicon.ico",
+  "scripts": [
+    {
+      "src": "https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js",
+      "defer": true
+    }
+  ],
   "description": "WebMCP - W3C standard for making websites AI-accessible. Turn your JavaScript functions into tools that work with Claude, ChatGPT, and custom AI agents via navigator.modelContext.",
   "colors": {
     "primary": "#1F5EFF",
