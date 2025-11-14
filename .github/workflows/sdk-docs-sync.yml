@@ -1,0 +1,143 @@
+name: SDK Docs Sync (Claude)
+
+on:
+  # Accepts event-driven cross-repo triggers
+  repository_dispatch:
+    types: [sdk_changed]
+  # Also allow a direct, parameterized start
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "owner/repo that changed"
+        required: true
+        type: string
+      source_sha:
+        description: "Commit SHA in source repo"
+        required: true
+        type: string
+      compare_url:
+        description: "Optional compare URL"
+        required: false
+        type: string
+      changed_files:
+        description: "Optional newline-separated list of changed files"
+        required: false
+        type: string
+
+permissions:
+  contents: write         # commit changes
+  pull-requests: write    # open PRs
+  actions: read
+
+concurrency:
+  group: docs-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Derive inputs from either repository_dispatch.client_payload or workflow_dispatch.inputs
+      - name: Normalize event payload
+        id: norm
+        shell: bash
+        run: |
+          # From repository_dispatch
+          REPO="${{ github.event.client_payload.repo }}"
+          SHA="${{ github.event.client_payload.sha }}"
+          COMPARE="${{ github.event.client_payload.compare_url }}"
+          CHANGED="${{ github.event.client_payload.changed_files }}"
+
+          # Fall back to workflow_dispatch inputs
+          REPO="${REPO:-${{ inputs.source_repo }}}"
+          SHA="${SHA:-${{ inputs.source_sha }}}"
+          COMPARE="${COMPARE:-${{ inputs.compare_url }}}"
+          CHANGED="${CHANGED:-${{ inputs.changed_files }}}"
+
+          echo "repo=$REPO" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          printf "%s" "$COMPARE" | sed 's/ /%20/g' >/tmp/compare.txt
+          echo "compare_url=$(cat /tmp/compare.txt)" >> $GITHUB_OUTPUT
+
+          # store changed files (if present) in a file for Claude context
+          printf "%s\n" "$CHANGED" > .changed_files.txt
+
+      # Optionally fetch the source repo to give Claude local context to read
+      - name: Checkout source repo at triggering commit (optional)
+        if: ${{ steps.norm.outputs.repo && steps.norm.outputs.sha }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.norm.outputs.repo }}
+          ref: ${{ steps.norm.outputs.sha }}
+          path: source-repo
+          # If private, use a cross-repo token
+          token: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+
+      - name: Run Claude Code to update docs
+        # Use the lower-level base action for full control (prompt + allowed tools)
+        # Pin to a specific version/commit for supply-chain safety
+        uses: anthropics/claude-code-base-action@v0.8.7
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Tools allow reading files & making controlled git changes
+          allowed_tools: "Bash(git:*),View,GlobTool,GrepTool,BatchTool"
+          max_turns: "6"
+          prompt: |
+            You are updating WebMCP documentation to reflect code/API changes in: ${{ steps.norm.outputs.repo }} at commit ${{ steps.norm.outputs.sha }}.
+
+            Context available:
+            - The source repository is checked out in ./source-repo (if present).
+            - The list of changed files (if provided) is in ./.changed_files.txt.
+            - WebMCP documentation uses a flat + organized directory structure:
+              - Root-level pages: introduction.mdx, quickstart.mdx, development.mdx, best-practices.mdx, security.mdx, troubleshooting.mdx, advanced.mdx
+              - /concepts/: Core concepts (architecture, tool design, schemas, security, performance, glossary)
+              - /packages/: NPM package reference (react-webmcp, transports, smart-dom-reader, etc.)
+              - /ai-frameworks/: AI framework integrations (assistant-ui, ag-ui, custom runtime)
+              - /extension/: Browser extension documentation (agents, userscripts)
+              - /tools/: Tools documentation (claude-code integration)
+              - /snippets/: Reusable code snippets (NOT for direct documentation - these are reusable fragments)
+              - changelog.mdx: Product changelog
+            - docs.json: Mintlify configuration with navigation structure
+
+            Your tasks:
+            1) Inspect the changes from ./source-repo or ./.changed_files.txt and determine relevant user-facing documentation updates.
+            2) Update appropriate .mdx files based on:
+               - API changes → update /packages/ reference docs and affected guides
+               - New features → update quickstart.mdx, relevant concept pages, and add to changelog.mdx
+               - Breaking changes → update migration guides and changelog.mdx
+               - Bug fixes → update changelog.mdx if user-facing
+            3) Follow WebMCP documentation standards:
+               - Use second-person voice ("you")
+               - Include prerequisites at the start of procedural content
+               - Follow the Code Blocks Style Guide (use twoslash for TypeScript, specify language, add titles)
+               - Check for existing snippets in /snippets/ before duplicating code
+               - Maintain consistency with existing pages
+            4) Do NOT modify:
+               - CI workflows (.github/workflows/*)
+               - CODEOWNERS
+               - LICENSE
+               - Configuration files (docs.json) unless navigation changes are required
+               - Snippet files (/snippets/*) unless the code pattern has fundamentally changed
+            5) Keep the tone consistent with existing docs: technical, clear, developer-focused.
+            6) After making changes, provide a concise summary (1-2 paragraphs) of what documentation was updated and why.
+
+      - name: Create PR with changes
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "docs: sync with ${{ steps.norm.outputs.repo }}@${{ steps.norm.outputs.sha }}"
+          title: "docs: sync with ${{ steps.norm.outputs.repo }}@${{ steps.norm.outputs.sha }} (Claude)"
+          body: |
+            Automated docs sync triggered by `${{ github.event_name }}` from **${{ steps.norm.outputs.repo }}**.
+
+            Compare: ${{ steps.norm.outputs.compare_url }}
+
+            _Generated/edited by Claude Code._
+          branch: "claude/docs-sync/${{ steps.norm.outputs.repo }}-${{ steps.norm.outputs.sha }}"
+          labels: docs, automated, claude
+          draft: true
