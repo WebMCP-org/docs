@@ -4,18 +4,12 @@ import { useState, useEffect } from 'react';
 
 export const PolyfillSetup = () => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [hasExtension, setHasExtension] = useState(false);
 
   useEffect(() => {
     // Check if polyfill is loaded
     const checkPolyfill = () => {
       if (window.navigator?.modelContext) {
         setIsLoaded(true);
-
-        // Check if extension is installed
-        if (window.navigator.modelContext.isExtensionInstalled) {
-          setHasExtension(true);
-        }
       }
     };
 
@@ -60,30 +54,6 @@ export const PolyfillSetup = () => {
             <span className="text-xs px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
               Active
             </span>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900">
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${hasExtension ? 'bg-green-500' : 'bg-zinc-400'}`} />
-            <div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                MCP-B Extension
-              </p>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                {hasExtension ? 'Installed' : 'Not installed'}
-              </p>
-            </div>
-          </div>
-          {!hasExtension && (
-            <a
-              href="https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-            >
-              Install
-            </a>
           )}
         </div>
       </div>
