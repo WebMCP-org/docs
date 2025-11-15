@@ -1,0 +1,261 @@
+---
+title: 'WebMCP over Model Context Protocol (MCP)'
+description: 'Connect AI assistants to WebMCP documentation through MCP - available for Claude Desktop, Claude Code, Cursor, VS Code, and more'
+sidebarTitle: 'MCP Integration'
+icon: 'plug'
+---
+
+# WebMCP over Model Context Protocol (MCP)
+
+> Extend the capabilities of your AI agents with WebMCP's MCP Server
+
+Supercharge your AI agents with WebMCP documentation access via the Model Context Protocol (MCP) server.
+
+## What is MCP?
+
+MCP is a protocol for integrating tools with AI agents. It greatly enhances the capabilities of your AI agents by providing them with real-time data and context.
+
+WebMCP offers a remote MCP server that you can connect to from most AI clients, giving your assistants instant access to WebMCP documentation, code examples, and best practices.
+
+## How does it work?
+
+You need an MCP-capable agent environment to use WebMCP over MCP. Popular options include Claude Desktop, Claude Code, Cursor, Windsurf, and ChatGPT.
+
+Once connected, your AI assistant can search and reference WebMCP documentation to help you:
+- Implement WebMCP in your applications
+- Troubleshoot integration issues
+- Find relevant code examples
+- Understand best practices and patterns
+
+## Connecting to WebMCP MCP
+
+When you can specify an MCP URL, use `https://docs.mcp-b.ai/mcp`.
+
+If you have to specify a command, use:
+
+```json
+{
+  "mcpServers": {
+    "WebMCP": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://docs.mcp-b.ai/mcp"]
+    }
+  }
+}
+```
+
+## Setup Instructions by Client
+
+<AccordionGroup>
+
+<Accordion title="Claude Code" icon="robot">
+
+Run the following command in your terminal:
+
+```bash
+claude mcp add --transport http "WebMCP" "https://docs.mcp-b.ai/mcp"
+```
+
+Once added, Claude Code will have access to WebMCP documentation when you're working on projects.
+
+<Info>
+See the [Claude Code documentation](./tools/claude-code) for more ways to optimize your WebMCP development workflow.
+</Info>
+
+</Accordion>
+
+<Accordion title="Claude Desktop" icon="desktop">
+
+1. Go to **Settings** → **Connectors**
+2. Click **Add custom connector**
+3. Name it "WebMCP"
+4. Add `https://docs.mcp-b.ai/mcp` as the server URL
+5. Click **Save**
+6. Click **Connect** to enable the WebMCP documentation server
+
+Claude Desktop can now reference WebMCP documentation in your conversations.
+
+</Accordion>
+
+<Accordion title="Cursor" icon="code">
+
+In `.cursor/mcp.json` in your project root, add:
+
+```json
+{
+  "mcpServers": {
+    "WebMCP": {
+      "url": "https://docs.mcp-b.ai/mcp"
+    }
+  }
+}
+```
+
+Restart Cursor for the changes to take effect.
+
+</Accordion>
+
+<Accordion title="Windsurf" icon="wind">
+
+In `mcp_config.json`, add:
+
+```json
+{
+  "mcpServers": {
+    "WebMCP": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://docs.mcp-b.ai/mcp"]
+    }
+  }
+}
+```
+
+Restart Windsurf to connect to the WebMCP documentation server.
+
+</Accordion>
+
+<Accordion title="Codex" icon="terminal">
+
+Add the following to your `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.webmcp]
+command = "npx"
+args = ["-y", "mcp-remote", "https://docs.mcp-b.ai/mcp"]
+```
+
+Restart Codex for the changes to take effect.
+
+</Accordion>
+
+<Accordion title="ChatGPT" icon="message">
+
+<Note>
+MCP is only available for paid users in beta on ChatGPT web, by enabling Developer Mode.
+</Note>
+
+1. Enable **Developer Mode** in ChatGPT settings
+2. Go to **Settings** → **Connectors**
+3. Click **Add MCP server**
+4. Add `https://docs.mcp-b.ai/mcp` as the server URL
+5. Name it "WebMCP"
+6. Click **Save** and **Connect**
+
+ChatGPT can now access WebMCP documentation during conversations.
+
+</Accordion>
+
+<Accordion title="VS Code (Cline Extension)" icon="code">
+
+If you're using the Cline extension for VS Code:
+
+1. Open VS Code settings
+2. Navigate to Cline extension settings
+3. Find **MCP Servers** configuration
+4. Add a new server with:
+   - **Name**: WebMCP
+   - **URL**: `https://docs.mcp-b.ai/mcp`
+5. Save and restart VS Code
+
+Alternatively, edit your Cline configuration file directly:
+
+```json
+{
+  "mcpServers": {
+    "WebMCP": {
+      "url": "https://docs.mcp-b.ai/mcp"
+    }
+  }
+}
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## What you get with WebMCP MCP
+
+Once connected, your AI assistant can:
+
+<CardGroup cols={2}>
+  <Card title="Search Documentation" icon="magnifying-glass">
+    Find relevant pages, code examples, and API references instantly
+  </Card>
+  <Card title="Get Code Examples" icon="code">
+    Access tested TypeScript and JavaScript examples for all WebMCP features
+  </Card>
+  <Card title="Understand Best Practices" icon="lightbulb">
+    Learn recommended patterns for tool registration, security, and performance
+  </Card>
+  <Card title="Troubleshoot Issues" icon="wrench">
+    Get help with common integration problems and debugging techniques
+  </Card>
+</CardGroup>
+
+## Example Usage
+
+After connecting the WebMCP MCP server, you can ask your AI assistant questions like:
+
+<AccordionGroup>
+  <Accordion title="Implementation Questions">
+    - "How do I register a tool with WebMCP in React?"
+    - "Show me how to set up the tab transport"
+    - "What's the best way to validate tool parameters?"
+  </Accordion>
+
+  <Accordion title="Debugging Help">
+    - "Why isn't my tool appearing in Claude Desktop?"
+    - "How do I handle errors in WebMCP tool handlers?"
+    - "What are common CORS issues with WebMCP?"
+  </Accordion>
+
+  <Accordion title="Architecture Questions">
+    - "How does WebMCP's architecture work?"
+    - "What's the difference between client and server transports?"
+    - "How do I secure my WebMCP implementation?"
+  </Accordion>
+</AccordionGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="MCP Documentation" icon="book" href="https://modelcontextprotocol.io">
+    Learn more about the Model Context Protocol
+  </Card>
+  <Card title="WebMCP Quickstart" icon="rocket" href="./quickstart">
+    Get started with WebMCP in your application
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/WebMCP-org">
+    View source code and contribute
+  </Card>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/ZnHG4csJRB">
+    Get help and share your projects
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection fails">
+    - Ensure you have an active internet connection
+    - Verify the URL is correct: `https://docs.mcp-b.ai/mcp`
+    - Try restarting your AI client application
+    - Check if your firewall or proxy is blocking the connection
+  </Accordion>
+
+  <Accordion title="Documentation not appearing">
+    - Confirm the MCP server is connected in your client settings
+    - Try disconnecting and reconnecting the server
+    - Restart your AI client application
+    - Check the client's MCP server logs for errors
+  </Accordion>
+
+  <Accordion title="Outdated information">
+    - The MCP server provides the latest published documentation
+    - If you notice discrepancies, please report them on our [GitHub issues](https://github.com/WebMCP-org/docs/issues)
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+Have questions or issues? Join our [Discord community](https://discord.gg/ZnHG4csJRB) or [open an issue on GitHub](https://github.com/WebMCP-org/docs/issues).
+</Info>
