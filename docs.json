@@ -219,12 +219,13 @@
         ]
       },
       {
-        "tab": "llms.txt",
-        "icon": "file-lines",
+        "tab": "For AI",
+        "icon": "robot",
         "groups": [
           {
-            "group": "AI Indexing",
+            "group": "AI Integration",
             "pages": [
+              "mcp-integration",
               "llms-txt"
             ]
           }
