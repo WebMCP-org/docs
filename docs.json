@@ -83,7 +83,6 @@
           {
             "group": "Guides",
             "pages": [
-              "why-webmcp",
               "connecting-agents",
               "best-practices",
               "development",
@@ -122,7 +121,8 @@
             "icon": "compass",
             "pages": [
               "concepts/overview",
-              "concepts/architecture"
+              "concepts/architecture",
+              "concepts/alternatives"
             ]
           },
           {
@@ -135,10 +135,19 @@
             ]
           },
           {
+            "group": "Architecture & Patterns",
+            "icon": "diagram-project",
+            "pages": [
+              "concepts/tool-routing",
+              "concepts/tool-composition",
+              "concepts/mcp-ui-integration",
+              "concepts/agent-threat-model"
+            ]
+          },
+          {
             "group": "Advanced Topics",
             "icon": "rocket",
             "pages": [
-              "concepts/mcp-ui-integration",
               "concepts/extension",
               "concepts/schemas"
             ]
