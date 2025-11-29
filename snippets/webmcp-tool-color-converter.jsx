@@ -6,10 +6,67 @@ export const ColorConverterTool = () => {
   const [hslOutput, setHslOutput] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
   const [toolCalls, setToolCalls] = useState([]);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [splashColor, setSplashColor] = useState(null);
-  const [colorPalette, setColorPalette] = useState([]);
+  const [executionPhase, setExecutionPhase] = useState(null); // 'scrolling' | 'executing' | 'complete' | null
+  const [lastConversion, setLastConversion] = useState(null);
   const containerRef = useRef(null);
+
+  // Page-level effect overlay - uses the color being converted!
+  const showPageEffect = (color) => {
+    const overlay = document.createElement('div');
+    overlay.id = 'webmcp-page-effect';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: ${color};
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    `;
+    document.body.appendChild(overlay);
+
+    // Fade in with the converted color
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '0.15';
+    });
+
+    return overlay;
+  };
+
+  const hidePageEffect = () => {
+    const overlay = document.getElementById('webmcp-page-effect');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 400);
+    }
+  };
+
+  // Execution sequence: indicate → scroll → wait → execute
+  const startExecution = async (color, onExecute) => {
+    // Phase 1: Show indicator and page effect FIRST (with the actual color!)
+    setExecutionPhase('executing');
+    const hex = color?.startsWith('#') ? color : `#${color}`;
+    showPageEffect(hex);
+
+    // Phase 2: Scroll to tool
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Phase 3: Wait for scroll and visual effect
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Phase 4: Execute the actual function
+    const result = await onExecute();
+
+    // Phase 5: Show completion
+    setExecutionPhase('complete');
+    hidePageEffect();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setExecutionPhase(null);
+
+    return result;
+  };
 
   const hexToRgb = (hex) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -116,80 +173,61 @@ export const ColorConverterTool = () => {
             required: ['color'],
           },
           async execute({ color, outputFormat = 'all' }) {
-            try {
-              // Dramatic color splash animation
-              setIsExecuting(true);
-              setSplashColor(null);
+            return startExecution(color, async () => {
+              try {
+                setToolCalls(prev => [...prev, {
+                  time: new Date().toISOString(),
+                  color,
+                  outputFormat,
+                  status: 'processing'
+                }]);
 
-              if (containerRef.current) {
-                containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const hex = color.startsWith('#') ? color : `#${color}`;
+                const rgb = hexToRgb(hex);
+
+                if (!rgb) {
+                  throw new Error('Invalid HEX color format');
+                }
+
+                const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+                const rgbStr = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+                const hslStr = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+
+                setLastConversion({ hex, rgb: rgbStr, hsl: hslStr });
+
+                let result;
+                if (outputFormat === 'rgb') {
+                  result = rgbStr;
+                } else if (outputFormat === 'hsl') {
+                  result = hslStr;
+                } else {
+                  result = `RGB: ${rgbStr}\nHSL: ${hslStr}`;
+                }
+
+                setToolCalls(prev => prev.map((call, idx) =>
+                  idx === prev.length - 1 ? { ...call, result: { rgb: rgbStr, hsl: hslStr }, status: 'success' } : call
+                ));
+
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Color ${hex} converted:\n${result}`,
+                  }],
+                };
+              } catch (error) {
+                setToolCalls(prev => prev.map((call, idx) =>
+                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                ));
+
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Error converting color: ${error.message}`,
+                  }],
+                  isError: true,
+                };
               }
-
-              setToolCalls(prev => [...prev, {
-                time: new Date().toISOString(),
-                color,
-                outputFormat,
-                status: 'processing'
-              }]);
-
-              const hex = color.startsWith('#') ? color : `#${color}`;
-              const rgb = hexToRgb(hex);
-
-              if (!rgb) {
-                throw new Error('Invalid HEX color format');
-              }
-
-              // Trigger color splash effect
-              setTimeout(() => setSplashColor(hex), 100);
-
-              // Generate color palette
-              const palette = generatePalette(hex);
-              setColorPalette(palette);
-
-              const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-              const rgbStr = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-              const hslStr = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
-
-              let result;
-              if (outputFormat === 'rgb') {
-                result = rgbStr;
-              } else if (outputFormat === 'hsl') {
-                result = hslStr;
-              } else {
-                result = `RGB: ${rgbStr}\nHSL: ${hslStr}`;
-              }
-
-              setToolCalls(prev => prev.map((call, idx) =>
-                idx === prev.length - 1 ? { ...call, result: { rgb: rgbStr, hsl: hslStr }, status: 'success' } : call
-              ));
-
-              // Clear execution highlight after delay
-              setTimeout(() => {
-                setIsExecuting(false);
-                setSplashColor(null);
-              }, 3500);
-
-              return {
-                content: [{
-                  type: 'text',
-                  text: `Color ${hex} converted:\n${result}`,
-                }],
-              };
-            } catch (error) {
-              setToolCalls(prev => prev.map((call, idx) =>
-                idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-              ));
-
-              setTimeout(() => setIsExecuting(false), 2000);
-
-              return {
-                content: [{
-                  type: 'text',
-                  text: `Error converting color: ${error.message}`,
-                }],
-                isError: true,
-              };
-            }
+            });
           },
         });
 
@@ -237,139 +275,120 @@ export const ColorConverterTool = () => {
     handleConvert();
   }, [hexInput]);
 
+  const isActive = executionPhase !== null;
+
   return (
     <div
       ref={containerRef}
-      className={`not-prose border rounded-xl p-6 space-y-4 transition-all duration-500 relative overflow-hidden ${
-        isExecuting
-          ? 'border-transparent shadow-2xl ring-4 ring-opacity-50 scale-[1.02]'
+      className={`not-prose border rounded-xl p-6 space-y-4 transition-all duration-300 relative ${
+        isActive
+          ? 'border-[#1F5EFF] shadow-lg shadow-[#1F5EFF]/10 ring-2 ring-[#1F5EFF]/20'
           : 'border-zinc-200 dark:border-white/10'
       }`}
-      style={{
-        ringColor: splashColor || undefined,
-        boxShadow: splashColor ? `0 25px 50px -12px ${splashColor}40` : undefined,
-      }}
     >
-      {/* Color splash effect - expanding circles */}
-      {splashColor && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {/* Central expanding ring */}
+      {/* Execution status bar */}
+      {isActive && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-t-xl overflow-hidden">
           <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-ping"
-            style={{
-              backgroundColor: splashColor,
-              width: '200%',
-              height: '200%',
-              opacity: 0.15,
-              animationDuration: '1.5s',
-            }}
+            className={`h-full bg-[#1F5EFF] transition-all duration-500 ${
+              executionPhase === 'executing' ? 'w-2/3 animate-pulse' :
+              'w-full'
+            }`}
           />
-          {/* Color burst particles */}
-          {[...Array(8)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                backgroundColor: splashColor,
-                width: '20px',
-                height: '20px',
-                left: '50%',
-                top: '50%',
-                transform: `rotate(${i * 45}deg) translateY(-80px)`,
-                opacity: 0.6,
-                animation: 'ping 1s ease-out forwards',
-                animationDelay: `${i * 0.05}s`,
-              }}
-            />
-          ))}
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4 relative z-10">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">
             Color Converter Tool
           </h3>
-          {isExecuting && (
-            <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full text-white animate-pulse shadow-lg"
-              style={{ backgroundColor: splashColor || '#3b82f6' }}
-            >
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              AI Converting...
+          {isActive && (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1F5EFF]/10 text-[#1F5EFF] dark:bg-[#1F5EFF]/20 dark:text-[#4B7BFF]">
+              {executionPhase === 'executing' && (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Converting...
+                </>
+              )}
+              {executionPhase === 'complete' && (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Complete
+                </>
+              )}
             </span>
           )}
         </div>
-        {isRegistered && !isExecuting && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            Tool Registered
+        {isRegistered && !isActive && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Ready
           </span>
         )}
       </div>
 
       {/* WebMCP capability badge */}
-      <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-4 relative z-10">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
         <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">enum</span>
         <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">default</span>
         <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">optional</span>
         <span>Complex schemas with enums and defaults</span>
       </div>
 
-      <div className="space-y-3 relative z-10">
+      <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             HEX Color
           </label>
           <div className="flex gap-2">
             <div
-              className="w-12 h-12 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 flex-shrink-0 transition-transform duration-300"
-              style={{
-                backgroundColor: hexInput,
-                transform: isExecuting ? 'scale(1.1)' : 'scale(1)',
-              }}
+              className="w-12 h-12 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 flex-shrink-0 transition-all duration-300"
+              style={{ backgroundColor: hexInput }}
             />
             <input
               type="text"
               value={hexInput}
               onChange={(e) => setHexInput(e.target.value)}
               placeholder="#3b82f6"
-              className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-2 focus:ring-[#1F5EFF] focus:border-transparent transition-shadow"
             />
           </div>
         </div>
 
-        {/* AI Color Palette Display */}
-        {isExecuting && colorPalette.length > 0 && (
-          <div className="p-4 rounded-xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur border border-zinc-200 dark:border-zinc-700">
-            <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-3">AI Generated Palette:</p>
-            <div className="flex gap-2">
-              {colorPalette.map((color, idx) => (
-                <div
-                  key={idx}
-                  className="flex-1 h-16 rounded-lg shadow-lg transition-all duration-500"
-                  style={{
-                    backgroundColor: color,
-                    transform: `scale(${1 - idx * 0.02})`,
-                    animationDelay: `${idx * 0.1}s`,
-                  }}
-                >
-                  <div className="h-full w-full flex items-end justify-center pb-1">
-                    <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-black/20 text-white">
-                      {color}
-                    </span>
-                  </div>
-                </div>
-              ))}
+        {/* AI Conversion Result */}
+        {(executionPhase === 'executing' || executionPhase === 'complete') && lastConversion && (
+          <div className="p-4 rounded-lg bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20">
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-lg border-2 border-[#1F5EFF]/30"
+                style={{ backgroundColor: lastConversion.hex }}
+              />
+              <div>
+                <p className="text-xs font-medium text-[#1F5EFF] dark:text-[#4B7BFF] uppercase tracking-wide">AI Result</p>
+                <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100">{lastConversion.hex}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-2 rounded bg-white/50 dark:bg-zinc-800/50">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">RGB</p>
+                <p className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{lastConversion.rgb}</p>
+              </div>
+              <div className="p-2 rounded bg-white/50 dark:bg-zinc-800/50">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">HSL</p>
+                <p className="font-mono text-xs text-zinc-900 dark:text-zinc-100">{lastConversion.hsl}</p>
+              </div>
             </div>
           </div>
         )}
 
-        {rgbOutput && !isExecuting && (
-          <div className="space-y-2">
+        {rgbOutput && !isActive && (
+          <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-lg bg-zinc-100 dark:bg-zinc-800">
               <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">RGB</p>
               <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100">{rgbOutput}</p>
@@ -383,62 +402,53 @@ export const ColorConverterTool = () => {
       </div>
 
       {toolCalls.length > 0 && (
-        <div className="mt-6 pt-6 border-t dark:border-white/10 relative z-10">
-          <h4 className="text-sm font-semibold mb-3">
-            Recent AI Tool Calls
+        <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">
+            Recent Calls
           </h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {toolCalls.slice(-5).reverse().map((call, idx) => (
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {toolCalls.slice(-3).reverse().map((call, idx) => (
               <div
                 key={idx}
-                className={`p-3 rounded-lg border text-sm transition-all duration-300 ${
+                className={`p-3 rounded-lg text-sm transition-all duration-200 ${
                   call.status === 'processing'
-                    ? 'bg-primary/10 border-primary/30 animate-pulse'
+                    ? 'bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20'
                     : call.status === 'success'
-                    ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
-                    : call.status === 'error'
-                    ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-                    : 'bg-background-light dark:bg-background-dark border dark:border-white/10'
+                    ? 'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700'
+                    : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800'
                 }`}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <div
-                    className="w-8 h-8 rounded-lg border dark:border-white/10 flex-shrink-0 shadow-sm"
-                    style={{ backgroundColor: call.color }}
-                  />
-                  <div className="flex-1">
-                    <code className="text-primary">{call.color}</code>
-                    {call.outputFormat && call.outputFormat !== 'all' && (
-                      <span className="ml-2 text-xs text-zinc-500">({call.outputFormat})</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-6 h-6 rounded border border-zinc-300 dark:border-zinc-600"
+                      style={{ backgroundColor: call.color }}
+                    />
+                    <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">{call.color}</code>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {call.status === 'processing' && (
+                      <svg className="w-3.5 h-3.5 animate-spin text-[#1F5EFF]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {call.status === 'success' && (
+                      <svg className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                    {call.status === 'error' && (
+                      <svg className="w-3.5 h-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     )}
                   </div>
-                  {call.status === 'processing' && (
-                    <svg className="w-4 h-4 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  {call.status === 'success' && (
-                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  {call.status === 'error' && (
-                    <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  )}
                 </div>
-                {call.result && (
-                  <div className="space-y-1 font-mono text-xs opacity-70">
-                    <div>{call.result.rgb}</div>
-                    <div>{call.result.hsl}</div>
-                  </div>
-                )}
                 {call.error && (
-                  <div className="text-xs text-red-600 dark:text-red-400 font-medium">
-                    Error: {call.error}
-                  </div>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {call.error}
+                  </p>
                 )}
               </div>
             ))}

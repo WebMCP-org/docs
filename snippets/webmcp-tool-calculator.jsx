@@ -5,32 +5,65 @@ export const CalculatorTool = () => {
   const [expression, setExpression] = useState('2 + 2');
   const [isRegistered, setIsRegistered] = useState(false);
   const [toolCalls, setToolCalls] = useState([]);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [animatedResult, setAnimatedResult] = useState(null);
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [executionPhase, setExecutionPhase] = useState(null); // 'scrolling' | 'executing' | 'complete' | null
+  const [lastResult, setLastResult] = useState(null);
   const containerRef = useRef(null);
 
-  // Animate number counting up to result
-  const animateNumber = (target, duration = 800) => {
-    const start = 0;
-    const startTime = performance.now();
+  // Page-level effect overlay
+  const showPageEffect = (color = '#1F5EFF') => {
+    const overlay = document.createElement('div');
+    overlay.id = 'webmcp-page-effect';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: ${color};
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    `;
+    document.body.appendChild(overlay);
 
-    const animate = (currentTime) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+    // Fade in
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '0.08';
+    });
 
-      // Easing function for smooth animation
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      const current = start + (target - start) * easeOut;
+    return overlay;
+  };
 
-      setAnimatedResult(progress < 1 ? current.toFixed(2) : target);
+  const hidePageEffect = () => {
+    const overlay = document.getElementById('webmcp-page-effect');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 300);
+    }
+  };
 
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
+  // Execution sequence: indicate → scroll → wait → execute
+  const startExecution = async (onExecute) => {
+    // Phase 1: Show indicator and page effect FIRST
+    setExecutionPhase('executing');
+    const overlay = showPageEffect('#1F5EFF');
 
-    requestAnimationFrame(animate);
+    // Phase 2: Scroll to tool
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Phase 3: Wait for scroll and visual effect
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Phase 4: Execute the actual function
+    const result = await onExecute();
+
+    // Phase 5: Show completion
+    setExecutionPhase('complete');
+    hidePageEffect();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setExecutionPhase(null);
+
+    return result;
   };
 
   useEffect(() => {
@@ -55,71 +88,47 @@ export const CalculatorTool = () => {
             required: ['expression'],
           },
           async execute({ expression }) {
-            try {
-              // Dramatic highlight and scroll to tool when AI executes it
-              setIsExecuting(true);
-              setShowCelebration(false);
-              setAnimatedResult(null);
+            return startExecution(async () => {
+              try {
+                // Track the tool call
+                setToolCalls(prev => [...prev, {
+                  time: new Date().toISOString(),
+                  expression,
+                  status: 'processing'
+                }]);
 
-              if (containerRef.current) {
-                containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Safe evaluation using Function constructor with Math context
+                const sanitized = expression
+                  .replace(/[^0-9+\-*/().,\s]/g, '')
+                  .replace(/Math\./g, '');
+
+                const result = Function(`"use strict"; return (${sanitized})`)();
+                setLastResult(result);
+
+                setToolCalls(prev => prev.map((call, idx) =>
+                  idx === prev.length - 1 ? { ...call, result, status: 'success' } : call
+                ));
+
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `The result of ${expression} is ${result}`,
+                  }],
+                };
+              } catch (error) {
+                setToolCalls(prev => prev.map((call, idx) =>
+                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                ));
+
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Error evaluating expression: ${error.message}`,
+                  }],
+                  isError: true,
+                };
               }
-
-              // Track the tool call
-              setToolCalls(prev => [...prev, {
-                time: new Date().toISOString(),
-                expression,
-                status: 'processing'
-              }]);
-
-              // Safe evaluation using Function constructor with Math context
-              const sanitized = expression
-                .replace(/[^0-9+\-*/().,\s]/g, '')
-                .replace(/Math\./g, '');
-
-              const result = Function(`"use strict"; return (${sanitized})`)();
-
-              // Animate the result number
-              if (typeof result === 'number' && isFinite(result)) {
-                animateNumber(result);
-              } else {
-                setAnimatedResult(result);
-              }
-
-              // Trigger celebration animation
-              setTimeout(() => setShowCelebration(true), 300);
-
-              setToolCalls(prev => prev.map((call, idx) =>
-                idx === prev.length - 1 ? { ...call, result, status: 'success' } : call
-              ));
-
-              // Clear execution highlight after delay
-              setTimeout(() => {
-                setIsExecuting(false);
-                setShowCelebration(false);
-              }, 3000);
-
-              return {
-                content: [{
-                  type: 'text',
-                  text: `The result of ${expression} is ${result}`,
-                }],
-              };
-            } catch (error) {
-              setToolCalls(prev => prev.map((call, idx) =>
-                idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-              ));
-
-              setTimeout(() => setIsExecuting(false), 2000);
-
-              return {
-                content: [{
-                  type: 'text',
-                  text: `Error evaluating expression: ${error.message}`,
-                }],
-                isError: true,
-              };
-            }
+            });
           },
         });
 
@@ -156,64 +165,71 @@ export const CalculatorTool = () => {
     }
   };
 
+  const isActive = executionPhase !== null;
+
   return (
     <div
       ref={containerRef}
-      className={`not-prose border rounded-xl p-6 space-y-4 transition-all duration-500 relative overflow-hidden ${
-        isExecuting
-          ? 'border-blue-500 dark:border-blue-400 shadow-2xl shadow-blue-500/30 ring-4 ring-blue-500/30 scale-[1.02]'
+      className={`not-prose border rounded-xl p-6 space-y-4 transition-all duration-300 relative ${
+        isActive
+          ? 'border-[#1F5EFF] shadow-lg shadow-[#1F5EFF]/10 ring-2 ring-[#1F5EFF]/20'
           : 'border-zinc-200 dark:border-white/10'
       }`}
     >
-      {/* Celebration particles */}
-      {showCelebration && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-3 h-3 rounded-full animate-ping"
-              style={{
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5],
-                left: `${10 + (i * 7)}%`,
-                top: `${20 + (i % 3) * 25}%`,
-                animationDelay: `${i * 0.1}s`,
-                animationDuration: '1s',
-              }}
-            />
-          ))}
+      {/* Execution status bar */}
+      {isActive && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-t-xl overflow-hidden">
+          <div
+            className={`h-full bg-[#1F5EFF] transition-all duration-500 ${
+              executionPhase === 'executing' ? 'w-2/3 animate-pulse' :
+              'w-full'
+            }`}
+          />
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">
             Calculator Tool
           </h3>
-          {isExecuting && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full bg-blue-500 text-white animate-pulse shadow-lg shadow-blue-500/50">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              AI Computing...
+          {isActive && (
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1F5EFF]/10 text-[#1F5EFF] dark:bg-[#1F5EFF]/20 dark:text-[#4B7BFF]">
+              {executionPhase === 'executing' && (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Computing...
+                </>
+              )}
+              {executionPhase === 'complete' && (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Complete
+                </>
+              )}
             </span>
           )}
         </div>
-        {isRegistered && !isExecuting && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            Tool Registered
+        {isRegistered && !isActive && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Ready
           </span>
         )}
       </div>
 
       {/* WebMCP capability badge */}
-      <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-4">
+      <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
         <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">registerTool()</span>
         <span>Basic tool registration with simple input schema</span>
       </div>
 
-      {!isRegistered && !isExecuting && (
+      {!isRegistered && !isActive && (
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
           <p className="text-sm text-amber-800 dark:text-amber-200">
             WebMCP not detected. Install the MCP-B extension to enable AI agent integration.
@@ -232,26 +248,26 @@ export const CalculatorTool = () => {
             onChange={(e) => setExpression(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCalculate()}
             placeholder="Enter expression (e.g., 2 + 2 * 3)"
-            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1F5EFF] focus:border-transparent transition-shadow"
           />
         </div>
 
         <button
           onClick={handleCalculate}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          className="w-full px-4 py-2 bg-[#1F5EFF] hover:bg-[#1449CC] text-white font-medium rounded-lg transition-colors"
         >
           Calculate
         </button>
 
-        {/* Animated AI Result Display */}
-        {animatedResult !== null && isExecuting && (
-          <div className={`p-6 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white transform transition-all duration-500 ${showCelebration ? 'scale-105' : 'scale-100'}`}>
-            <p className="text-sm font-medium opacity-80 mb-1">AI Result:</p>
-            <p className="text-4xl font-bold font-mono tracking-tight">{animatedResult}</p>
+        {/* AI Result Display */}
+        {(executionPhase === 'executing' || executionPhase === 'complete') && lastResult !== null && (
+          <div className="p-4 rounded-lg bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20">
+            <p className="text-xs font-medium text-[#1F5EFF] dark:text-[#4B7BFF] mb-1 uppercase tracking-wide">AI Result</p>
+            <p className="text-2xl font-bold font-mono text-zinc-900 dark:text-zinc-100">{lastResult}</p>
           </div>
         )}
 
-        {result && !isExecuting && (
+        {result && !isActive && (
           <div className="p-4 rounded-lg bg-zinc-100 dark:bg-zinc-800">
             <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1">Result:</p>
             <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{result}</p>
@@ -260,51 +276,49 @@ export const CalculatorTool = () => {
       </div>
 
       {toolCalls.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
-          <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
-            AI Agent Tool Calls
+        <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">
+            Recent Calls
           </h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {toolCalls.slice(-5).reverse().map((call, idx) => (
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {toolCalls.slice(-3).reverse().map((call, idx) => (
               <div
                 key={idx}
-                className={`p-3 rounded-lg border text-sm transition-all duration-300 ${
+                className={`p-3 rounded-lg text-sm transition-all duration-200 ${
                   call.status === 'processing'
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 animate-pulse'
+                    ? 'bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20'
                     : call.status === 'success'
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                    : call.status === 'error'
-                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                    : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                    ? 'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700'
+                    : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <code className="text-blue-600 dark:text-blue-400 flex-1">{call.expression}</code>
-                  {call.status === 'processing' && (
-                    <svg className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
-                  {call.status === 'success' && (
-                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                  {call.status === 'error' && (
-                    <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  )}
+                <div className="flex items-center justify-between">
+                  <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">{call.expression}</code>
+                  <div className="flex items-center gap-2">
+                    {call.result !== undefined && (
+                      <span className="font-mono font-semibold text-zinc-900 dark:text-zinc-100">= {call.result}</span>
+                    )}
+                    {call.status === 'processing' && (
+                      <svg className="w-3.5 h-3.5 animate-spin text-[#1F5EFF]" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    )}
+                    {call.status === 'success' && (
+                      <svg className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                    {call.status === 'error' && (
+                      <svg className="w-3.5 h-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                  </div>
                 </div>
-                {call.result !== undefined && (
-                  <p className="text-zinc-600 dark:text-zinc-400">
-                    Result: <span className="font-mono font-semibold">{call.result}</span>
-                  </p>
-                )}
                 {call.error && (
-                  <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                    Error: {call.error}
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    {call.error}
                   </p>
                 )}
               </div>
@@ -312,7 +326,6 @@ export const CalculatorTool = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
