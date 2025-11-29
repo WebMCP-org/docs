@@ -1,48 +1,30 @@
 // Interactive Quickstart Component
 // A tool builder that shows code being generated in real-time with syntax highlighting
-import { useState, useEffect, useRef } from 'react';
-
-// Simple syntax highlighter for JavaScript/TypeScript
-const highlightCode = (code) => {
-  // Order matters - do strings and comments first to avoid highlighting keywords inside them
-  const patterns = [
-    // Comments
-    { regex: /(\/\/.*$)/gm, class: 'text-zinc-500' },
-    // Strings (single, double, template)
-    { regex: /(`[^`]*`|'[^']*'|"[^"]*")/g, class: 'text-green-400' },
-    // Keywords
-    { regex: /\b(import|export|from|async|await|function|const|let|var|return|if|else|try|catch|throw|new|class|extends|type|interface)\b/g, class: 'text-purple-400' },
-    // Built-ins and types
-    { regex: /\b(navigator|window|document|console|Promise|Object|Array|String|Number|Boolean)\b/g, class: 'text-yellow-400' },
-    // Functions/methods (word followed by parenthesis)
-    { regex: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, class: 'text-blue-400' },
-    // Properties after dot
-    { regex: /\.([a-zA-Z_][a-zA-Z0-9_]*)/g, class: 'text-cyan-400', replace: '.<span class="$class">$1</span>' },
-    // Numbers
-    { regex: /\b(\d+)\b/g, class: 'text-orange-400' },
-    // JSX/HTML tags
-    { regex: /(&lt;\/?[a-zA-Z][a-zA-Z0-9]*)/g, class: 'text-red-400' },
-  ];
-
-  // Escape HTML first
-  let result = code
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Apply highlighting patterns
-  patterns.forEach(({ regex, class: className, replace }) => {
-    if (replace) {
-      result = result.replace(regex, replace.replace('$class', className));
-    } else {
-      result = result.replace(regex, `<span class="${className}">$1</span>`);
-    }
-  });
-
-  return result;
-};
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 export const InteractiveQuickstart = () => {
+  // Simple syntax highlighter for JavaScript/TypeScript - defined inside component for Mintlify compatibility
+  const highlightCode = (code) => {
+    const patterns = [
+      { regex: /(\/\/.*$)/gm, cls: 'text-zinc-500' },
+      { regex: /(`[^`]*`|'[^']*'|"[^"]*")/g, cls: 'text-green-400' },
+      { regex: /\b(import|export|from|async|await|function|const|let|var|return|if|else|try|catch|throw|new|class|extends|type|interface)\b/g, cls: 'text-purple-400' },
+      { regex: /\b(navigator|window|document|console|Promise|Object|Array|String|Number|Boolean)\b/g, cls: 'text-yellow-400' },
+      { regex: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, cls: 'text-blue-400' },
+      { regex: /\b(\d+)\b/g, cls: 'text-orange-400' },
+    ];
+
+    let result = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    patterns.forEach(({ regex, cls }) => {
+      result = result.replace(regex, `<span class="${cls}">$1</span>`);
+    });
+
+    return result;
+  };
   const [isPolyfillLoaded, setIsPolyfillLoaded] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
