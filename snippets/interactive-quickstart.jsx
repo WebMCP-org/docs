@@ -1,31 +1,10 @@
 // Interactive Quickstart Component
 // A tool builder that shows code being generated in real-time with syntax highlighting
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
 export const InteractiveQuickstart = () => {
-  // Simple syntax highlighter for JavaScript/TypeScript - defined inside component for Mintlify compatibility
-  const highlightCode = (code) => {
-    const patterns = [
-      { regex: /(\/\/.*$)/gm, cls: 'text-zinc-500' },
-      { regex: /(`[^`]*`|'[^']*'|"[^"]*")/g, cls: 'text-green-400' },
-      { regex: /\b(import|export|from|async|await|function|const|let|var|return|if|else|try|catch|throw|new|class|extends|type|interface)\b/g, cls: 'text-purple-400' },
-      { regex: /\b(navigator|window|document|console|Promise|Object|Array|String|Number|Boolean)\b/g, cls: 'text-yellow-400' },
-      { regex: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, cls: 'text-blue-400' },
-      { regex: /\b(\d+)\b/g, cls: 'text-orange-400' },
-    ];
-
-    let result = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-
-    patterns.forEach(({ regex, cls }) => {
-      result = result.replace(regex, `<span class="${cls}">$1</span>`);
-    });
-
-    return result;
-  };
   const [isPolyfillLoaded, setIsPolyfillLoaded] = useState(false);
+  const [highlightVersion, setHighlightVersion] = useState(0); // Force re-render when Prism loads
   const [isRegistered, setIsRegistered] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -55,15 +34,31 @@ export const InteractiveQuickstart = () => {
         setIsPolyfillLoaded(true);
       }
     };
+
     checkPolyfill();
     window.addEventListener('webmcp-loaded', checkPolyfill);
-    return () => window.removeEventListener('webmcp-loaded', checkPolyfill);
+
+    // Check for Prism periodically and force re-render when ready
+    const prismInterval = setInterval(() => {
+      if (typeof window !== 'undefined' && window.Prism && window.Prism.languages?.javascript) {
+        setHighlightVersion(v => v + 1);
+        clearInterval(prismInterval);
+      }
+    }, 100);
+
+    // Timeout after 5 seconds
+    const timeout = setTimeout(() => clearInterval(prismInterval), 5000);
+
+    return () => {
+      window.removeEventListener('webmcp-loaded', checkPolyfill);
+      clearInterval(prismInterval);
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Generate code for different frameworks
   const generateCode = (framework) => {
     const paramName = toolConfig.parameters[0]?.name || 'input';
-    const paramDesc = toolConfig.parameters[0]?.description || 'Input parameter';
 
     if (framework === 'react') {
       const zodSchema = toolConfig.parameters
@@ -148,6 +143,62 @@ ${schemaProps}
   });
 </script>`;
     }
+
+    return '';
+  };
+
+  // Escape HTML for fallback - defined first since highlightCode uses it
+  const escapeHtml = useCallback((str) => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }, []);
+
+  // Highlight code using Prism with fallback
+  const highlightCode = useCallback((code, language) => {
+    if (typeof window === 'undefined') {
+      return escapeHtml(code);
+    }
+
+    const Prism = window.Prism;
+    if (!Prism || !Prism.languages) {
+      return escapeHtml(code);
+    }
+
+    // Map language names to Prism language keys with fallbacks
+    const langMap = {
+      'tsx': Prism.languages.tsx || Prism.languages.jsx || Prism.languages.javascript,
+      'jsx': Prism.languages.jsx || Prism.languages.javascript,
+      'javascript': Prism.languages.javascript,
+      'markup': Prism.languages.markup || Prism.languages.html,
+      'html': Prism.languages.markup || Prism.languages.html,
+    };
+
+    const grammar = langMap[language] || Prism.languages.javascript;
+
+    if (grammar) {
+      try {
+        return Prism.highlight(code, grammar, language);
+      } catch (e) {
+        console.warn('Prism highlight error:', e);
+        return escapeHtml(code);
+      }
+    }
+
+    return escapeHtml(code);
+  }, [highlightVersion, escapeHtml]); // Re-create when Prism loads
+
+  // Get language for current tab
+  const getLanguage = () => {
+    switch (activeTab) {
+      case 'react': return 'jsx'; // Use jsx instead of tsx for better compatibility
+      case 'vanilla': return 'javascript';
+      case 'script': return 'markup';
+      default: return 'javascript';
+    }
   };
 
   // Register the tool
@@ -157,7 +208,6 @@ ${schemaProps}
       return;
     }
 
-    // Unregister previous if exists
     if (registrationRef.current) {
       try {
         registrationRef.current.unregister?.();
@@ -185,7 +235,6 @@ ${schemaProps}
         description: toolConfig.description,
         inputSchema: schema,
         execute: async (args) => {
-          // Show execution modal
           setIsExecuting(true);
           setShowSuccessModal(true);
 
@@ -220,7 +269,6 @@ ${schemaProps}
     const inputValue = testInput[paramName] || 'friend';
     const result = `Hello, ${inputValue}!`;
 
-    // Simulate execution delay for effect
     setTimeout(() => {
       setTestResult({ success: true, result, input: inputValue });
     }, 500);
@@ -246,7 +294,6 @@ ${schemaProps}
         i === index ? { ...p, [field]: value } : p
       )
     }));
-    // Update test input key if name changed
     if (field === 'name') {
       const oldName = toolConfig.parameters[index].name;
       setTestInput(prev => {
@@ -260,6 +307,17 @@ ${schemaProps}
     }
   };
 
+  // Generate and highlight code - memoized for performance and reactivity
+  const code = useMemo(() => generateCode(activeTab), [activeTab, toolConfig]);
+  const language = getLanguage();
+  const highlightedCode = useMemo(
+    () => highlightCode(code, language),
+    [code, language, highlightCode]
+  );
+
+  // Create a unique key to force re-render when code changes
+  const codeKey = useMemo(() => `${activeTab}-${toolConfig.name}-${toolConfig.description}-${highlightVersion}`, [activeTab, toolConfig.name, toolConfig.description, highlightVersion]);
+
   return (
     <div
       ref={containerRef}
@@ -269,37 +327,85 @@ ${schemaProps}
           : 'border-zinc-200 dark:border-white/10'
       }`}
     >
+      {/* Prism.js dark theme styles - One Dark inspired */}
+      <style>{`
+        /* Base code styling */
+        pre code { color: #abb2bf; }
+
+        /* Comments */
+        .token.comment, .token.prolog, .token.doctype, .token.cdata {
+          color: #5c6370;
+          font-style: italic;
+        }
+
+        /* Punctuation and operators */
+        .token.punctuation { color: #abb2bf; }
+        .token.operator { color: #56b6c2; }
+
+        /* Strings */
+        .token.string, .token.char, .token.attr-value { color: #98c379; }
+
+        /* Numbers and booleans */
+        .token.number, .token.boolean, .token.constant { color: #d19a66; }
+
+        /* Keywords */
+        .token.keyword, .token.atrule { color: #c678dd; }
+
+        /* Functions and classes */
+        .token.function { color: #61afef; }
+        .token.class-name { color: #e5c07b; }
+
+        /* Variables and properties */
+        .token.property { color: #e06c75; }
+        .token.variable { color: #e06c75; }
+        .token.attr-name { color: #d19a66; }
+
+        /* Tags (HTML/JSX) */
+        .token.tag { color: #e06c75; }
+        .token.tag .token.punctuation { color: #abb2bf; }
+        .token.tag .token.attr-name { color: #d19a66; }
+        .token.tag .token.attr-value { color: #98c379; }
+        .token.tag .token.script { color: #abb2bf; }
+
+        /* Built-ins and selectors */
+        .token.builtin, .token.symbol { color: #56b6c2; }
+        .token.selector { color: #e06c75; }
+
+        /* Regex and important */
+        .token.regex { color: #56b6c2; }
+        .token.important { color: #c678dd; font-weight: bold; }
+
+        /* Inserted and deleted (diff) */
+        .token.inserted { color: #98c379; }
+        .token.deleted { color: #e06c75; }
+
+        @keyframes drawCheck {
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes bounce-in {
+          0% { transform: scale(0.3); opacity: 0; }
+          50% { transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-bounce-in { animation: bounce-in 0.5s ease; }
+      `}</style>
+
       {/* Execution Success Modal Overlay */}
       {showSuccessModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full transform animate-bounce-in text-center">
-            {/* Animated checkmark */}
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <svg
-                className="w-10 h-10 text-green-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={3}
-              >
+              <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M5 13l4 4L19 7"
-                  className="animate-draw-check"
-                  style={{
-                    strokeDasharray: 24,
-                    strokeDashoffset: 24,
-                    animation: 'drawCheck 0.5s ease forwards 0.2s'
-                  }}
+                  style={{ strokeDasharray: 24, strokeDashoffset: 24, animation: 'drawCheck 0.5s ease forwards 0.2s' }}
                 />
               </svg>
             </div>
-
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
-              Tool Executed!
-            </h3>
-
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Tool Executed!</h3>
             {testResult ? (
               <div className="space-y-3">
                 <div className="p-3 rounded-lg bg-zinc-100 dark:bg-zinc-700 text-left">
@@ -310,9 +416,7 @@ ${schemaProps}
                 </div>
                 <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30 text-left">
                   <p className="text-xs text-green-600 dark:text-green-400 mb-1">Output:</p>
-                  <p className="font-mono text-sm text-green-700 dark:text-green-300">
-                    {testResult.result}
-                  </p>
+                  <p className="font-mono text-sm text-green-700 dark:text-green-300">{testResult.result}</p>
                 </div>
               </div>
             ) : (
@@ -324,35 +428,13 @@ ${schemaProps}
                 Processing...
               </div>
             )}
-
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-4">
-              This is what happens when an AI calls your tool
-            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-4">This is what happens when an AI calls your tool</p>
           </div>
         </div>
       )}
 
-      {/* Animation styles */}
-      <style>{`
-        @keyframes drawCheck {
-          to {
-            stroke-dashoffset: 0;
-          }
-        }
-        @keyframes bounce-in {
-          0% { transform: scale(0.3); opacity: 0; }
-          50% { transform: scale(1.05); }
-          70% { transform: scale(0.9); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-bounce-in {
-          animation: bounce-in 0.5s ease;
-        }
-      `}</style>
-
       {/* Two-column layout */}
       <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200 dark:divide-white/10">
-
         {/* Left: Form */}
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -372,9 +454,7 @@ ${schemaProps}
 
           {/* Tool Name */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Tool Name
-            </label>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tool Name</label>
             <input
               type="text"
               value={toolConfig.name}
@@ -390,9 +470,7 @@ ${schemaProps}
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Description</label>
             <input
               type="text"
               value={toolConfig.description}
@@ -405,9 +483,7 @@ ${schemaProps}
 
           {/* Parameter */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Input Parameter
-            </label>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Input Parameter</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -449,7 +525,6 @@ ${schemaProps}
           {isRegistered && (
             <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
               <h5 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Test Your Tool</h5>
-
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -482,16 +557,10 @@ ${schemaProps}
                   )}
                 </button>
               </div>
-
               <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                 <p className="text-xs text-blue-700 dark:text-blue-300">
                   <strong>Try it with AI:</strong> Open the{' '}
-                  <a
-                    href="https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:no-underline font-medium"
-                  >
+                  <a href="https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline font-medium">
                     MCP-B extension
                   </a>
                   {' '}and ask Claude to use your <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800 font-mono">{toolConfig.name}</code> tool.
@@ -527,9 +596,7 @@ ${schemaProps}
             <button
               onClick={copyCode}
               className={`px-3 py-1.5 m-1.5 text-xs font-medium rounded transition-all flex items-center gap-1.5 ${
-                copied
-                  ? 'bg-green-600 text-white'
-                  : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
+                copied ? 'bg-green-600 text-white' : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
               }`}
             >
               {copied ? (
@@ -550,12 +617,13 @@ ${schemaProps}
             </button>
           </div>
 
-          {/* Code with syntax highlighting */}
+          {/* Code with Prism syntax highlighting */}
           <div className="flex-1 overflow-auto">
-            <pre className="p-4 text-sm leading-relaxed font-mono">
+            <pre className="p-4 text-sm leading-relaxed font-mono m-0 text-zinc-100">
               <code
-                className="text-zinc-100"
-                dangerouslySetInnerHTML={{ __html: highlightCode(generateCode(activeTab)) }}
+                key={codeKey}
+                className={`language-${language}`}
+                dangerouslySetInnerHTML={{ __html: highlightedCode }}
               />
             </pre>
           </div>

@@ -11,6 +11,30 @@
     {
       "src": "https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js",
       "defer": true
+    },
+    {
+      "src": "https://unpkg.com/prismjs@1.29.0/prism.min.js",
+      "defer": true
+    },
+    {
+      "src": "https://unpkg.com/prismjs@1.29.0/components/prism-javascript.min.js",
+      "defer": true
+    },
+    {
+      "src": "https://unpkg.com/prismjs@1.29.0/components/prism-typescript.min.js",
+      "defer": true
+    },
+    {
+      "src": "https://unpkg.com/prismjs@1.29.0/components/prism-jsx.min.js",
+      "defer": true
+    },
+    {
+      "src": "https://unpkg.com/prismjs@1.29.0/components/prism-tsx.min.js",
+      "defer": true
+    },
+    {
+      "src": "https://unpkg.com/prismjs@1.29.0/components/prism-markup.min.js",
+      "defer": true
     }
   ],
   "description": "WebMCP - W3C standard for making websites AI-accessible. Turn your JavaScript functions into tools that work with Claude, ChatGPT, and custom AI agents via navigator.modelContext.",
