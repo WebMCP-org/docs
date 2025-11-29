@@ -1,0 +1,412 @@
+---
+title: "Resources"
+description: "Learn how to register and expose resources in WebMCP. Resources provide data endpoints that AI agents can read asynchronously."
+sidebarTitle: "Resources"
+icon: "database"
+---
+
+Resources in WebMCP are **data endpoints** that AI agents can read. They expose dynamic or static content like configuration, files, or API data to AI models.
+
+<Note>
+Resources are part of the Model Context Protocol (MCP) specification. WebMCP implements resources for browser environments, enabling web applications to expose data to AI agents.
+</Note>
+
+## Overview
+
+| Concept | Description |
+|---------|-------------|
+| **Purpose** | Expose readable data to AI agents |
+| **URI** | Unique identifier (static or template with parameters) |
+| **MIME Type** | Content type hint for parsing |
+| **Output** | Array of content objects with text or binary data |
+
+## When to Use Resources
+
+<CardGroup cols={2}>
+  <Card title="Configuration Data" icon="gear">
+    Expose application settings and preferences
+  </Card>
+  <Card title="File Systems" icon="folder">
+    Provide access to virtual or real file content
+  </Card>
+  <Card title="Dynamic State" icon="bolt">
+    Share current application state with AI
+  </Card>
+  <Card title="External Data" icon="cloud">
+    Proxy API responses and external content
+  </Card>
+</CardGroup>
+
+## Static Resources
+
+Register a resource with a fixed URI:
+
+```typescript twoslash icon="typescript"
+// Register a configuration resource
+navigator.modelContext.registerResource({
+  uri: 'config://app-settings',
+  name: 'App Settings',
+  description: 'Current application configuration',
+  mimeType: 'application/json',
+  async read() {
+    const settings = {
+      theme: 'dark',
+      language: 'en',
+      notifications: true,
+    };
+
+    return {
+      contents: [{
+        uri: 'config://app-settings',
+        text: JSON.stringify(settings, null, 2),
+        mimeType: 'application/json',
+      }],
+    };
+  },
+});
+```
+
+## Template Resources
+
+Use URI templates with `{param}` placeholders for dynamic access:
+
+```typescript twoslash icon="typescript"
+// Register a file reader with URI template
+navigator.modelContext.registerResource({
+  uri: 'file://{path}',
+  name: 'File Reader',
+  description: 'Read files from the virtual filesystem',
+  mimeType: 'text/plain',
+  async read(uri, params) {
+    // params.path contains the extracted parameter
+    const path = params?.path || 'unknown';
+
+    const content = await fetchFileContent(path);
+
+    return {
+      contents: [{
+        uri: uri.href,
+        text: content,
+        mimeType: getMimeType(path),
+      }],
+    };
+  },
+});
+
+// AI can now read any file:
+// readResource('file://readme.txt')  -> path = "readme.txt"
+// readResource('file://config.json') -> path = "config.json"
+```
+
+## Multiple Parameters
+
+Templates can have multiple parameters:
+
+```typescript twoslash icon="typescript"
+navigator.modelContext.registerResource({
+  uri: 'api://users/{userId}/posts/{postId}',
+  name: 'User Post',
+  description: 'Fetch a specific post by a user',
+  mimeType: 'application/json',
+  async read(uri, params) {
+    const { userId, postId } = params || {};
+
+    const post = await fetch(`/api/users/${userId}/posts/${postId}`);
+    const data = await post.json();
+
+    return {
+      contents: [{
+        uri: uri.href,
+        text: JSON.stringify(data, null, 2),
+        mimeType: 'application/json',
+      }],
+    };
+  },
+});
+```
+
+## Reading Resources
+
+AI agents read resources using `readResource()`:
+
+```typescript twoslash icon="typescript"
+// Read a static resource
+const config = await navigator.modelContext.readResource('config://app-settings');
+console.log(config.contents[0].text);
+// { "theme": "dark", "language": "en", ... }
+
+// Read a template resource
+const file = await navigator.modelContext.readResource('file://readme.txt');
+console.log(file.contents[0].text);
+// Contents of readme.txt...
+```
+
+## Listing Resources
+
+```typescript twoslash icon="typescript"
+// List static resources
+const resources = navigator.modelContext.listResources();
+resources.forEach(r => {
+  console.log(`${r.uri}: ${r.name}`);
+});
+
+// List resource templates
+const templates = navigator.modelContext.listResourceTemplates();
+templates.forEach(t => {
+  console.log(`${t.uriTemplate}: ${t.name}`);
+});
+```
+
+## Multiple Contents
+
+Resources can return multiple content items:
+
+```typescript twoslash icon="typescript"
+navigator.modelContext.registerResource({
+  uri: 'bundle://app-data',
+  name: 'App Data Bundle',
+  description: 'Multiple related data items',
+  async read() {
+    return {
+      contents: [
+        {
+          uri: 'bundle://app-data#config',
+          text: JSON.stringify(config),
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'bundle://app-data#user',
+          text: JSON.stringify(user),
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'bundle://app-data#preferences',
+          text: JSON.stringify(preferences),
+          mimeType: 'application/json',
+        },
+      ],
+    };
+  },
+});
+```
+
+## Binary Content
+
+Resources can return binary content using base64 encoding:
+
+```typescript twoslash icon="typescript"
+navigator.modelContext.registerResource({
+  uri: 'image://{name}',
+  name: 'Image Resource',
+  description: 'Read images as base64',
+  mimeType: 'image/png',
+  async read(uri, params) {
+    const name = params?.name;
+    const imageBlob = await fetchImage(name);
+    const base64 = await blobToBase64(imageBlob);
+
+    return {
+      contents: [{
+        uri: uri.href,
+        blob: base64,  // Base64-encoded binary data
+        mimeType: 'image/png',
+      }],
+    };
+  },
+});
+```
+
+## Dynamic vs Static Registration
+
+<Tabs>
+  <Tab title="Dynamic (registerResource)">
+    Use `registerResource()` for resources that may change at runtime:
+
+    ```typescript
+    // Register dynamically
+    const registration = navigator.modelContext.registerResource({
+      uri: 'session://current-data',
+      // ...
+    });
+
+    // Unregister when no longer needed
+    registration.unregister();
+    ```
+
+    **Use for:**
+    - Session-specific data
+    - Component-scoped resources
+    - Temporary data access
+  </Tab>
+  <Tab title="Static (provideContext)">
+    Use `provideContext()` for base resources:
+
+    ```typescript
+    navigator.modelContext.provideContext({
+      resources: [
+        { uri: 'config://app', /* ... */ },
+        { uri: 'file://{path}', /* ... */ },
+      ],
+    });
+    ```
+
+    **Use for:**
+    - Core application resources
+    - Always-available data
+    - Base resource set
+  </Tab>
+</Tabs>
+
+## URI Scheme Conventions
+
+| Scheme | Purpose | Example |
+|--------|---------|---------|
+| `config://` | Configuration data | `config://app-settings` |
+| `file://` | File system access | `file://{path}` |
+| `user://` | User-related data | `user://{id}/profile` |
+| `api://` | External API data | `api://weather/{city}` |
+| `db://` | Database records | `db://products/{sku}` |
+| `session://` | Session state | `session://current` |
+| `cache://` | Cached data | `cache://recent-queries` |
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use meaningful URI schemes">
+    Choose URI schemes that indicate the data type:
+
+    ```typescript
+    // Good - clear purpose
+    'config://theme-settings'
+    'user://current/preferences'
+
+    // Avoid - unclear
+    'data://123'
+    'resource://get'
+    ```
+  </Accordion>
+  <Accordion title="Always specify MIME types">
+    Help AI agents parse content correctly:
+
+    ```typescript
+    mimeType: 'application/json'  // JSON data
+    mimeType: 'text/plain'        // Plain text
+    mimeType: 'text/markdown'     // Markdown
+    mimeType: 'text/csv'          // CSV data
+    ```
+  </Accordion>
+  <Accordion title="Handle errors gracefully">
+    Return helpful error information:
+
+    ```typescript
+    async read(uri, params) {
+      const path = params?.path;
+
+      if (!fileExists(path)) {
+        return {
+          contents: [{
+            uri: uri.href,
+            text: `Error: File not found: ${path}`,
+            mimeType: 'text/plain',
+          }],
+        };
+      }
+
+      // ... normal read
+    }
+    ```
+  </Accordion>
+  <Accordion title="Keep content focused">
+    Return only relevant data. Let AI agents request specific resources rather than dumping everything.
+  </Accordion>
+  <Accordion title="Document available resources">
+    Use clear descriptions so AI agents know what resources are available and what they contain.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Configuration Resources
+
+```typescript
+navigator.modelContext.registerResource({
+  uri: 'config://feature-flags',
+  name: 'Feature Flags',
+  description: 'Current feature flag states',
+  mimeType: 'application/json',
+  async read() {
+    return {
+      contents: [{
+        uri: 'config://feature-flags',
+        text: JSON.stringify({
+          darkMode: true,
+          newEditor: false,
+          betaFeatures: ['ai-assist', 'live-collab'],
+        }),
+        mimeType: 'application/json',
+      }],
+    };
+  },
+});
+```
+
+### Database Records
+
+```typescript
+navigator.modelContext.registerResource({
+  uri: 'db://products/{sku}',
+  name: 'Product Details',
+  description: 'Fetch product information by SKU',
+  mimeType: 'application/json',
+  async read(uri, params) {
+    const product = await db.products.findBySku(params?.sku);
+
+    return {
+      contents: [{
+        uri: uri.href,
+        text: JSON.stringify(product),
+        mimeType: 'application/json',
+      }],
+    };
+  },
+});
+```
+
+### Real-Time State
+
+```typescript
+navigator.modelContext.registerResource({
+  uri: 'state://editor-content',
+  name: 'Editor Content',
+  description: 'Current content in the editor',
+  mimeType: 'text/plain',
+  async read() {
+    const content = editorRef.current?.getValue() || '';
+
+    return {
+      contents: [{
+        uri: 'state://editor-content',
+        text: content,
+        mimeType: 'text/plain',
+      }],
+    };
+  },
+});
+```
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Live Resource Examples" icon="play" href="/live-resource-examples">
+    Interactive resource demonstrations
+  </Card>
+  <Card title="Prompts" icon="message-lines" href="/concepts/prompts">
+    Generating messages for AI agents
+  </Card>
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Executing actions for AI agents
+  </Card>
+  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
+    Schema validation patterns
+  </Card>
+</CardGroup>

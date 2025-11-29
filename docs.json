@@ -130,6 +130,8 @@
             "icon": "cubes",
             "pages": [
               "concepts/tool-registration",
+              "concepts/prompts",
+              "concepts/resources",
               "concepts/transports",
               "concepts/context-engineering"
             ]
@@ -232,13 +234,15 @@
         ]
       },
       {
-        "tab": "Live Tool Examples",
+        "tab": "Live Examples",
         "icon": "wand-magic-sparkles",
         "groups": [
           {
             "group": "Interactive Demos",
             "pages": [
-              "live-tool-examples"
+              "live-tool-examples",
+              "live-prompt-examples",
+              "live-resource-examples"
             ]
           }
         ]
