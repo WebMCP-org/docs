@@ -83,7 +83,6 @@
           {
             "group": "Guides",
             "pages": [
-              "why-webmcp",
               "connecting-agents",
               "best-practices",
               "development",
@@ -122,6 +121,7 @@
             "icon": "compass",
             "pages": [
               "concepts/overview",
+              "concepts/why-webmcp",
               "concepts/architecture"
             ]
           },
@@ -131,7 +131,7 @@
             "pages": [
               "concepts/tool-registration",
               "concepts/transports",
-              "concepts/security"
+              "concepts/context-engineering"
             ]
           },
           {

@@ -1,452 +1,141 @@
 ---
-title: 'Tool Design Patterns'
-description: 'Best practices for designing effective WebMCP tools that AI agents can use successfully'
+title: 'Tool Design Quick Reference'
+description: 'Quick reference for WebMCP tool design patterns. For detailed guidance, see Best Practices.'
 icon: 'lightbulb'
 ---
 
-Good tool design is about more than writing working code—it's about creating a clear contract between your website and AI agents. This guide covers naming patterns, schema design, output formatting, and error handling that together make tools self-documenting and resilient to model variations.
+<Note>
+This is a quick reference. For comprehensive guidance with code examples, see [Best Practices for Creating Tools](/best-practices).
+</Note>
 
 ## Naming Conventions
 
-### Use Descriptive Names
-
-Follow the `verb_noun` pattern with domain prefix:
+Use `domain_verb_noun` pattern with clear, descriptive names:
 
 ```javascript
-// ✅ Good - Clear and descriptive
-"shopping_cart_add_item"
-"user_profile_update"
-"email_send_message"
-"calendar_create_event"
-"database_query_records"
+// ✅ Good
+"products_search"
+"cart_add_item"
+"user_get_profile"
 
-// ❌ Bad - Vague or unclear
-"addItem"
+// ❌ Avoid
 "doStuff"
 "action1"
 "helper"
-"process"
 ```
 
-### Namespace Related Tools
+## Descriptions
 
-Group related tools with common prefixes:
+Tool descriptions go directly to the AI model's context. Include:
 
-```javascript
-// Shopping cart tools
-"cart_add_item"
-"cart_remove_item"
-"cart_clear"
-"cart_get_total"
+- What the tool does and when to use it
+- What data it returns and in what format
+- Prerequisites or dependencies on other tools
+- If execution changes the available tool list
 
-// User management tools
-"user_create"
-"user_update"
-"user_delete"
-"user_get_profile"
-```
-
-## Writing Clear Descriptions
-
-### Be Specific and Actionable
-
-Help AI agents understand **when** and **how** to use your tools:
-
-```javascript
-// ✅ Good - Specific and detailed
-{
-  name: "products_search",
-  description: "Search products by name, category, or SKU. Returns paginated results with stock status, pricing, and availability. Use this when users want to find or browse products."
-}
-
-// ❌ Bad - Too vague
-{
-  name: "search",
-  description: "Searches for stuff"
-}
-```
-
-### Include Key Details
-
-Mention important behavior, constraints, and return values:
-
-```javascript
-{
-  name: "order_submit",
-  description: "Submit a cart as an order. Validates inventory availability, calculates final pricing including tax and shipping, and processes payment. Returns order ID and confirmation details. Requires user to be logged in and have items in cart."
-}
-```
-
-## Input Design
+## Input Schema
 
 <AccordionGroup>
-  <Accordion title="Use clear parameter names">
-    Choose self-documenting parameter names:
-
-    ```javascript
-    // ✅ Good
-    inputSchema: {
-      properties: {
-        productId: { type: "string", description: "Unique product identifier" },
-        quantity: { type: "number", description: "Number of items to add" },
-        addGiftWrap: { type: "boolean", description: "Include gift wrapping" }
-      }
-    }
-
-    // ❌ Bad
-    inputSchema: {
-      properties: {
-        id: { type: "string" },          // ID of what?
-        n: { type: "number" },            // What does 'n' mean?
-        flag: { type: "boolean" }         // What flag?
-      }
-    }
-    ```
+  <Accordion title="Clear parameter names">
+    Use self-documenting names: `productId`, `quantity`, `addGiftWrap` instead of `id`, `n`, `flag`
   </Accordion>
 
-  <Accordion title="Minimize required parameters">
-    Only require parameters that are absolutely necessary:
-
-    ```javascript
-    // ✅ Good - minimal requirements
-    inputSchema: {
-      properties: {
-        query: { type: "string" },        // Required
-        limit: {
-          type: "number",
-          default: 10                      // Optional with default
-        },
-        sortBy: {
-          type: "string",
-          enum: ["price", "name", "date"],
-          default: "name"                  // Optional with default
-        }
-      },
-      required: ["query"]                  // Only query is required
-    }
-
-    // ❌ Bad - too many requirements
-    inputSchema: {
-      properties: {
-        query: { type: "string" },
-        limit: { type: "number" },
-        sortBy: { type: "string" },
-        page: { type: "number" },
-        filterBy: { type: "string" }
-      },
-      required: ["query", "limit", "sortBy", "page", "filterBy"]
-    }
-    ```
+  <Accordion title="Minimal required parameters">
+    Only require what's absolutely necessary. Use defaults for optional parameters.
   </Accordion>
 
   <Accordion title="Use enums for fixed choices">
-    When parameters have specific allowed values, use enums:
-
     ```javascript
-    inputSchema: {
-      properties: {
-        status: {
-          type: "string",
-          enum: ["pending", "approved", "rejected"],
-          description: "Order status to filter by"
-        },
-        sortOrder: {
-          type: "string",
-          enum: ["asc", "desc"],
-          default: "asc",
-          description: "Sort direction"
-        }
-      }
-    }
+    status: { type: "string", enum: ["pending", "approved", "rejected"] }
     ```
   </Accordion>
 
-  <Accordion title="Provide examples in descriptions">
-    Include example values in parameter descriptions:
-
+  <Accordion title="Include examples in descriptions">
     ```javascript
-    {
-      dateRange: {
-        type: "string",
-        pattern: "^\\d{4}-\\d{2}-\\d{2}/\\d{4}-\\d{2}-\\d{2}$",
-        description: "Date range in format YYYY-MM-DD/YYYY-MM-DD (example: 2024-01-01/2024-01-31)"
-      }
+    dateRange: {
+      type: "string",
+      description: "Format: YYYY-MM-DD/YYYY-MM-DD (e.g., 2024-01-01/2024-01-31)"
     }
     ```
   </Accordion>
 </AccordionGroup>
 
-## Output Design
+## Response Format
 
-### Return Structured Data
-
-Always return structured, parseable data:
+Return markdown instead of JSON for better AI comprehension:
 
 ```javascript
-// ✅ Good - Structured JSON
-async execute({ productId }) {
-  const product = await getProduct(productId);
+// ✅ Markdown - easier for AI to present
+return {
+  content: [{
+    type: "text",
+    text: `# Search Results\n\nFound ${count} products:\n\n${items.map(p => `- **${p.name}** - $${p.price}`).join('\n')}`
+  }]
+};
 
-  return {
-    content: [{
-      type: "text",
-      text: JSON.stringify({
-        success: true,
-        product: {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          inStock: product.inventory > 0
-        }
-      })
-    }]
-  };
-}
-
-// ❌ Bad - Unstructured text
-async execute({ productId }) {
-  const product = await getProduct(productId);
-  return {
-    content: [{
-      type: "text",
-      text: `The product ${product.name} costs $${product.price}`
-    }]
-  };
-}
-```
-
-### Include Success/Error States
-
-Make it clear whether the operation succeeded:
-
-```javascript
-async execute({ orderId }) {
-  try {
-    const order = await cancelOrder(orderId);
-
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: true,
-          orderId: order.id,
-          status: "cancelled",
-          refundAmount: order.total
-        })
-      }]
-    };
-  } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: false,
-          error: "ORDER_NOT_FOUND",
-          message: "Order not found or already cancelled"
-        })
-      }],
-      isError: true
-    };
-  }
-}
-```
-
-### Be Consistent Across Tools
-
-Use consistent response formats across all your tools:
-
-```javascript
-// Standard response format for all tools
-interface ToolResponse {
-  success: boolean;
-  data?: any;
-  error?: {
-    code: string;
-    message: string;
-  };
-  metadata?: {
-    timestamp: string;
-    requestId: string;
-  };
-}
+// ❌ JSON - harder for AI to parse and present
+return {
+  content: [{
+    type: "text",
+    text: JSON.stringify({ success: true, products: items })
+  }]
+};
 ```
 
 ## Tool Annotations
 
-Use annotations to provide hints to AI agents:
+Mark tool behavior for AI agents:
 
 ```javascript
-navigator.modelContext.registerTool({
-  name: "database_delete_all",
-  description: "Delete all records from the database",
-  annotations: {
-    destructiveHint: true,    // Warn: this is destructive
-    idempotentHint: false,    // Calling twice has different effect
-    readOnlyHint: false       // This modifies data
-  },
-  async execute() { /* ... */ }
-});
-
-navigator.modelContext.registerTool({
-  name: "products_get_details",
-  description: "Get product details by ID",
-  annotations: {
-    destructiveHint: false,   // Safe to call
-    idempotentHint: true,     // Same result every time
-    readOnlyHint: true        // Only reads data
-  },
-  async execute({ productId }) { /* ... */ }
-});
-```
-
-## Scope and Granularity
-
-<AccordionGroup>
-  <Accordion title="One tool, one purpose">
-    Each tool should do one thing well:
-
-    ```javascript
-    // ✅ Good - Focused tools
-    registerTool({ name: "cart_add_item", ... });
-    registerTool({ name: "cart_remove_item", ... });
-    registerTool({ name: "cart_clear", ... });
-
-    // ❌ Bad - One tool doing everything
-    registerTool({
-      name: "cart_manage",
-      inputSchema: {
-        action: { enum: ["add", "remove", "clear", "update", "checkout"] },
-        // Complex conditional logic based on action
-      }
-    });
-    ```
-  </Accordion>
-
-  <Accordion title="Balance between too granular and too coarse">
-    ```javascript
-    // ❌ Too granular - too many tools
-    "user_set_first_name"
-    "user_set_last_name"
-    "user_set_email"
-    "user_set_phone"
-
-    // ✅ Just right - reasonable grouping
-    "user_update_profile"  // Updates name, email, phone together
-
-    // ❌ Too coarse - does too much
-    "manage_everything"    // Updates profile, orders, preferences, etc.
-    ```
-  </Accordion>
-
-  <Accordion title="Consider common workflows">
-    Design tools around how users actually work:
-
-    ```javascript
-    // For e-commerce, users often:
-    // 1. Search products
-    // 2. View details
-    // 3. Add to cart
-    // 4. Checkout
-
-    // So provide tools for each step:
-    "products_search"
-    "products_get_details"
-    "cart_add_item"
-    "checkout_submit_order"
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## Error Handling
-
-### Provide Helpful Error Messages
-
-```javascript
-async execute({ userId }) {
-  const user = await getUser(userId);
-
-  if (!user) {
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          success: false,
-          error: "USER_NOT_FOUND",
-          message: `No user found with ID: ${userId}`,
-          suggestion: "Please check the user ID and try again"
-        })
-      }],
-      isError: true
-    };
-  }
-
-  // Continue with success case
+annotations: {
+  destructiveHint: true,    // Irreversible action (delete, purchase)
+  idempotentHint: true,     // Safe to call multiple times
+  readOnlyHint: true        // Only reads data, no modifications
 }
 ```
 
-### Use Error Codes
+## Error Handling
 
-Provide machine-readable error codes:
-
-```javascript
-// ✅ Good - Error codes for different scenarios
-const ERROR_CODES = {
-  USER_NOT_FOUND: "User does not exist",
-  PERMISSION_DENIED: "User lacks required permissions",
-  INVALID_INPUT: "Input validation failed",
-  RATE_LIMITED: "Too many requests",
-  SERVER_ERROR: "Internal server error"
-};
-```
-
-## Testing Tools
-
-Always test your tools before deploying:
+Always return structured errors with clear messages:
 
 ```javascript
-// Test with various inputs
-await navigator.modelContext.callTool("products_search", {
-  query: "laptop"
-});
-
-// Test edge cases
-await navigator.modelContext.callTool("products_search", {
-  query: "",           // Empty query
-  limit: -1,          // Invalid limit
-  category: "invalid" // Invalid category
-});
-
-// Test error scenarios
-await navigator.modelContext.callTool("products_get_details", {
-  productId: "nonexistent"
-});
+if (!user) {
+  return {
+    content: [{
+      type: "text",
+      text: "**Error (USER_NOT_FOUND):** No user found with that ID"
+    }],
+    isError: true
+  };
+}
 ```
 
-## Documentation
+## Tool Scope
 
-Document your tools for both AI agents and developers:
+Design tools around user workflows, not internal architecture. Balance between:
 
-```javascript
-/**
- * Search products by query
- *
- * @tool products_search
- * @category shopping
- * @example
- *   // Search for laptops
- *   { query: "laptop", category: "electronics", limit: 20 }
- *
- * @returns {Object} Search results
- * @returns {boolean} success - Whether search succeeded
- * @returns {Array} products - Array of matching products
- * @returns {number} total - Total number of matches
- */
-navigator.modelContext.registerTool({ /* ... */ });
-```
+- **Too granular**: `user_set_first_name`, `user_set_last_name` (too many tools)
+- **Just right**: `user_update_profile` (reasonable grouping)
+- **Too coarse**: `manage_everything` (does too much)
+
+## Quick Checklist
+
+| Aspect | Guideline |
+|--------|-----------|
+| **Name** | `domain_verb_noun` pattern |
+| **Description** | Detailed, includes when to use |
+| **Parameters** | Minimal required, clear names, use `.describe()` |
+| **Response** | Markdown format, include context |
+| **Errors** | Structured with error codes |
+| **Annotations** | Mark destructive/readonly operations |
 
 ## Related Topics
 
 <CardGroup cols={2}>
+  <Card title="Best Practices" icon="star" href="/best-practices">
+    Complete guide with detailed examples
+  </Card>
+
   <Card title="Tool Schemas" icon="file-contract" href="/concepts/schemas">
     Input validation and schema design
   </Card>
@@ -455,11 +144,7 @@ navigator.modelContext.registerTool({ /* ... */ });
     How to register tools
   </Card>
 
-  <Card title="Best Practices" icon="star" href="/best-practices">
-    General WebMCP best practices
-  </Card>
-
-  <Card title="Performance" icon="gauge-high" href="/concepts/performance">
-    Performance considerations
+  <Card title="Security Guide" icon="shield" href="/security">
+    Security best practices
   </Card>
 </CardGroup>
