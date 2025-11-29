@@ -10,18 +10,93 @@ export const DOMQueryTool = () => {
   const containerRef = useRef(null);
   const highlightOverlaysRef = useRef([]);
 
-  // Execution sequence: scroll → wait → execute
+  // Page-level scanning effect
+  const showPageEffect = () => {
+    const overlay = document.createElement('div');
+    overlay.id = 'webmcp-page-effect';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg,
+        rgba(139, 92, 246, 0.1) 0%,
+        rgba(139, 92, 246, 0.02) 50%,
+        rgba(139, 92, 246, 0.1) 100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9998;
+      transition: opacity 0.3s ease;
+    `;
+
+    // Add scan line effect
+    const scanLine = document.createElement('div');
+    scanLine.style.cssText = `
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+      box-shadow: 0 0 20px #8b5cf6;
+      animation: scanDown 1.5s ease-in-out infinite;
+    `;
+    overlay.appendChild(scanLine);
+
+    // Add scan animation
+    const style = document.createElement('style');
+    style.id = 'webmcp-scan-style';
+    style.textContent = `
+      @keyframes scanDown {
+        0% { top: 0; opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { top: 100%; opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1';
+    });
+
+    return overlay;
+  };
+
+  const hidePageEffect = () => {
+    const overlay = document.getElementById('webmcp-page-effect');
+    const style = document.getElementById('webmcp-scan-style');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 300);
+    }
+    if (style) {
+      setTimeout(() => style.remove(), 300);
+    }
+  };
+
+  // Execution sequence: indicate → scroll → wait → execute
   const startExecution = async (onExecute) => {
-    setExecutionPhase('scrolling');
+    // Phase 1: Show indicator and page effect FIRST
+    setExecutionPhase('executing');
+    showPageEffect();
+
+    // Phase 2: Scroll to tool
     if (containerRef.current) {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    await new Promise(resolve => setTimeout(resolve, 250));
-    setExecutionPhase('executing');
+
+    // Phase 3: Wait for scroll and visual effect
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Phase 4: Execute the actual function
     const result = await onExecute();
+
+    // Phase 5: Show completion
     setExecutionPhase('complete');
+    hidePageEffect();
     await new Promise(resolve => setTimeout(resolve, 2500));
     setExecutionPhase(null);
+
     return result;
   };
 
@@ -292,9 +367,8 @@ export const DOMQueryTool = () => {
       {isActive && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-t-xl overflow-hidden">
           <div
-            className={`h-full bg-[#1F5EFF] transition-all duration-300 ${
-              executionPhase === 'scrolling' ? 'w-1/4' :
-              executionPhase === 'executing' ? 'w-3/4 animate-pulse' :
+            className={`h-full bg-[#1F5EFF] transition-all duration-500 ${
+              executionPhase === 'executing' ? 'w-2/3 animate-pulse' :
               'w-full'
             }`}
           />
@@ -308,19 +382,13 @@ export const DOMQueryTool = () => {
           </h3>
           {isActive && (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1F5EFF]/10 text-[#1F5EFF] dark:bg-[#1F5EFF]/20 dark:text-[#4B7BFF]">
-              {executionPhase === 'scrolling' && (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1F5EFF] animate-pulse" />
-                  Navigating...
-                </>
-              )}
               {executionPhase === 'executing' && (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Querying...
+                  Scanning...
                 </>
               )}
               {executionPhase === 'complete' && (

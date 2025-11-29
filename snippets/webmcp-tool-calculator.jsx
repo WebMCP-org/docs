@@ -9,23 +9,57 @@ export const CalculatorTool = () => {
   const [lastResult, setLastResult] = useState(null);
   const containerRef = useRef(null);
 
-  // Execution sequence: scroll → wait → execute
+  // Page-level effect overlay
+  const showPageEffect = (color = '#1F5EFF') => {
+    const overlay = document.createElement('div');
+    overlay.id = 'webmcp-page-effect';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: ${color};
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
+    `;
+    document.body.appendChild(overlay);
+
+    // Fade in
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '0.08';
+    });
+
+    return overlay;
+  };
+
+  const hidePageEffect = () => {
+    const overlay = document.getElementById('webmcp-page-effect');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 300);
+    }
+  };
+
+  // Execution sequence: indicate → scroll → wait → execute
   const startExecution = async (onExecute) => {
-    // Phase 1: Scroll to tool
-    setExecutionPhase('scrolling');
+    // Phase 1: Show indicator and page effect FIRST
+    setExecutionPhase('executing');
+    const overlay = showPageEffect('#1F5EFF');
+
+    // Phase 2: Scroll to tool
     if (containerRef.current) {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // Phase 2: Wait for scroll to complete
-    await new Promise(resolve => setTimeout(resolve, 250));
+    // Phase 3: Wait for scroll and visual effect
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Phase 3: Execute
-    setExecutionPhase('executing');
+    // Phase 4: Execute the actual function
     const result = await onExecute();
 
-    // Phase 4: Show completion briefly
+    // Phase 5: Show completion
     setExecutionPhase('complete');
+    hidePageEffect();
     await new Promise(resolve => setTimeout(resolve, 2000));
     setExecutionPhase(null);
 
@@ -146,9 +180,8 @@ export const CalculatorTool = () => {
       {isActive && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-t-xl overflow-hidden">
           <div
-            className={`h-full bg-[#1F5EFF] transition-all duration-300 ${
-              executionPhase === 'scrolling' ? 'w-1/4' :
-              executionPhase === 'executing' ? 'w-3/4 animate-pulse' :
+            className={`h-full bg-[#1F5EFF] transition-all duration-500 ${
+              executionPhase === 'executing' ? 'w-2/3 animate-pulse' :
               'w-full'
             }`}
           />
@@ -162,12 +195,6 @@ export const CalculatorTool = () => {
           </h3>
           {isActive && (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1F5EFF]/10 text-[#1F5EFF] dark:bg-[#1F5EFF]/20 dark:text-[#4B7BFF]">
-              {executionPhase === 'scrolling' && (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1F5EFF] animate-pulse" />
-                  Navigating...
-                </>
-              )}
               {executionPhase === 'executing' && (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

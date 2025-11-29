@@ -10,18 +10,61 @@ export const ColorConverterTool = () => {
   const [lastConversion, setLastConversion] = useState(null);
   const containerRef = useRef(null);
 
-  // Execution sequence: scroll → wait → execute
-  const startExecution = async (onExecute) => {
-    setExecutionPhase('scrolling');
+  // Page-level effect overlay - uses the color being converted!
+  const showPageEffect = (color) => {
+    const overlay = document.createElement('div');
+    overlay.id = 'webmcp-page-effect';
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: ${color};
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    `;
+    document.body.appendChild(overlay);
+
+    // Fade in with the converted color
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '0.15';
+    });
+
+    return overlay;
+  };
+
+  const hidePageEffect = () => {
+    const overlay = document.getElementById('webmcp-page-effect');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 400);
+    }
+  };
+
+  // Execution sequence: indicate → scroll → wait → execute
+  const startExecution = async (color, onExecute) => {
+    // Phase 1: Show indicator and page effect FIRST (with the actual color!)
+    setExecutionPhase('executing');
+    const hex = color?.startsWith('#') ? color : `#${color}`;
+    showPageEffect(hex);
+
+    // Phase 2: Scroll to tool
     if (containerRef.current) {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    await new Promise(resolve => setTimeout(resolve, 250));
-    setExecutionPhase('executing');
+
+    // Phase 3: Wait for scroll and visual effect
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Phase 4: Execute the actual function
     const result = await onExecute();
+
+    // Phase 5: Show completion
     setExecutionPhase('complete');
+    hidePageEffect();
     await new Promise(resolve => setTimeout(resolve, 2000));
     setExecutionPhase(null);
+
     return result;
   };
 
@@ -130,7 +173,7 @@ export const ColorConverterTool = () => {
             required: ['color'],
           },
           async execute({ color, outputFormat = 'all' }) {
-            return startExecution(async () => {
+            return startExecution(color, async () => {
               try {
                 setToolCalls(prev => [...prev, {
                   time: new Date().toISOString(),
@@ -247,9 +290,8 @@ export const ColorConverterTool = () => {
       {isActive && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-t-xl overflow-hidden">
           <div
-            className={`h-full bg-[#1F5EFF] transition-all duration-300 ${
-              executionPhase === 'scrolling' ? 'w-1/4' :
-              executionPhase === 'executing' ? 'w-3/4 animate-pulse' :
+            className={`h-full bg-[#1F5EFF] transition-all duration-500 ${
+              executionPhase === 'executing' ? 'w-2/3 animate-pulse' :
               'w-full'
             }`}
           />
@@ -263,12 +305,6 @@ export const ColorConverterTool = () => {
           </h3>
           {isActive && (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1F5EFF]/10 text-[#1F5EFF] dark:bg-[#1F5EFF]/20 dark:text-[#4B7BFF]">
-              {executionPhase === 'scrolling' && (
-                <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1F5EFF] animate-pulse" />
-                  Navigating...
-                </>
-              )}
               {executionPhase === 'executing' && (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
