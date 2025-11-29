@@ -1,8 +1,8 @@
 // WebMCP Polyfill Setup Component
 // Demonstrates how to integrate the @mcp-b/global polyfill
-import { useState, useEffect } from 'react';
 
 export const PolyfillSetup = () => {
+  const { useState, useEffect } = React;
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {

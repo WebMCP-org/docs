@@ -1,8 +1,8 @@
 // Interactive Quickstart Component
 // A tool builder that shows code being generated in real-time with syntax highlighting
-import { useState, useEffect, useRef, useMemo } from 'react';
 
 export const InteractiveQuickstart = () => {
+  const { useState, useEffect, useRef, useMemo } = React;
   // Simple syntax highlighter for JavaScript/TypeScript - defined inside component for Mintlify compatibility
   const highlightCode = (code) => {
     const patterns = [
