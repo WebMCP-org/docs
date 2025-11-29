@@ -11,7 +11,7 @@ import { StorageTool } from '/snippets/webmcp-tool-storage.jsx';
 import { DOMQueryTool } from '/snippets/webmcp-tool-dom-query.jsx';
 import { PolyfillSetup } from '/snippets/webmcp-polyfill-setup.jsx';
 
-This page demonstrates **live WebMCP tools** that register themselves with the browser and can be called by AI agents in real-time.
+This page demonstrates **live WebMCP tools** that register themselves with the browser and can be called by AI agents in real-time. Each tool showcases a different WebMCP capability.
 
 <Note>
 **These tools are live and ready!** The WebMCP polyfill is included with this documentation site. Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents (like Claude) to discover and call these tools directly.
@@ -41,10 +41,14 @@ Check if the WebMCP polyfill is loaded and ready:
 
 ## Calculator Tool
 
+**Demonstrates:** Basic tool registration with a simple input schema
+
+This tool shows the fundamentals of `registerTool()` - a single required parameter and straightforward execution. Watch the animated result display when AI computes your expression!
+
 <CalculatorTool />
 
 <Tip>
-**Try it with your AI assistant:** Ask: "Use the calculator tool to compute 42 * 1.5 + 10"
+**Try it with your AI assistant:** Ask Claude to "use the calculator tool to compute 42 * 1.5 + 10" and watch the animated result appear!
 </Tip>
 
 <CodeGroup>
@@ -97,10 +101,14 @@ export const CalculatorTool = () => {
 
 ## Color Converter Tool
 
+**Demonstrates:** Complex schemas with `enum`, `default` values, and optional parameters
+
+This tool showcases advanced input schema features - the `outputFormat` parameter uses an enum for constrained choices and includes a default value. Watch the color splash animation and generated palette when AI converts your color!
+
 <ColorConverterTool />
 
 <Tip>
-**Try it with your AI assistant:** Ask Claude or your AI: "Convert the color #FF5733 to RGB and HSL"
+**Try it with your AI assistant:** Ask Claude to "convert the color #FF5733 to RGB format" and watch the dramatic color visualization!
 </Tip>
 
 <CodeGroup>
@@ -145,10 +153,14 @@ export const ColorConverterTool = () => {
 
 ## Storage Management Tool
 
+**Demonstrates:** Multiple tool registration and browser API integration
+
+This component registers **three related tools** (`storage_set`, `storage_get`, `storage_list`) that work together to manage browser localStorage. Watch the data flow animation as AI reads and writes to persistent storage!
+
 <StorageTool />
 
 <Tip>
-**Try it with your AI assistant:** Ask: "Store 'Hello World' under the key 'greeting' using storage"
+**Try it with your AI assistant:** Ask Claude to "store my favorite color as blue, then list all stored items" and watch the data persist!
 </Tip>
 
 <CodeGroup>
@@ -188,10 +200,14 @@ export const StorageTool = () => {
 
 ## DOM Query Tool
 
+**Demonstrates:** Page introspection and structured data responses
+
+This tool queries the actual page DOM using CSS selectors and returns structured element information. Watch the scanning animation and see matched elements **highlighted directly on the page** when AI queries!
+
 <DOMQueryTool />
 
 <Tip>
-**Try it with your AI assistant:** Ask: "How many navigation links are on this page?" or "Query for all h2 headings"
+**Try it with your AI assistant:** Ask Claude "how many h2 headings are on this page?" and watch the elements get highlighted on screen!
 </Tip>
 
 <CodeGroup>

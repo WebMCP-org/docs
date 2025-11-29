@@ -1,5 +1,5 @@
 // Live Storage Tool Example
-// Demonstrates WebMCP tool for managing browser localStorage
+// Demonstrates: Multiple tool registration and browser API integration
 export const StorageTool = () => {
   const [key, setKey] = useState('');
   const [value, setValue] = useState('');
@@ -7,6 +7,9 @@ export const StorageTool = () => {
   const [isRegistered, setIsRegistered] = useState(false);
   const [toolCalls, setToolCalls] = useState([]);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [activeOperation, setActiveOperation] = useState(null);
+  const [animatingKey, setAnimatingKey] = useState(null);
+  const [showSaveIndicator, setShowSaveIndicator] = useState(false);
   const containerRef = useRef(null);
 
   const refreshStorage = () => {
@@ -51,8 +54,11 @@ export const StorageTool = () => {
           },
           async execute({ key, value }) {
             try {
-              // Highlight and scroll to tool when AI executes it
+              // Dramatic highlight and scroll to tool when AI executes it
               setIsExecuting(true);
+              setActiveOperation('set');
+              setShowSaveIndicator(false);
+
               if (containerRef.current) {
                 containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
@@ -67,14 +73,25 @@ export const StorageTool = () => {
                 status: 'processing'
               }]);
 
+              // Animate the key being stored
+              setAnimatingKey(prefixedKey);
+
               localStorage.setItem(prefixedKey, value);
               refreshStorage();
+
+              // Show save indicator
+              setTimeout(() => setShowSaveIndicator(true), 300);
 
               setToolCalls(prev => prev.map((call, idx) =>
                 idx === prev.length - 1 ? { ...call, status: 'success' } : call
               ));
 
-              setTimeout(() => setIsExecuting(false), 2000);
+              setTimeout(() => {
+                setIsExecuting(false);
+                setActiveOperation(null);
+                setAnimatingKey(null);
+                setShowSaveIndicator(false);
+              }, 3000);
 
               return {
                 content: [{
@@ -87,7 +104,10 @@ export const StorageTool = () => {
                 idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
               ));
 
-              setTimeout(() => setIsExecuting(false), 2000);
+              setTimeout(() => {
+                setIsExecuting(false);
+                setActiveOperation(null);
+              }, 2000);
 
               return {
                 content: [{
@@ -117,6 +137,8 @@ export const StorageTool = () => {
             try {
               // Highlight and scroll to tool when AI executes it
               setIsExecuting(true);
+              setActiveOperation('get');
+
               if (containerRef.current) {
                 containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
@@ -130,13 +152,20 @@ export const StorageTool = () => {
                 status: 'processing'
               }]);
 
+              // Animate the key being retrieved
+              setAnimatingKey(prefixedKey);
+
               const value = localStorage.getItem(prefixedKey);
 
               setToolCalls(prev => prev.map((call, idx) =>
                 idx === prev.length - 1 ? { ...call, value, status: 'success' } : call
               ));
 
-              setTimeout(() => setIsExecuting(false), 2000);
+              setTimeout(() => {
+                setIsExecuting(false);
+                setActiveOperation(null);
+                setAnimatingKey(null);
+              }, 2500);
 
               if (value === null) {
                 return {
@@ -158,7 +187,10 @@ export const StorageTool = () => {
                 idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
               ));
 
-              setTimeout(() => setIsExecuting(false), 2000);
+              setTimeout(() => {
+                setIsExecuting(false);
+                setActiveOperation(null);
+              }, 2000);
 
               return {
                 content: [{
@@ -182,6 +214,8 @@ export const StorageTool = () => {
             try {
               // Highlight and scroll to tool when AI executes it
               setIsExecuting(true);
+              setActiveOperation('list');
+
               if (containerRef.current) {
                 containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }
@@ -205,7 +239,10 @@ export const StorageTool = () => {
                 idx === prev.length - 1 ? { ...call, count: Object.keys(items).length, status: 'success' } : call
               ));
 
-              setTimeout(() => setIsExecuting(false), 2000);
+              setTimeout(() => {
+                setIsExecuting(false);
+                setActiveOperation(null);
+              }, 2500);
 
               const itemsList = Object.entries(items)
                 .map(([k, v]) => `  • ${k}: ${v}`)
@@ -222,7 +259,10 @@ export const StorageTool = () => {
                 idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
               ));
 
-              setTimeout(() => setIsExecuting(false), 2000);
+              setTimeout(() => {
+                setIsExecuting(false);
+                setActiveOperation(null);
+              }, 2000);
 
               return {
                 content: [{
@@ -271,27 +311,85 @@ export const StorageTool = () => {
     refreshStorage();
   };
 
+  const getOperationColor = () => {
+    switch (activeOperation) {
+      case 'set': return { bg: 'from-green-500 to-emerald-600', text: 'Saving...' };
+      case 'get': return { bg: 'from-blue-500 to-cyan-600', text: 'Reading...' };
+      case 'list': return { bg: 'from-purple-500 to-pink-600', text: 'Listing...' };
+      default: return { bg: 'from-blue-500 to-purple-600', text: 'Processing...' };
+    }
+  };
+
   return (
     <div
       ref={containerRef}
-      className={`not-prose border rounded-xl p-6 space-y-4 transition-all duration-300 ${
+      className={`not-prose border rounded-xl p-6 space-y-4 transition-all duration-500 relative overflow-hidden ${
         isExecuting
-          ? 'border-blue-500 dark:border-blue-400 shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/20'
+          ? 'border-transparent shadow-2xl ring-4 ring-green-500/30 scale-[1.02]'
           : 'border-zinc-200 dark:border-white/10'
       }`}
     >
-      <div className="flex items-center justify-between mb-4">
+      {/* Data flow animation background */}
+      {isExecuting && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Animated data particles */}
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 rounded-full bg-green-500"
+              style={{
+                left: activeOperation === 'get' ? '80%' : '20%',
+                top: `${20 + i * 12}%`,
+                animation: `${activeOperation === 'get' ? 'slideLeft' : 'slideRight'} 1s ease-in-out infinite`,
+                animationDelay: `${i * 0.15}s`,
+                opacity: 0.6,
+              }}
+            />
+          ))}
+          {/* Database icon glow */}
+          <div
+            className={`absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 rounded-lg bg-gradient-to-br ${getOperationColor().bg} opacity-20 animate-pulse`}
+          />
+        </div>
+      )}
+
+      {/* Save indicator overlay */}
+      {showSaveIndicator && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-20">
+          <div className="bg-green-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 animate-bounce">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-semibold">Saved to Browser Storage!</span>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideRight {
+          0% { transform: translateX(0); opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { transform: translateX(200px); opacity: 0; }
+        }
+        @keyframes slideLeft {
+          0% { transform: translateX(0); opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { transform: translateX(-200px); opacity: 0; }
+        }
+      `}</style>
+
+      <div className="flex items-center justify-between mb-4 relative z-10">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">
             Storage Management Tool
           </h3>
           {isExecuting && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 animate-pulse">
-              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full text-white animate-pulse shadow-lg bg-gradient-to-r ${getOperationColor().bg}`}>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              AI Executing
+              {getOperationColor().text}
             </span>
           )}
         </div>
@@ -303,43 +401,57 @@ export const StorageTool = () => {
         )}
       </div>
 
-      <div className="space-y-3">
+      {/* WebMCP capability badge */}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mb-4 relative z-10">
+        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">Promise.all()</span>
+        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">localStorage</span>
+        <span>Multiple tools + Browser API integration</span>
+      </div>
+
+      <div className="space-y-3 relative z-10">
         <div className="grid grid-cols-2 gap-2">
           <input
             type="text"
             value={key}
             onChange={(e) => setKey(e.target.value)}
             placeholder="Key"
-            className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
           <input
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Value"
-            className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
 
         <button
           onClick={handleStore}
           disabled={!key || !value}
-          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors text-sm"
+          className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors text-sm"
         >
           Store Value
         </button>
       </div>
 
       {Object.keys(storedItems).length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
+        <div className="mt-4 relative z-10">
+          <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+            </svg>
             Stored Items ({Object.keys(storedItems).length})
           </h4>
           <div className="space-y-2">
             {Object.entries(storedItems).map(([k, v]) => (
               <div
                 key={k}
-                className="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
+                className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-500 ${
+                  animatingKey === k
+                    ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 scale-[1.02] shadow-lg shadow-green-500/20'
+                    : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                }`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 truncate">
@@ -349,6 +461,11 @@ export const StorageTool = () => {
                     {v}
                   </p>
                 </div>
+                {animatingKey === k && (
+                  <span className="mr-2 text-xs text-green-600 dark:text-green-400 font-medium animate-pulse">
+                    {activeOperation === 'set' ? 'Writing...' : 'Reading...'}
+                  </span>
+                )}
                 <button
                   onClick={() => handleDelete(k)}
                   className="ml-2 px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
@@ -361,8 +478,18 @@ export const StorageTool = () => {
         </div>
       )}
 
+      {Object.keys(storedItems).length === 0 && (
+        <div className="mt-4 p-4 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-dashed border-zinc-300 dark:border-zinc-700 text-center relative z-10">
+          <svg className="w-8 h-8 mx-auto text-zinc-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+          </svg>
+          <p className="text-sm text-zinc-500">No items stored yet</p>
+          <p className="text-xs text-zinc-400 mt-1">Ask AI to store something!</p>
+        </div>
+      )}
+
       {toolCalls.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-800 relative z-10">
           <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">
             Recent Tool Calls
           </h4>
@@ -381,7 +508,11 @@ export const StorageTool = () => {
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-blue-600 dark:text-blue-400 flex-1">
+                  <span className={`font-mono text-sm font-medium ${
+                    call.operation === 'set' ? 'text-green-600 dark:text-green-400' :
+                    call.operation === 'get' ? 'text-blue-600 dark:text-blue-400' :
+                    'text-purple-600 dark:text-purple-400'
+                  }`}>
                     storage_{call.operation}
                   </span>
                   {call.status === 'processing' && (
