@@ -467,128 +467,17 @@ if (rateLimitExceeded) {
 
 ## Security Best Practices
 
-### Validate User Authentication
+<Note>
+For comprehensive security guidance including authentication, authorization, input validation, prompt injection protection, and multi-website threat models, see the dedicated [Security Guide](/security).
+</Note>
 
-Tools run with the user's session, but always verify:
+Key security principles for WebMCP tools:
 
-```javascript
-async execute({ orderId }) {
-  const session = await getSession();
-
-  if (!session?.user) {
-    return formatError(
-      'UNAUTHORIZED',
-      'Please log in to view order details.'
-    );
-  }
-
-  const order = await getOrder(orderId);
-
-  // Verify order belongs to current user
-  if (order.userId !== session.user.id && !session.user.isAdmin) {
-    return formatError(
-      'FORBIDDEN',
-      'You do not have permission to view this order.'
-    );
-  }
-
-  return { content: [{ type: "text", text: JSON.stringify(order) }] };
-}
-```
-
-### Sanitize Inputs
-
-Never trust input data, even with schema validation:
-
-```javascript
-import DOMPurify from 'dompurify';
-import { escapeHtml } from './utils';
-
-async execute({ content }) {
-  // Sanitize HTML content
-  const sanitized = DOMPurify.sanitize(content);
-
-  // Escape for database
-  const escaped = escapeHtml(sanitized);
-
-  // Use parameterized queries
-  await db.query(
-    'INSERT INTO posts (content) VALUES ($1)',
-    [escaped]
-  );
-
-  return { content: [{ type: "text", text: "Post created successfully" }] };
-}
-```
-
-### Rate Limit Tool Calls
-
-Protect your API from abuse:
-
-```javascript
-import rateLimit from './rate-limiter';
-
-const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10 // 10 requests per minute per user
-});
-
-navigator.modelContext.registerTool({
-  name: 'expensive_operation',
-  description: 'Performs a resource-intensive operation',
-  async execute(params) {
-    const session = await getSession();
-    const userId = session?.user?.id || 'anonymous';
-
-    const allowed = await limiter.check(userId);
-
-    if (!allowed) {
-      return formatError(
-        'RATE_LIMIT',
-        'Rate limit exceeded. Maximum 10 requests per minute.',
-        { retryAfter: limiter.getResetTime(userId) }
-      );
-    }
-
-    // Process the request
-    // ...
-  }
-});
-```
-
-### Avoid Exposing Sensitive Data
-
-Be careful what data you include in responses:
-
-```javascript "Secure data exposure" lines icon="shield"
-async execute({ userId }) { // [!code --]
-  const user = await getUser(userId); // [!code --]
- // [!code --]
-  return { // [!code --]
-    content: [{ // [!code --]
-      type: "text", // [!code --]
-      text: JSON.stringify(user) // ❌ Might include sensitive fields! // [!code --]
-    }] // [!code --]
-  }; // [!code --]
-} // [!code --]
-
-async execute({ userId }) { // [!code ++]
-  const user = await getUser(userId); // [!code ++]
- // [!code ++]
-  // ✅ Only include safe fields in response // [!code ++]
-  return { // [!code ++]
-    content: [{ // [!code ++]
-      type: "text", // [!code ++]
-      text: `# User Information // [!code ++]
- // [!code ++]
-**Name:** ${user.name} // [!code ++]
-**Email:** ${user.email} // [!code ++]
-**Member since:** ${new Date(user.createdAt).toLocaleDateString()}` // [!code ++]
-    }] // [!code ++]
-  }; // [!code ++]
-  // ✅ NOT including: password hash, internal IDs, private notes, session tokens // [!code ++]
-} // [!code ++]
-```
+- **Validate user authentication** - Always verify session and permissions
+- **Sanitize inputs** - Use DOMPurify for HTML, parameterized queries for databases
+- **Rate limit operations** - Protect against abuse with request throttling
+- **Limit data exposure** - Only return necessary fields, never expose sensitive data
+- **Use tool annotations** - Mark destructive operations with `destructiveHint: true`
 
 ## Performance Optimization
 
