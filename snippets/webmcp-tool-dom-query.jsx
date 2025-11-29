@@ -217,35 +217,106 @@ export const DOMQueryTool = () => {
             },
             required: ['selector'],
           },
-          async execute({ selector, action = 'all' }) {
-            return startExecution(async () => {
-              try {
-                clearHighlights();
+          async execute(args) {
+            // Validate args outside startExecution to ensure isError is always returned
+            try {
+              const { selector, action = 'all' } = args || {};
 
-                setToolCalls(prev => [...prev, {
-                  time: new Date().toISOString(),
-                  selector,
-                  action,
-                  status: 'processing'
-                }]);
+              // Validate required parameter
+              if (selector === undefined || selector === null) {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: 'Missing required parameter: selector',
+                  }],
+                  isError: true,
+                };
+              }
 
-                const elements = document.querySelectorAll(selector);
+              if (typeof selector !== 'string') {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter type: selector must be a string, got ${typeof selector}`,
+                  }],
+                  isError: true,
+                };
+              }
 
-                // Highlight elements on the page
-                highlightPageElements(selector);
+              // Validate action enum if provided
+              if (action && !['count', 'text', 'attributes', 'all'].includes(action)) {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter value: action must be one of 'count', 'text', 'attributes', 'all', got '${action}'`,
+                  }],
+                  isError: true,
+                };
+              }
 
-                const elementData = Array.from(elements).slice(0, 5).map(el => ({
-                  tag: el.tagName.toLowerCase(),
-                  text: el.textContent?.substring(0, 100) || '',
-                  classes: Array.from(el.classList),
-                  id: el.id || null,
-                }));
+              return startExecution(async () => {
+                try {
+                  clearHighlights();
 
-                setLastQuery({ selector, count: elements.length, elements: elementData });
+                  setToolCalls(prev => [...prev, {
+                    time: new Date().toISOString(),
+                    selector,
+                    action,
+                    status: 'processing'
+                  }]);
 
-                if (elements.length === 0) {
+                  const elements = document.querySelectorAll(selector);
+
+                  // Highlight elements on the page
+                  highlightPageElements(selector);
+
+                  const elementData = Array.from(elements).slice(0, 5).map(el => ({
+                    tag: el.tagName.toLowerCase(),
+                    text: el.textContent?.substring(0, 100) || '',
+                    classes: Array.from(el.classList),
+                    id: el.id || null,
+                  }));
+
+                  setLastQuery({ selector, count: elements.length, elements: elementData });
+
+                  if (elements.length === 0) {
+                    setToolCalls(prev => prev.map((call, idx) =>
+                      idx === prev.length - 1 ? { ...call, count: 0, status: 'success' } : call
+                    ));
+
+                    setTimeout(() => clearHighlights(), 2000);
+
+                    return {
+                      content: [{
+                        type: 'text',
+                        text: `No elements found matching selector "${selector}"`,
+                      }],
+                    };
+                  }
+
+                  let result = '';
+
+                  if (action === 'count' || action === 'all') {
+                    result += `Found ${elements.length} element(s)\n\n`;
+                  }
+
+                  if (action === 'text' || action === 'all') {
+                    result += 'Text content:\n';
+                    elementData.forEach((el, idx) => {
+                      result += `  ${idx + 1}. ${el.text.substring(0, 80)}${el.text.length > 80 ? '...' : ''}\n`;
+                    });
+                    result += '\n';
+                  }
+
+                  if (action === 'attributes' || action === 'all') {
+                    result += 'Elements:\n';
+                    elementData.forEach((el, idx) => {
+                      result += `  ${idx + 1}. <${el.tag}${el.id ? ` id="${el.id}"` : ''}${el.classes.length ? ` class="${el.classes.join(' ')}"` : ''}>\n`;
+                    });
+                  }
+
                   setToolCalls(prev => prev.map((call, idx) =>
-                    idx === prev.length - 1 ? { ...call, count: 0, status: 'success' } : call
+                    idx === prev.length - 1 ? { ...call, count: elements.length, elements: elementData, status: 'success' } : call
                   ));
 
                   setTimeout(() => clearHighlights(), 2000);
@@ -253,60 +324,34 @@ export const DOMQueryTool = () => {
                   return {
                     content: [{
                       type: 'text',
-                      text: `No elements found matching selector "${selector}"`,
+                      text: result.trim(),
                     }],
                   };
+                } catch (error) {
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                  ));
+
+                  clearHighlights();
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Error querying DOM: ${error.message}`,
+                    }],
+                    isError: true,
+                  };
                 }
-
-                let result = '';
-
-                if (action === 'count' || action === 'all') {
-                  result += `Found ${elements.length} element(s)\n\n`;
-                }
-
-                if (action === 'text' || action === 'all') {
-                  result += 'Text content:\n';
-                  elementData.forEach((el, idx) => {
-                    result += `  ${idx + 1}. ${el.text.substring(0, 80)}${el.text.length > 80 ? '...' : ''}\n`;
-                  });
-                  result += '\n';
-                }
-
-                if (action === 'attributes' || action === 'all') {
-                  result += 'Elements:\n';
-                  elementData.forEach((el, idx) => {
-                    result += `  ${idx + 1}. <${el.tag}${el.id ? ` id="${el.id}"` : ''}${el.classes.length ? ` class="${el.classes.join(' ')}"` : ''}>\n`;
-                  });
-                }
-
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, count: elements.length, elements: elementData, status: 'success' } : call
-                ));
-
-                setTimeout(() => clearHighlights(), 2000);
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: result.trim(),
-                  }],
-                };
-              } catch (error) {
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                ));
-
-                clearHighlights();
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Error querying DOM: ${error.message}`,
-                  }],
-                  isError: true,
-                };
-              }
-            });
+              });
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
           },
         });
 

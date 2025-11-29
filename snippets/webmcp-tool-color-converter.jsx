@@ -172,62 +172,107 @@ export const ColorConverterTool = () => {
             },
             required: ['color'],
           },
-          async execute({ color, outputFormat = 'all' }) {
-            return startExecution(color, async () => {
-              try {
-                setToolCalls(prev => [...prev, {
-                  time: new Date().toISOString(),
-                  color,
-                  outputFormat,
-                  status: 'processing'
-                }]);
+          async execute(args) {
+            // Validate args outside startExecution to ensure isError is always returned
+            try {
+              const { color, outputFormat = 'all' } = args || {};
 
-                const hex = color.startsWith('#') ? color : `#${color}`;
-                const rgb = hexToRgb(hex);
-
-                if (!rgb) {
-                  throw new Error('Invalid HEX color format');
-                }
-
-                const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-                const rgbStr = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-                const hslStr = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
-
-                setLastConversion({ hex, rgb: rgbStr, hsl: hslStr });
-
-                let result;
-                if (outputFormat === 'rgb') {
-                  result = rgbStr;
-                } else if (outputFormat === 'hsl') {
-                  result = hslStr;
-                } else {
-                  result = `RGB: ${rgbStr}\nHSL: ${hslStr}`;
-                }
-
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, result: { rgb: rgbStr, hsl: hslStr }, status: 'success' } : call
-                ));
-
+              // Validate required parameter
+              if (color === undefined || color === null) {
                 return {
                   content: [{
                     type: 'text',
-                    text: `Color ${hex} converted:\n${result}`,
-                  }],
-                };
-              } catch (error) {
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                ));
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Error converting color: ${error.message}`,
+                    text: 'Missing required parameter: color',
                   }],
                   isError: true,
                 };
               }
-            });
+
+              if (typeof color !== 'string') {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter type: color must be a string, got ${typeof color}`,
+                  }],
+                  isError: true,
+                };
+              }
+
+              // Validate outputFormat enum if provided
+              if (outputFormat && !['rgb', 'hsl', 'all'].includes(outputFormat)) {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter value: outputFormat must be one of 'rgb', 'hsl', 'all', got '${outputFormat}'`,
+                  }],
+                  isError: true,
+                };
+              }
+
+              return startExecution(color, async () => {
+                try {
+                  setToolCalls(prev => [...prev, {
+                    time: new Date().toISOString(),
+                    color,
+                    outputFormat,
+                    status: 'processing'
+                  }]);
+
+                  const hex = color.startsWith('#') ? color : `#${color}`;
+                  const rgb = hexToRgb(hex);
+
+                  if (!rgb) {
+                    throw new Error('Invalid HEX color format');
+                  }
+
+                  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+                  const rgbStr = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+                  const hslStr = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+
+                  setLastConversion({ hex, rgb: rgbStr, hsl: hslStr });
+
+                  let result;
+                  if (outputFormat === 'rgb') {
+                    result = rgbStr;
+                  } else if (outputFormat === 'hsl') {
+                    result = hslStr;
+                  } else {
+                    result = `RGB: ${rgbStr}\nHSL: ${hslStr}`;
+                  }
+
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, result: { rgb: rgbStr, hsl: hslStr }, status: 'success' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Color ${hex} converted:\n${result}`,
+                    }],
+                  };
+                } catch (error) {
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Error converting color: ${error.message}`,
+                    }],
+                    isError: true,
+                  };
+                }
+              });
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
           },
         });
 

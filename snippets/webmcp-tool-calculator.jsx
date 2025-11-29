@@ -87,48 +87,82 @@ export const CalculatorTool = () => {
             },
             required: ['expression'],
           },
-          async execute({ expression }) {
-            return startExecution(async () => {
-              try {
-                // Track the tool call
-                setToolCalls(prev => [...prev, {
-                  time: new Date().toISOString(),
-                  expression,
-                  status: 'processing'
-                }]);
+          async execute(args) {
+            // Validate args outside startExecution to ensure isError is always returned
+            try {
+              const { expression } = args || {};
 
-                // Safe evaluation using Function constructor with Math context
-                const sanitized = expression
-                  .replace(/[^0-9+\-*/().,\s]/g, '')
-                  .replace(/Math\./g, '');
-
-                const result = Function(`"use strict"; return (${sanitized})`)();
-                setLastResult(result);
-
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, result, status: 'success' } : call
-                ));
-
+              // Validate required parameter
+              if (expression === undefined || expression === null) {
                 return {
                   content: [{
                     type: 'text',
-                    text: `The result of ${expression} is ${result}`,
-                  }],
-                };
-              } catch (error) {
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                ));
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Error evaluating expression: ${error.message}`,
+                    text: 'Missing required parameter: expression',
                   }],
                   isError: true,
                 };
               }
-            });
+
+              if (typeof expression !== 'string') {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter type: expression must be a string, got ${typeof expression}`,
+                  }],
+                  isError: true,
+                };
+              }
+
+              return startExecution(async () => {
+                try {
+                  // Track the tool call
+                  setToolCalls(prev => [...prev, {
+                    time: new Date().toISOString(),
+                    expression,
+                    status: 'processing'
+                  }]);
+
+                  // Safe evaluation using Function constructor with Math context
+                  const sanitized = expression
+                    .replace(/[^0-9+\-*/().,\s]/g, '')
+                    .replace(/Math\./g, '');
+
+                  const result = Function(`"use strict"; return (${sanitized})`)();
+                  setLastResult(result);
+
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, result, status: 'success' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `The result of ${expression} is ${result}`,
+                    }],
+                  };
+                } catch (error) {
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Error evaluating expression: ${error.message}`,
+                    }],
+                    isError: true,
+                  };
+                }
+              });
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
           },
         });
 

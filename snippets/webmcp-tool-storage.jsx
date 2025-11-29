@@ -118,47 +118,101 @@ export const StorageTool = () => {
             },
             required: ['key', 'value'],
           },
-          async execute({ key, value }) {
-            return startExecution('set', async () => {
-              try {
-                const prefixedKey = `webmcp_demo_${key}`;
+          async execute(args) {
+            // Validate args outside startExecution to ensure isError is always returned
+            try {
+              const { key, value } = args || {};
 
-                setToolCalls(prev => [...prev, {
-                  time: new Date().toISOString(),
-                  operation: 'set',
-                  key: prefixedKey,
-                  value,
-                  status: 'processing'
-                }]);
-
-                localStorage.setItem(prefixedKey, value);
-                refreshStorage();
-                setLastAction({ type: 'set', key, value });
-
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, status: 'success' } : call
-                ));
-
+              // Validate required parameters
+              if (key === undefined || key === null) {
                 return {
                   content: [{
                     type: 'text',
-                    text: `Stored "${value}" under key "${key}"`,
-                  }],
-                };
-              } catch (error) {
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                ));
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Error storing data: ${error.message}`,
+                    text: 'Missing required parameter: key',
                   }],
                   isError: true,
                 };
               }
-            });
+
+              if (typeof key !== 'string') {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter type: key must be a string, got ${typeof key}`,
+                  }],
+                  isError: true,
+                };
+              }
+
+              if (value === undefined || value === null) {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: 'Missing required parameter: value',
+                  }],
+                  isError: true,
+                };
+              }
+
+              if (typeof value !== 'string') {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter type: value must be a string, got ${typeof value}`,
+                  }],
+                  isError: true,
+                };
+              }
+
+              return startExecution('set', async () => {
+                try {
+                  const prefixedKey = `webmcp_demo_${key}`;
+
+                  setToolCalls(prev => [...prev, {
+                    time: new Date().toISOString(),
+                    operation: 'set',
+                    key: prefixedKey,
+                    value,
+                    status: 'processing'
+                  }]);
+
+                  localStorage.setItem(prefixedKey, value);
+                  refreshStorage();
+                  setLastAction({ type: 'set', key, value });
+
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, status: 'success' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Stored "${value}" under key "${key}"`,
+                    }],
+                  };
+                } catch (error) {
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Error storing data: ${error.message}`,
+                    }],
+                    isError: true,
+                  };
+                }
+              });
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
           },
         });
 
@@ -175,54 +229,88 @@ export const StorageTool = () => {
             },
             required: ['key'],
           },
-          async execute({ key }) {
-            return startExecution('get', async () => {
-              try {
-                const prefixedKey = `webmcp_demo_${key}`;
+          async execute(args) {
+            // Validate args outside startExecution to ensure isError is always returned
+            try {
+              const { key } = args || {};
 
-                setToolCalls(prev => [...prev, {
-                  time: new Date().toISOString(),
-                  operation: 'get',
-                  key: prefixedKey,
-                  status: 'processing'
-                }]);
-
-                const value = localStorage.getItem(prefixedKey);
-                setLastAction({ type: 'get', key, value });
-
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, value, status: 'success' } : call
-                ));
-
-                if (value === null) {
-                  return {
-                    content: [{
-                      type: 'text',
-                      text: `No value found for key "${key}"`,
-                    }],
-                  };
-                }
-
+              // Validate required parameter
+              if (key === undefined || key === null) {
                 return {
                   content: [{
                     type: 'text',
-                    text: `Value for "${key}": ${value}`,
-                  }],
-                };
-              } catch (error) {
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                ));
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Error retrieving data: ${error.message}`,
+                    text: 'Missing required parameter: key',
                   }],
                   isError: true,
                 };
               }
-            });
+
+              if (typeof key !== 'string') {
+                return {
+                  content: [{
+                    type: 'text',
+                    text: `Invalid parameter type: key must be a string, got ${typeof key}`,
+                  }],
+                  isError: true,
+                };
+              }
+
+              return startExecution('get', async () => {
+                try {
+                  const prefixedKey = `webmcp_demo_${key}`;
+
+                  setToolCalls(prev => [...prev, {
+                    time: new Date().toISOString(),
+                    operation: 'get',
+                    key: prefixedKey,
+                    status: 'processing'
+                  }]);
+
+                  const value = localStorage.getItem(prefixedKey);
+                  setLastAction({ type: 'get', key, value });
+
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, value, status: 'success' } : call
+                  ));
+
+                  if (value === null) {
+                    return {
+                      content: [{
+                        type: 'text',
+                        text: `No value found for key "${key}"`,
+                      }],
+                    };
+                  }
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Value for "${key}": ${value}`,
+                    }],
+                  };
+                } catch (error) {
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Error retrieving data: ${error.message}`,
+                    }],
+                    isError: true,
+                  };
+                }
+              });
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
           },
         });
 
@@ -234,53 +322,64 @@ export const StorageTool = () => {
             properties: {},
           },
           async execute() {
-            return startExecution('list', async () => {
-              try {
-                setToolCalls(prev => [...prev, {
-                  time: new Date().toISOString(),
-                  operation: 'list',
-                  status: 'processing'
-                }]);
+            // Wrap in try-catch to ensure isError is always returned on any error
+            try {
+              return startExecution('list', async () => {
+                try {
+                  setToolCalls(prev => [...prev, {
+                    time: new Date().toISOString(),
+                    operation: 'list',
+                    status: 'processing'
+                  }]);
 
-                const items = {};
-                for (let i = 0; i < localStorage.length; i++) {
-                  const key = localStorage.key(i);
-                  if (key && key.startsWith('webmcp_demo_')) {
-                    const cleanKey = key.replace('webmcp_demo_', '');
-                    items[cleanKey] = localStorage.getItem(key);
+                  const items = {};
+                  for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('webmcp_demo_')) {
+                      const cleanKey = key.replace('webmcp_demo_', '');
+                      items[cleanKey] = localStorage.getItem(key);
+                    }
                   }
+
+                  setLastAction({ type: 'list', count: Object.keys(items).length });
+
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, count: Object.keys(items).length, status: 'success' } : call
+                  ));
+
+                  const itemsList = Object.entries(items)
+                    .map(([k, v]) => `  • ${k}: ${v}`)
+                    .join('\n');
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Stored items (${Object.keys(items).length}):\n${itemsList || '  (none)'}`,
+                    }],
+                  };
+                } catch (error) {
+                  setToolCalls(prev => prev.map((call, idx) =>
+                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
+                  ));
+
+                  return {
+                    content: [{
+                      type: 'text',
+                      text: `Error listing data: ${error.message}`,
+                    }],
+                    isError: true,
+                  };
                 }
-
-                setLastAction({ type: 'list', count: Object.keys(items).length });
-
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, count: Object.keys(items).length, status: 'success' } : call
-                ));
-
-                const itemsList = Object.entries(items)
-                  .map(([k, v]) => `  • ${k}: ${v}`)
-                  .join('\n');
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Stored items (${Object.keys(items).length}):\n${itemsList || '  (none)'}`,
-                  }],
-                };
-              } catch (error) {
-                setToolCalls(prev => prev.map((call, idx) =>
-                  idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                ));
-
-                return {
-                  content: [{
-                    type: 'text',
-                    text: `Error listing data: ${error.message}`,
-                  }],
-                  isError: true,
-                };
-              }
-            });
+              });
+            } catch (error) {
+              return {
+                content: [{
+                  type: 'text',
+                  text: `Error: ${error.message}`,
+                }],
+                isError: true,
+              };
+            }
           },
         });
 
