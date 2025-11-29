@@ -1,11 +1,52 @@
 // Interactive Quickstart Component
-// A tool builder that shows code being generated in real-time
+// A tool builder that shows code being generated in real-time with syntax highlighting
 import { useState, useEffect, useRef } from 'react';
+
+// Simple syntax highlighter for JavaScript/TypeScript
+const highlightCode = (code) => {
+  // Order matters - do strings and comments first to avoid highlighting keywords inside them
+  const patterns = [
+    // Comments
+    { regex: /(\/\/.*$)/gm, class: 'text-zinc-500' },
+    // Strings (single, double, template)
+    { regex: /(`[^`]*`|'[^']*'|"[^"]*")/g, class: 'text-green-400' },
+    // Keywords
+    { regex: /\b(import|export|from|async|await|function|const|let|var|return|if|else|try|catch|throw|new|class|extends|type|interface)\b/g, class: 'text-purple-400' },
+    // Built-ins and types
+    { regex: /\b(navigator|window|document|console|Promise|Object|Array|String|Number|Boolean)\b/g, class: 'text-yellow-400' },
+    // Functions/methods (word followed by parenthesis)
+    { regex: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, class: 'text-blue-400' },
+    // Properties after dot
+    { regex: /\.([a-zA-Z_][a-zA-Z0-9_]*)/g, class: 'text-cyan-400', replace: '.<span class="$class">$1</span>' },
+    // Numbers
+    { regex: /\b(\d+)\b/g, class: 'text-orange-400' },
+    // JSX/HTML tags
+    { regex: /(&lt;\/?[a-zA-Z][a-zA-Z0-9]*)/g, class: 'text-red-400' },
+  ];
+
+  // Escape HTML first
+  let result = code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Apply highlighting patterns
+  patterns.forEach(({ regex, class: className, replace }) => {
+    if (replace) {
+      result = result.replace(regex, replace.replace('$class', className));
+    } else {
+      result = result.replace(regex, `<span class="${className}">$1</span>`);
+    }
+  });
+
+  return result;
+};
 
 export const InteractiveQuickstart = () => {
   const [isPolyfillLoaded, setIsPolyfillLoaded] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [registrationError, setRegistrationError] = useState(null);
   const [activeTab, setActiveTab] = useState('react');
@@ -40,6 +81,7 @@ export const InteractiveQuickstart = () => {
   // Generate code for different frameworks
   const generateCode = (framework) => {
     const paramName = toolConfig.parameters[0]?.name || 'input';
+    const paramDesc = toolConfig.parameters[0]?.description || 'Input parameter';
 
     if (framework === 'react') {
       const zodSchema = toolConfig.parameters
@@ -161,11 +203,19 @@ ${schemaProps}
         description: toolConfig.description,
         inputSchema: schema,
         execute: async (args) => {
+          // Show execution modal
           setIsExecuting(true);
+          setShowSuccessModal(true);
+
           const paramName = toolConfig.parameters[0]?.name || 'input';
           const result = `Hello, ${args[paramName] || 'friend'}!`;
-          setTestResult({ success: true, result });
-          setTimeout(() => setIsExecuting(false), 1500);
+          setTestResult({ success: true, result, input: args[paramName] });
+
+          setTimeout(() => {
+            setIsExecuting(false);
+            setShowSuccessModal(false);
+          }, 3000);
+
           return { content: [{ type: 'text', text: result }] };
         }
       });
@@ -179,13 +229,24 @@ ${schemaProps}
   // Test the tool
   const testTool = async () => {
     if (!isRegistered) return;
+
     setIsExecuting(true);
+    setShowSuccessModal(true);
     setTestResult(null);
 
     const paramName = toolConfig.parameters[0]?.name || 'input';
-    const result = `Hello, ${testInput[paramName] || 'friend'}!`;
-    setTestResult({ success: true, result });
-    setTimeout(() => setIsExecuting(false), 1000);
+    const inputValue = testInput[paramName] || 'friend';
+    const result = `Hello, ${inputValue}!`;
+
+    // Simulate execution delay for effect
+    setTimeout(() => {
+      setTestResult({ success: true, result, input: inputValue });
+    }, 500);
+
+    setTimeout(() => {
+      setIsExecuting(false);
+      setShowSuccessModal(false);
+    }, 2500);
   };
 
   // Copy code
@@ -220,12 +281,93 @@ ${schemaProps}
   return (
     <div
       ref={containerRef}
-      className={`not-prose rounded-xl border overflow-hidden transition-all duration-300 ${
+      className={`not-prose rounded-xl border overflow-hidden transition-all duration-300 relative ${
         isExecuting
           ? 'border-green-500 ring-2 ring-green-500/20'
           : 'border-zinc-200 dark:border-white/10'
       }`}
     >
+      {/* Execution Success Modal Overlay */}
+      {showSuccessModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full transform animate-bounce-in text-center">
+            {/* Animated checkmark */}
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <svg
+                className="w-10 h-10 text-green-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                  className="animate-draw-check"
+                  style={{
+                    strokeDasharray: 24,
+                    strokeDashoffset: 24,
+                    animation: 'drawCheck 0.5s ease forwards 0.2s'
+                  }}
+                />
+              </svg>
+            </div>
+
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
+              Tool Executed!
+            </h3>
+
+            {testResult ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg bg-zinc-100 dark:bg-zinc-700 text-left">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Input:</p>
+                  <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100">
+                    {toolConfig.parameters[0]?.name}: "{testResult.input}"
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30 text-left">
+                  <p className="text-xs text-green-600 dark:text-green-400 mb-1">Output:</p>
+                  <p className="font-mono text-sm text-green-700 dark:text-green-300">
+                    {testResult.result}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-zinc-600 dark:text-zinc-400">
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Processing...
+              </div>
+            )}
+
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-4">
+              This is what happens when an AI calls your tool
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Animation styles */}
+      <style>{`
+        @keyframes drawCheck {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+        @keyframes bounce-in {
+          0% { transform: scale(0.3); opacity: 0; }
+          50% { transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-bounce-in {
+          animation: bounce-in 0.5s ease;
+        }
+      `}</style>
+
       {/* Two-column layout */}
       <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200 dark:divide-white/10">
 
@@ -235,12 +377,12 @@ ${schemaProps}
             <h4 className="font-semibold text-zinc-900 dark:text-white">Configure Your Tool</h4>
             {isPolyfillLoaded ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                 WebMCP Ready
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                 Loading...
               </span>
             )}
@@ -259,7 +401,9 @@ ${schemaProps}
                 name: e.target.value.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
               }))}
               className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="my_tool"
             />
+            <p className="mt-1 text-xs text-zinc-500">Use snake_case (letters, numbers, underscores)</p>
           </div>
 
           {/* Description */}
@@ -272,20 +416,22 @@ ${schemaProps}
               value={toolConfig.description}
               onChange={(e) => setToolConfig(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="What does your tool do?"
             />
+            <p className="mt-1 text-xs text-zinc-500">AI uses this to decide when to call your tool</p>
           </div>
 
           {/* Parameter */}
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-              Parameter
+              Input Parameter
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={toolConfig.parameters[0]?.name || ''}
                 onChange={(e) => updateParameter(0, 'name', e.target.value.replace(/[^a-z0-9_]/gi, ''))}
-                placeholder="name"
+                placeholder="param_name"
                 className="flex-1 px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <select
@@ -327,25 +473,33 @@ ${schemaProps}
                   type="text"
                   value={testInput[toolConfig.parameters[0]?.name] || ''}
                   onChange={(e) => setTestInput({ [toolConfig.parameters[0]?.name]: e.target.value })}
-                  placeholder={toolConfig.parameters[0]?.name || 'input'}
+                  placeholder={`Enter ${toolConfig.parameters[0]?.name || 'value'}...`}
                   className="flex-1 px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <button
                   onClick={testTool}
                   disabled={isExecuting}
-                  className="px-4 py-2 text-sm font-medium rounded-md bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 text-sm font-medium rounded-md bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
-                  {isExecuting ? 'Running...' : 'Test'}
+                  {isExecuting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                      Running
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Execute
+                    </>
+                  )}
                 </button>
               </div>
-
-              {testResult && (
-                <div className="p-3 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                  <p className="text-sm text-green-700 dark:text-green-300 font-mono">
-                    {testResult.result}
-                  </p>
-                </div>
-              )}
 
               <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                 <p className="text-xs text-blue-700 dark:text-blue-300">
@@ -354,11 +508,11 @@ ${schemaProps}
                     href="https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline hover:no-underline"
+                    className="underline hover:no-underline font-medium"
                   >
                     MCP-B extension
                   </a>
-                  {' '}and ask Claude to use your <code className="px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900">{toolConfig.name}</code> tool.
+                  {' '}and ask Claude to use your <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800 font-mono">{toolConfig.name}</code> tool.
                 </p>
               </div>
             </div>
@@ -366,40 +520,71 @@ ${schemaProps}
         </div>
 
         {/* Right: Live Code Preview */}
-        <div className="flex flex-col">
+        <div className="flex flex-col bg-zinc-900 min-h-[400px]">
           {/* Tabs */}
-          <div className="flex border-b border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900">
+          <div className="flex border-b border-zinc-700">
             {[
-              { id: 'react', label: 'React' },
-              { id: 'vanilla', label: 'Vanilla JS' },
-              { id: 'script', label: 'Script Tag' },
+              { id: 'react', label: 'React', icon: '⚛️' },
+              { id: 'vanilla', label: 'Vanilla JS', icon: '📦' },
+              { id: 'script', label: 'Script Tag', icon: '🏷️' },
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                className={`px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-1.5 ${
                   activeTab === tab.id
-                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-white dark:bg-zinc-800'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                    ? 'text-white bg-zinc-800 border-b-2 border-blue-500'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                 }`}
               >
+                <span className="text-base">{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
             <div className="flex-1"></div>
             <button
               onClick={copyCode}
-              className="px-3 py-1 m-1 text-xs font-medium rounded bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-300 transition-colors"
+              className={`px-3 py-1.5 m-1.5 text-xs font-medium rounded transition-all flex items-center gap-1.5 ${
+                copied
+                  ? 'bg-green-600 text-white'
+                  : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
+              }`}
             >
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy
+                </>
+              )}
             </button>
           </div>
 
-          {/* Code */}
-          <div className="flex-1 overflow-auto bg-zinc-900">
-            <pre className="p-4 text-sm leading-relaxed">
-              <code className="text-zinc-100">{generateCode(activeTab)}</code>
+          {/* Code with syntax highlighting */}
+          <div className="flex-1 overflow-auto">
+            <pre className="p-4 text-sm leading-relaxed font-mono">
+              <code
+                className="text-zinc-100"
+                dangerouslySetInnerHTML={{ __html: highlightCode(generateCode(activeTab)) }}
+              />
             </pre>
+          </div>
+
+          {/* Code footer */}
+          <div className="px-4 py-2 border-t border-zinc-700 bg-zinc-800/50">
+            <p className="text-xs text-zinc-500">
+              {activeTab === 'react' && 'Requires: @mcp-b/global, @mcp-b/react-webmcp, zod'}
+              {activeTab === 'vanilla' && 'Requires: @mcp-b/global (npm install)'}
+              {activeTab === 'script' && 'No build tools required - just paste into HTML'}
+            </p>
           </div>
         </div>
       </div>
