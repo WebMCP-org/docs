@@ -1,0 +1,652 @@
+---
+title: 'Rails Integration'
+description: 'Integrate WebMCP tools with Ruby on Rails. Use Stimulus controllers and Hotwire for AI-enabled interactions in your Rails applications.'
+icon: 'gem'
+---
+
+## Overview
+
+Ruby on Rails applications can integrate WebMCP through JavaScript on the frontend. This guide shows how to use Stimulus controllers (Rails' default JS framework) and Hotwire/Turbo patterns to register AI tools that interact with your Rails backend.
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install WebMCP via importmap or npm">
+    **With importmap (Rails 7+):**
+    ```bash
+    bin/importmap pin @mcp-b/global
+    ```
+
+    **With npm/yarn:**
+    ```bash
+    npm install @mcp-b/global
+    # or
+    yarn add @mcp-b/global
+    ```
+  </Step>
+
+  <Step title="Have Rails 7+ configured">
+    This guide uses Rails 7+ patterns with Stimulus and Turbo. Earlier versions require different bundling approaches.
+  </Step>
+</Steps>
+
+## Stimulus Controller Pattern
+
+Create a Stimulus controller for WebMCP tool registration:
+
+```javascript "app/javascript/controllers/webmcp_controller.js"
+import { Controller } from "@hotwired/stimulus"
+import "@mcp-b/global"
+
+export default class extends Controller {
+  static values = {
+    tools: Array
+  }
+
+  #registrations = []
+
+  connect() {
+    if (!('modelContext' in navigator)) {
+      console.warn('WebMCP not available')
+      return
+    }
+
+    this.registerTools()
+  }
+
+  disconnect() {
+    this.#registrations.forEach(r => r.unregister())
+    this.#registrations = []
+  }
+
+  registerTools() {
+    // Register tools defined in data attributes
+    this.toolsValue.forEach(tool => {
+      const registration = navigator.modelContext.registerTool({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema || { type: 'object', properties: {} },
+        execute: async (args) => {
+          return await this.executeTool(tool.name, args)
+        }
+      })
+      this.#registrations.push(registration)
+    })
+  }
+
+  async executeTool(name, args) {
+    // Call Rails backend
+    const response = await fetch(`/api/tools/${name}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify(args)
+    })
+
+    const result = await response.json()
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result) }]
+    }
+  }
+}
+```
+
+### Using the Controller
+
+```erb
+<%# app/views/products/index.html.erb %>
+<div data-controller="webmcp"
+     data-webmcp-tools-value='<%= [
+       {
+         name: "search_products",
+         description: "Search for products by name",
+         inputSchema: {
+           type: "object",
+           properties: {
+             query: { type: "string", description: "Search term" }
+           },
+           required: ["query"]
+         }
+       },
+       {
+         name: "get_product_count",
+         description: "Get the total number of products"
+       }
+     ].to_json %>'>
+
+  <h1>Products</h1>
+  <%= render @products %>
+</div>
+```
+
+## Tool-Specific Controllers
+
+Create dedicated controllers for specific functionality:
+
+```javascript "app/javascript/controllers/cart_tools_controller.js"
+import { Controller } from "@hotwired/stimulus"
+import "@mcp-b/global"
+
+export default class extends Controller {
+  static targets = ["count", "items"]
+
+  #registrations = []
+
+  connect() {
+    if (!('modelContext' in navigator)) return
+
+    // Add to cart tool
+    this.#registrations.push(
+      navigator.modelContext.registerTool({
+        name: 'add_to_cart',
+        description: 'Add a product to the shopping cart',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            productId: { type: 'string', description: 'Product ID' },
+            quantity: { type: 'number', description: 'Quantity to add' }
+          },
+          required: ['productId']
+        },
+        execute: async (args) => {
+          return await this.addToCart(args.productId, args.quantity || 1)
+        }
+      })
+    )
+
+    // View cart tool
+    this.#registrations.push(
+      navigator.modelContext.registerTool({
+        name: 'view_cart',
+        description: 'View current cart contents',
+        inputSchema: { type: 'object', properties: {} },
+        execute: async () => {
+          return await this.getCart()
+        }
+      })
+    )
+  }
+
+  disconnect() {
+    this.#registrations.forEach(r => r.unregister())
+  }
+
+  async addToCart(productId, quantity) {
+    const response = await fetch('/cart/items', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': this.csrfToken
+      },
+      body: JSON.stringify({ product_id: productId, quantity })
+    })
+
+    const result = await response.json()
+
+    // Update UI
+    if (this.hasCountTarget) {
+      this.countTarget.textContent = result.total_items
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({ success: true, ...result })
+      }]
+    }
+  }
+
+  async getCart() {
+    const response = await fetch('/cart.json')
+    const cart = await response.json()
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify(cart)
+      }]
+    }
+  }
+
+  get csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').content
+  }
+}
+```
+
+```erb
+<%# app/views/layouts/application.html.erb %>
+<body data-controller="cart-tools">
+  <nav>
+    Cart: <span data-cart-tools-target="count"><%= current_cart.item_count %></span>
+  </nav>
+
+  <%= yield %>
+</body>
+```
+
+## Rails API Endpoints
+
+Create API endpoints that tools can call:
+
+```ruby
+# app/controllers/api/tools_controller.rb
+class Api::ToolsController < ApplicationController
+  skip_before_action :verify_authenticity_token, only: [:execute]
+  before_action :verify_csrf_token
+
+  def execute
+    tool_name = params[:tool_name]
+    result = case tool_name
+    when 'search_products'
+      search_products(params[:query])
+    when 'get_product_count'
+      { count: Product.count }
+    when 'add_to_cart'
+      add_to_cart(params[:product_id], params[:quantity])
+    else
+      { error: 'Unknown tool' }
+    end
+
+    render json: result
+  end
+
+  private
+
+  def search_products(query)
+    products = Product.search(query).limit(10)
+    { results: products.as_json(only: [:id, :name, :price]) }
+  end
+
+  def add_to_cart(product_id, quantity)
+    item = current_cart.add_item(product_id, quantity.to_i)
+    { success: true, item: item.as_json, total_items: current_cart.item_count }
+  end
+
+  def verify_csrf_token
+    unless valid_authenticity_token?(session, request.headers['X-CSRF-Token'])
+      render json: { error: 'Invalid CSRF token' }, status: :forbidden
+    end
+  end
+end
+```
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  namespace :api do
+    post 'tools/:tool_name', to: 'tools#execute'
+  end
+end
+```
+
+## Turbo Frame Integration
+
+Combine WebMCP with Turbo Frames for dynamic updates:
+
+```javascript "app/javascript/controllers/turbo_webmcp_controller.js"
+import { Controller } from "@hotwired/stimulus"
+import "@mcp-b/global"
+
+export default class extends Controller {
+  static values = {
+    frameId: String
+  }
+
+  #registration = null
+
+  connect() {
+    if (!('modelContext' in navigator)) return
+
+    this.#registration = navigator.modelContext.registerTool({
+      name: 'refresh_content',
+      description: 'Refresh the content in this section',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async () => {
+        return await this.refreshFrame()
+      }
+    })
+  }
+
+  disconnect() {
+    this.#registration?.unregister()
+  }
+
+  async refreshFrame() {
+    const frame = document.getElementById(this.frameIdValue)
+    if (frame) {
+      frame.reload()
+      return {
+        content: [{ type: 'text', text: 'Content refreshed' }]
+      }
+    }
+    return {
+      content: [{ type: 'text', text: 'Frame not found' }]
+    }
+  }
+}
+```
+
+```erb
+<%# app/views/dashboard/index.html.erb %>
+<div data-controller="turbo-webmcp" data-turbo-webmcp-frame-id-value="stats">
+  <turbo-frame id="stats" src="<%= dashboard_stats_path %>">
+    Loading stats...
+  </turbo-frame>
+</div>
+```
+
+## Stimulus + Turbo Stream Pattern
+
+Tools that trigger Turbo Stream responses:
+
+```javascript "app/javascript/controllers/notifications_controller.js"
+import { Controller } from "@hotwired/stimulus"
+import "@mcp-b/global"
+
+export default class extends Controller {
+  #registration = null
+
+  connect() {
+    if (!('modelContext' in navigator)) return
+
+    this.#registration = navigator.modelContext.registerTool({
+      name: 'mark_all_read',
+      description: 'Mark all notifications as read',
+      inputSchema: { type: 'object', properties: {} },
+      execute: async () => {
+        return await this.markAllRead()
+      }
+    })
+  }
+
+  disconnect() {
+    this.#registration?.unregister()
+  }
+
+  async markAllRead() {
+    const response = await fetch('/notifications/mark_all_read', {
+      method: 'POST',
+      headers: {
+        'Accept': 'text/vnd.turbo-stream.html',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      }
+    })
+
+    // Turbo will automatically process the stream response
+    const text = await response.text()
+    Turbo.renderStreamMessage(text)
+
+    return {
+      content: [{ type: 'text', text: 'All notifications marked as read' }]
+    }
+  }
+}
+```
+
+```ruby
+# app/controllers/notifications_controller.rb
+class NotificationsController < ApplicationController
+  def mark_all_read
+    current_user.notifications.unread.update_all(read_at: Time.current)
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.update('notification-count', '0')
+      end
+      format.json { render json: { success: true } }
+    end
+  end
+end
+```
+
+## ViewComponent Integration
+
+Use ViewComponents with WebMCP tools:
+
+```ruby
+# app/components/product_card_component.rb
+class ProductCardComponent < ViewComponent::Base
+  def initialize(product:)
+    @product = product
+  end
+
+  def tool_config
+    {
+      name: "view_product_#{@product.id}",
+      description: "View details for #{@product.name}",
+      inputSchema: { type: 'object', properties: {} }
+    }.to_json
+  end
+end
+```
+
+```erb
+<%# app/components/product_card_component.html.erb %>
+<div class="product-card"
+     data-controller="product-tool"
+     data-product-tool-config-value="<%= tool_config %>">
+  <h3><%= @product.name %></h3>
+  <p><%= number_to_currency(@product.price) %></p>
+</div>
+```
+
+## Full Application Example
+
+```javascript "app/javascript/controllers/application_tools_controller.js"
+import { Controller } from "@hotwired/stimulus"
+import "@mcp-b/global"
+
+// Global application-level tools
+export default class extends Controller {
+  #registrations = []
+
+  connect() {
+    if (!('modelContext' in navigator)) {
+      console.log('WebMCP not available')
+      return
+    }
+
+    console.log('Registering WebMCP tools')
+
+    // Navigation tool
+    this.#registrations.push(
+      navigator.modelContext.registerTool({
+        name: 'navigate',
+        description: 'Navigate to a different page',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'Path to navigate to' }
+          },
+          required: ['path']
+        },
+        execute: async (args) => {
+          Turbo.visit(args.path)
+          return {
+            content: [{ type: 'text', text: `Navigating to ${args.path}` }]
+          }
+        }
+      })
+    )
+
+    // Search tool
+    this.#registrations.push(
+      navigator.modelContext.registerTool({
+        name: 'global_search',
+        description: 'Search across the application',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search query' },
+            type: {
+              type: 'string',
+              enum: ['products', 'users', 'orders'],
+              description: 'Type of content to search'
+            }
+          },
+          required: ['query']
+        },
+        execute: async (args) => {
+          const response = await fetch(`/search.json?q=${encodeURIComponent(args.query)}&type=${args.type || 'all'}`)
+          const results = await response.json()
+          return {
+            content: [{ type: 'text', text: JSON.stringify(results) }]
+          }
+        }
+      })
+    )
+
+    // User session tool
+    this.#registrations.push(
+      navigator.modelContext.registerTool({
+        name: 'get_current_user',
+        description: 'Get information about the currently logged in user',
+        inputSchema: { type: 'object', properties: {} },
+        execute: async () => {
+          const response = await fetch('/api/current_user.json')
+          const user = await response.json()
+          return {
+            content: [{ type: 'text', text: JSON.stringify(user) }]
+          }
+        }
+      })
+    )
+
+    // Flash message tool
+    this.#registrations.push(
+      navigator.modelContext.registerTool({
+        name: 'show_notification',
+        description: 'Show a notification message to the user',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', description: 'Message to display' },
+            type: {
+              type: 'string',
+              enum: ['success', 'error', 'info', 'warning'],
+              description: 'Notification type'
+            }
+          },
+          required: ['message']
+        },
+        execute: async (args) => {
+          this.showFlash(args.message, args.type || 'info')
+          return {
+            content: [{ type: 'text', text: 'Notification shown' }]
+          }
+        }
+      })
+    )
+  }
+
+  disconnect() {
+    this.#registrations.forEach(r => r.unregister())
+    this.#registrations = []
+  }
+
+  showFlash(message, type) {
+    const flash = document.createElement('div')
+    flash.className = `flash flash-${type}`
+    flash.textContent = message
+    document.body.appendChild(flash)
+    setTimeout(() => flash.remove(), 5000)
+  }
+}
+```
+
+```erb
+<%# app/views/layouts/application.html.erb %>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "My Rails App" %></title>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body data-controller="application-tools">
+    <nav>
+      <%= link_to "Home", root_path %>
+      <%= link_to "Products", products_path %>
+      <%= link_to "Cart", cart_path %>
+    </nav>
+
+    <main>
+      <%= yield %>
+    </main>
+  </body>
+</html>
+```
+
+## Common Gotchas
+
+<AccordionGroup>
+  <Accordion title="CSRF token issues">
+    Rails requires CSRF tokens for non-GET requests. Always include the token:
+
+    ```javascript
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Tools not registering after Turbo navigation">
+    Turbo navigation may not re-run `connect()`. Use Turbo events:
+
+    ```javascript
+    document.addEventListener('turbo:load', () => {
+      // Re-register tools if needed
+    })
+    ```
+
+    Or place the controller on the `<body>` element so it persists across navigations.
+  </Accordion>
+
+  <Accordion title="importmap not finding @mcp-b/global">
+    Ensure you've pinned the package correctly:
+
+    ```bash
+    bin/importmap pin @mcp-b/global
+    ```
+
+    Check `config/importmap.rb` for the correct mapping.
+  </Accordion>
+
+  <Accordion title="Tools registered multiple times">
+    If using Turbo, tools might re-register on each navigation. Track registrations and check:
+
+    ```javascript
+    connect() {
+      if (this.#registered) return
+      this.#registered = true
+      // Register tools
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Rails Guides" icon="book" href="https://guides.rubyonrails.org/">
+    Official Ruby on Rails documentation
+  </Card>
+
+  <Card title="Stimulus Handbook" icon="bolt" href="https://stimulus.hotwired.dev/handbook/introduction">
+    Official Stimulus documentation
+  </Card>
+
+  <Card title="Turbo Handbook" icon="rocket" href="https://turbo.hotwired.dev/handbook/introduction">
+    Official Turbo documentation
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    Complete working examples
+  </Card>
+</CardGroup>

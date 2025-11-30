@@ -1,0 +1,555 @@
+---
+title: 'Vue.js Integration'
+description: 'Integrate WebMCP tools with Vue 3. Use the Composition API to create reactive tool registration with automatic cleanup.'
+icon: 'vuejs'
+---
+
+## Overview
+
+Vue 3's Composition API provides an elegant way to integrate WebMCP tools. This guide shows how to create a reusable composable for tool registration that handles reactivity and cleanup automatically.
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install WebMCP">
+    ```bash
+    npm install @mcp-b/global
+    ```
+  </Step>
+
+  <Step title="Have Vue 3 configured">
+    This guide uses Vue 3 with the Composition API. Vue 2 users should upgrade or use the vanilla JavaScript approach.
+  </Step>
+</Steps>
+
+## Basic Integration
+
+### Simple Tool Registration
+
+Register a tool in a Vue component using lifecycle hooks:
+
+```vue "ProductTools.vue"
+<script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue';
+import '@mcp-b/global';
+
+let registration: { unregister: () => void } | null = null;
+
+onMounted(() => {
+  registration = navigator.modelContext.registerTool({
+    name: 'get_product_count',
+    description: 'Get the number of products in the catalog',
+    inputSchema: { type: 'object', properties: {} },
+    async execute() {
+      const count = await fetchProductCount();
+      return {
+        content: [{ type: 'text', text: `There are ${count} products` }]
+      };
+    }
+  });
+});
+
+onUnmounted(() => {
+  registration?.unregister();
+});
+</script>
+
+<template>
+  <!-- Your component template -->
+</template>
+```
+
+## Creating a Composable
+
+For reusable tool registration, create a `useWebMCP` composable:
+
+```typescript "composables/useWebMCP.ts"
+import { onMounted, onUnmounted, ref, type Ref } from 'vue';
+import '@mcp-b/global';
+
+interface ToolConfig {
+  name: string;
+  description: string;
+  inputSchema?: Record<string, unknown>;
+  handler: (args: Record<string, unknown>) => Promise<unknown>;
+}
+
+interface UseWebMCPReturn {
+  isRegistered: Ref<boolean>;
+  unregister: () => void;
+}
+
+export function useWebMCP(config: ToolConfig): UseWebMCPReturn {
+  const isRegistered = ref(false);
+  let registration: { unregister: () => void } | null = null;
+
+  onMounted(() => {
+    if (!('modelContext' in navigator)) {
+      console.warn('WebMCP not available');
+      return;
+    }
+
+    registration = navigator.modelContext.registerTool({
+      name: config.name,
+      description: config.description,
+      inputSchema: config.inputSchema ?? { type: 'object', properties: {} },
+      async execute(args) {
+        const result = await config.handler(args);
+        return {
+          content: [{
+            type: 'text',
+            text: typeof result === 'string' ? result : JSON.stringify(result)
+          }]
+        };
+      }
+    });
+
+    isRegistered.value = true;
+  });
+
+  onUnmounted(() => {
+    registration?.unregister();
+    isRegistered.value = false;
+  });
+
+  const unregister = () => {
+    registration?.unregister();
+    isRegistered.value = false;
+  };
+
+  return { isRegistered, unregister };
+}
+```
+
+### Using the Composable
+
+```vue "CartTools.vue"
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useWebMCP } from '@/composables/useWebMCP';
+
+const cartItems = ref<string[]>([]);
+
+// Register add to cart tool
+useWebMCP({
+  name: 'add_to_cart',
+  description: 'Add a product to the shopping cart',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      productId: { type: 'string', description: 'Product ID to add' },
+      quantity: { type: 'number', description: 'Quantity to add' }
+    },
+    required: ['productId']
+  },
+  handler: async ({ productId, quantity = 1 }) => {
+    for (let i = 0; i < quantity; i++) {
+      cartItems.value.push(productId as string);
+    }
+    return { success: true, cartSize: cartItems.value.length };
+  }
+});
+
+// Register get cart tool
+useWebMCP({
+  name: 'get_cart',
+  description: 'Get current cart contents',
+  handler: async () => {
+    return { items: cartItems.value, count: cartItems.value.length };
+  }
+});
+</script>
+
+<template>
+  <div>
+    <p>Cart items: {{ cartItems.length }}</p>
+  </div>
+</template>
+```
+
+## Reactive State Integration
+
+Vue's reactivity system works seamlessly with WebMCP tools:
+
+```vue "ReactiveTools.vue"
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useWebMCP } from '@/composables/useWebMCP';
+
+const count = ref(0);
+const doubleCount = computed(() => count.value * 2);
+
+// Tool that reads reactive state
+useWebMCP({
+  name: 'get_counter',
+  description: 'Get the current counter value',
+  handler: async () => ({
+    count: count.value,
+    doubled: doubleCount.value
+  })
+});
+
+// Tool that modifies reactive state
+useWebMCP({
+  name: 'increment_counter',
+  description: 'Increment the counter',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      amount: { type: 'number', description: 'Amount to increment by' }
+    }
+  },
+  handler: async ({ amount = 1 }) => {
+    count.value += amount as number;
+    return { newValue: count.value };
+  }
+});
+</script>
+
+<template>
+  <div>
+    <p>Count: {{ count }}</p>
+    <p>Double: {{ doubleCount }}</p>
+    <button @click="count++">Increment</button>
+  </div>
+</template>
+```
+
+## Working with Pinia Stores
+
+Integrate WebMCP with Pinia for state management:
+
+```typescript "stores/cart.ts"
+import { defineStore } from 'pinia';
+
+export const useCartStore = defineStore('cart', {
+  state: () => ({
+    items: [] as { id: string; name: string; quantity: number }[]
+  }),
+  getters: {
+    totalItems: (state) => state.items.reduce((sum, item) => sum + item.quantity, 0),
+    cartSummary: (state) => state.items.map(i => `${i.name} x${i.quantity}`).join(', ')
+  },
+  actions: {
+    addItem(id: string, name: string, quantity = 1) {
+      const existing = this.items.find(i => i.id === id);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        this.items.push({ id, name, quantity });
+      }
+    },
+    removeItem(id: string) {
+      this.items = this.items.filter(i => i.id !== id);
+    }
+  }
+});
+```
+
+```vue "CartTools.vue"
+<script setup lang="ts">
+import { useCartStore } from '@/stores/cart';
+import { useWebMCP } from '@/composables/useWebMCP';
+
+const cart = useCartStore();
+
+useWebMCP({
+  name: 'add_to_cart',
+  description: 'Add a product to the cart',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      productId: { type: 'string' },
+      productName: { type: 'string' },
+      quantity: { type: 'number' }
+    },
+    required: ['productId', 'productName']
+  },
+  handler: async ({ productId, productName, quantity = 1 }) => {
+    cart.addItem(productId as string, productName as string, quantity as number);
+    return { success: true, totalItems: cart.totalItems };
+  }
+});
+
+useWebMCP({
+  name: 'get_cart_summary',
+  description: 'Get a summary of the cart contents',
+  handler: async () => ({
+    items: cart.items,
+    total: cart.totalItems,
+    summary: cart.cartSummary
+  })
+});
+</script>
+
+<template>
+  <div>
+    <p>Cart: {{ cart.cartSummary || 'Empty' }}</p>
+  </div>
+</template>
+```
+
+## Advanced Composable with Schema Validation
+
+Create a more robust composable with Zod schema support:
+
+```typescript "composables/useWebMCP.ts"
+import { onMounted, onUnmounted, ref, type Ref } from 'vue';
+import { z, type ZodObject, type ZodRawShape } from 'zod';
+import '@mcp-b/global';
+
+interface ToolConfig<T extends ZodRawShape> {
+  name: string;
+  description: string;
+  inputSchema: ZodObject<T>;
+  handler: (args: z.infer<ZodObject<T>>) => Promise<unknown>;
+}
+
+export function useWebMCP<T extends ZodRawShape>(
+  config: ToolConfig<T>
+): { isRegistered: Ref<boolean> } {
+  const isRegistered = ref(false);
+  let registration: { unregister: () => void } | null = null;
+
+  // Convert Zod schema to JSON Schema
+  function zodToJsonSchema(schema: ZodObject<T>) {
+    const shape = schema.shape;
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+
+    for (const [key, value] of Object.entries(shape)) {
+      const zodType = value as z.ZodTypeAny;
+      properties[key] = {
+        type: getZodType(zodType),
+        description: zodType.description
+      };
+      if (!zodType.isOptional()) {
+        required.push(key);
+      }
+    }
+
+    return {
+      type: 'object',
+      properties,
+      required: required.length > 0 ? required : undefined
+    };
+  }
+
+  function getZodType(zodType: z.ZodTypeAny): string {
+    if (zodType instanceof z.ZodString) return 'string';
+    if (zodType instanceof z.ZodNumber) return 'number';
+    if (zodType instanceof z.ZodBoolean) return 'boolean';
+    if (zodType instanceof z.ZodArray) return 'array';
+    if (zodType instanceof z.ZodOptional) return getZodType(zodType.unwrap());
+    return 'string';
+  }
+
+  onMounted(() => {
+    if (!('modelContext' in navigator)) return;
+
+    registration = navigator.modelContext.registerTool({
+      name: config.name,
+      description: config.description,
+      inputSchema: zodToJsonSchema(config.inputSchema),
+      async execute(args) {
+        // Validate with Zod
+        const validated = config.inputSchema.parse(args);
+        const result = await config.handler(validated);
+        return {
+          content: [{
+            type: 'text',
+            text: typeof result === 'string' ? result : JSON.stringify(result)
+          }]
+        };
+      }
+    });
+
+    isRegistered.value = true;
+  });
+
+  onUnmounted(() => {
+    registration?.unregister();
+  });
+
+  return { isRegistered };
+}
+```
+
+```vue "ValidatedTools.vue"
+<script setup lang="ts">
+import { z } from 'zod';
+import { useWebMCP } from '@/composables/useWebMCP';
+
+useWebMCP({
+  name: 'search_products',
+  description: 'Search for products by query',
+  inputSchema: z.object({
+    query: z.string().describe('Search query'),
+    limit: z.number().min(1).max(100).optional().describe('Max results'),
+    category: z.enum(['electronics', 'clothing', 'food']).optional()
+  }),
+  handler: async ({ query, limit = 10, category }) => {
+    const results = await searchProducts({ query, limit, category });
+    return { results, count: results.length };
+  }
+});
+</script>
+```
+
+## Full Application Example
+
+Here's a complete Vue 3 application with WebMCP integration:
+
+```vue "App.vue"
+<script setup lang="ts">
+import { ref } from 'vue';
+import '@mcp-b/global';
+import ProductTools from './components/ProductTools.vue';
+import CartTools from './components/CartTools.vue';
+
+const isWebMCPAvailable = ref(false);
+
+// Check WebMCP availability
+if (typeof window !== 'undefined') {
+  isWebMCPAvailable.value = 'modelContext' in navigator;
+}
+</script>
+
+<template>
+  <div id="app">
+    <header>
+      <h1>My Vue Store</h1>
+      <span v-if="isWebMCPAvailable" class="badge">AI-Enabled</span>
+    </header>
+
+    <!-- Tool registration components (render nothing) -->
+    <ProductTools />
+    <CartTools />
+
+    <!-- Your app content -->
+    <main>
+      <RouterView />
+    </main>
+  </div>
+</template>
+```
+
+```vue "components/ProductTools.vue"
+<script setup lang="ts">
+import { useWebMCP } from '@/composables/useWebMCP';
+import { useProductStore } from '@/stores/products';
+
+const products = useProductStore();
+
+useWebMCP({
+  name: 'list_products',
+  description: 'List all available products',
+  handler: async () => ({
+    products: products.items.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price
+    }))
+  })
+});
+
+useWebMCP({
+  name: 'get_product',
+  description: 'Get details for a specific product',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      productId: { type: 'string', description: 'The product ID' }
+    },
+    required: ['productId']
+  },
+  handler: async ({ productId }) => {
+    const product = products.items.find(p => p.id === productId);
+    if (!product) {
+      return { error: 'Product not found' };
+    }
+    return { product };
+  }
+});
+
+useWebMCP({
+  name: 'search_products',
+  description: 'Search products by name or description',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search term' }
+    },
+    required: ['query']
+  },
+  handler: async ({ query }) => {
+    const results = products.search(query as string);
+    return { results, count: results.length };
+  }
+});
+</script>
+
+<template>
+  <!-- This component only registers tools, no UI -->
+</template>
+```
+
+## Common Gotchas
+
+<AccordionGroup>
+  <Accordion title="Tools not registering in SSR">
+    If using SSR (like Nuxt), tools will fail to register on the server. See the [Nuxt guide](/frameworks/nuxt) for SSR-specific patterns.
+
+    **Quick fix:** Check for browser environment:
+    ```typescript
+    onMounted(() => {
+      if (typeof window === 'undefined') return;
+      // Register tools
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Stale state in tool handlers">
+    If your tool handler captures stale reactive state, access the ref's `.value` directly in the handler:
+
+    ```typescript
+    // Bad - captures initial value
+    const handler = async () => ({ count: count.value }); // Captured at creation
+
+    // Good - accesses current value
+    handler: async () => ({ count: count.value }) // Accessed at execution
+    ```
+  </Accordion>
+
+  <Accordion title="Memory leaks from missing cleanup">
+    Always unregister tools. The composable handles this, but if registering manually:
+
+    ```typescript
+    const registration = navigator.modelContext.registerTool({ /* ... */ });
+
+    onUnmounted(() => {
+      registration.unregister(); // Don't forget this!
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Vue 3 Docs" icon="vuejs" href="https://vuejs.org/guide/introduction.html">
+    Official Vue 3 documentation
+  </Card>
+
+  <Card title="Nuxt Integration" icon="n" href="/frameworks/nuxt">
+    SSR patterns with Nuxt
+  </Card>
+
+  <Card title="Pinia Docs" icon="warehouse" href="https://pinia.vuejs.org/">
+    Vue state management
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    Complete working examples
+  </Card>
+</CardGroup>
