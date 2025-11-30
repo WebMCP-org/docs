@@ -14,6 +14,31 @@ This section covers framework-specific patterns and composables for popular web 
   New to WebMCP? Start with the [Quickstart Guide](/quickstart) to understand the basics before diving into framework-specific patterns.
 </Info>
 
+## How It Works
+
+When you import `@mcp-b/global`, your website starts an **MCP server**:
+
+```mermaid
+graph LR
+    subgraph Your Website - MCP Server
+        A[Your App] --> B[navigator.modelContext]
+        B --> C[registerTool]
+        C --> D[TabServerTransport]
+    end
+
+    subgraph AI Agents - MCP Clients
+        E[Browser Extension] --> F[TabClientTransport]
+        G[Embedded Copilot] --> H[TabClientTransport]
+    end
+
+    F --> D
+    H --> D
+```
+
+1. **Your website runs an MCP server** - When you import `@mcp-b/global`, it initializes `navigator.modelContext` and starts a server using `TabServerTransport`
+2. **Tools are registered with the server** - Your components call `navigator.modelContext.registerTool()` to expose functionality
+3. **AI agents connect as clients** - External AI agents (browser extensions, copilots) use `TabClientTransport` to discover and call your tools
+
 ## Framework Support
 
 <CardGroup cols={2}>
@@ -44,21 +69,60 @@ All non-React frameworks follow the same basic pattern using the [`@mcp-b/global
 
 <Steps>
   <Step title="Install and import">
-    See the [Global Package documentation](/packages/global#installation) for installation
+    ```bash
+    npm install @mcp-b/global
+    ```
+
+    Import once at your app's entry point to start the MCP server:
+
+    ```typescript
+    import '@mcp-b/global'; // Starts MCP server on your page
+    ```
   </Step>
 
   <Step title="Register tools">
-    Use [`navigator.modelContext.registerTool()`](/concepts/tool-registration) in your framework's lifecycle
+    Use [`navigator.modelContext.registerTool()`](/concepts/tool-registration) in your framework's lifecycle hooks
   </Step>
 
   <Step title="Handle cleanup">
-    Call `unregister()` when components unmount (see [Tool Lifecycle](/concepts/tool-registration#tool-lifecycle))
+    Call `unregister()` when components unmount to prevent memory leaks
   </Step>
 </Steps>
 
-<Info>
-  **Tool Discovery**: AI agents discover and call registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—the transport handles discovery.
-</Info>
+## How AI Agents Connect
+
+AI agents (browser extensions, copilots, etc.) connect to your tools using `TabClientTransport`:
+
+```typescript "BrowserExtension.ts"
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+
+// Create transport targeting your website
+const transport = new TabClientTransport({
+  targetOrigin: 'https://your-website.com', // Required for security
+  channelId: 'mcp-default'
+});
+
+// Create MCP client
+const client = new Client(
+  { name: 'MyAIAgent', version: '1.0.0' },
+  { capabilities: {} }
+);
+
+// Connect and discover tools
+await client.connect(transport);
+const { tools } = await client.listTools();
+
+// Call a tool
+const result = await client.callTool({
+  name: 'add_to_cart',
+  arguments: { productId: 'abc', quantity: 2 }
+});
+```
+
+<Note>
+  The `targetOrigin` parameter is **required** for security. It must match the origin of the website hosting the MCP server.
+</Note>
 
 ## Framework Comparison
 
@@ -75,11 +139,22 @@ All non-React frameworks follow the same basic pattern using the [`@mcp-b/global
 
 ### Client-Side Only
 
-WebMCP tools must be registered on the client side. For SSR frameworks, see [Framework Gotchas](/ai-frameworks/framework-gotchas) for patterns to ensure tools only register in the browser.
+WebMCP tools must be registered on the client side. The `@mcp-b/global` polyfill requires browser APIs (`window`, `navigator`). For SSR frameworks:
+
+- **Nuxt**: Use `.client.ts` plugin suffix or `import.meta.client` check
+- **SvelteKit**: Use `browser` from `$app/environment` or `onMount`
+- **Angular Universal**: Use `isPlatformBrowser()` check
 
 ### Cleanup
 
-Always unregister tools when components are destroyed. See [Tool Lifecycle](/concepts/tool-registration#tool-lifecycle) for details.
+Always unregister tools when components are destroyed to prevent memory leaks:
+
+```typescript
+const registration = navigator.modelContext.registerTool({ ... });
+
+// On component destroy:
+registration.unregister();
+```
 
 ### Schema Validation
 
@@ -96,11 +171,11 @@ For input validation with Zod or JSON Schema, see the [Schemas Guide](/concepts/
     Use our React hooks package instead
   </Card>
 
-  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
-    How AI agents discover and call tools
+  <Card title="Transports" icon="plug" href="/packages/transports">
+    Learn about TabClientTransport and TabServerTransport
   </Card>
 
-  <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">
-    Handle server-side rendering
+  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
+    Integrate with Assistant-UI, AG-UI, or custom runtimes
   </Card>
 </CardGroup>

@@ -8,15 +8,50 @@ icon: 'vuejs'
 
 Vue 3's Composition API provides an elegant way to integrate WebMCP tools. This guide shows how to create a reusable composable for tool registration that handles reactivity and cleanup automatically.
 
+## How It Works
+
+When you import `@mcp-b/global`, your Vue app starts an **MCP server**:
+
+```mermaid
+sequenceDiagram
+    participant App as Vue App
+    participant MC as navigator.modelContext
+    participant Server as MCP Server
+    participant Agent as AI Agent (Client)
+
+    App->>MC: import '@mcp-b/global'
+    MC->>Server: Start TabServerTransport
+    App->>MC: registerTool('add_to_cart', ...)
+    MC->>Server: Tool available
+    Agent->>Server: Connect via TabClientTransport
+    Agent->>Server: listTools()
+    Server-->>Agent: ['add_to_cart', ...]
+    Agent->>Server: callTool('add_to_cart', {...})
+    Server->>MC: Execute handler
+    MC-->>Agent: Result
+```
+
+Your Vue components register tools with the MCP server. AI agents (browser extensions, copilots) connect as clients to discover and call those tools.
+
 ## Prerequisites
 
 <Steps>
   <Step title="Install WebMCP">
-    Follow the [installation guide](/packages/global#installation) to set up `@mcp-b/global`
+    ```bash
+    npm install @mcp-b/global
+    ```
   </Step>
 
-  <Step title="Have Vue 3 configured">
-    This guide uses Vue 3 with the Composition API
+  <Step title="Initialize in main.ts">
+    Import once at your app's entry point to start the MCP server:
+
+    ```typescript "main.ts"
+    import '@mcp-b/global'; // Starts MCP server
+    import { createApp } from 'vue';
+    import App from './App.vue';
+
+    createApp(App).mount('#app');
+    ```
   </Step>
 </Steps>
 
@@ -68,7 +103,7 @@ export function useWebMCP(config: ToolConfig): void {
 ```
 
 <Info>
-  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—no need to track them internally.
+  **How AI agents call your tools**: AI agents use `TabClientTransport` to connect to your page and call `client.listTools()` to discover available tools, then `client.callTool()` to execute them. See [Transports](/packages/transports) for details.
 </Info>
 
 ### Using the Composable
@@ -295,11 +330,11 @@ import CartTools from './components/CartTools.vue';
     SSR patterns with Nuxt
   </Card>
 
-  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
-    How AI agents discover and call tools
+  <Card title="Transports" icon="plug" href="/packages/transports">
+    TabClientTransport and TabServerTransport reference
   </Card>
 
-  <Card title="Examples" icon="code" href="/examples">
-    Complete working examples
+  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
+    Integrate with Assistant-UI, AG-UI, or custom runtimes
   </Card>
 </CardGroup>

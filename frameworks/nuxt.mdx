@@ -8,11 +8,23 @@ icon: 'n'
 
 Nuxt 3 is a full-stack Vue framework with built-in SSR, making WebMCP integration slightly more complex than client-only Vue apps. This guide covers Nuxt-specific patterns for registering tools that work correctly with server-side rendering.
 
+## How It Works
+
+WebMCP tools run **client-side only**. When `@mcp-b/global` is imported on the client:
+
+1. **MCP server starts** - `navigator.modelContext` is initialized with `TabServerTransport`
+2. **Tools are registered** - Your components call `registerTool()` to expose functionality
+3. **AI agents connect** - External agents use `TabClientTransport` to discover and call tools
+
+The challenge with Nuxt SSR is ensuring WebMCP code only runs on the client.
+
 ## Prerequisites
 
 <Steps>
   <Step title="Install WebMCP">
-    Follow the [installation guide](/packages/global#installation) to set up `@mcp-b/global`
+    ```bash
+    npm install @mcp-b/global
+    ```
   </Step>
 
   <Step title="Have Nuxt 3 configured">
@@ -21,7 +33,7 @@ Nuxt 3 is a full-stack Vue framework with built-in SSR, making WebMCP integratio
 </Steps>
 
 <Info>
-  For general SSR patterns and common issues, see [Framework Gotchas](/ai-frameworks/framework-gotchas). For the base Vue composable pattern, see [Vue Integration](/frameworks/vue).
+  For the base Vue composable pattern, see [Vue Integration](/frameworks/vue).
 </Info>
 
 ## Client-Only Plugin
@@ -87,7 +99,7 @@ export function useWebMCP(config: ToolConfig): void {
 </Note>
 
 <Info>
-  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—no need to track them internally.
+  **How AI agents call your tools**: AI agents use `TabClientTransport` to connect to your page and call `client.listTools()` to discover available tools, then `client.callTool()` to execute them. See [Transports](/packages/transports) for details.
 </Info>
 
 ## Using with Server Data
@@ -296,11 +308,11 @@ useWebMCP({
     Base Vue patterns
   </Card>
 
-  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
-    How AI agents discover and call tools
+  <Card title="Transports" icon="plug" href="/packages/transports">
+    TabClientTransport and TabServerTransport reference
   </Card>
 
-  <Card title="Examples" icon="code" href="/examples">
-    Complete working examples
+  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
+    Integrate with Assistant-UI, AG-UI, or custom runtimes
   </Card>
 </CardGroup>
