@@ -12,56 +12,21 @@ Vue 3's Composition API provides an elegant way to integrate WebMCP tools. This 
 
 <Steps>
   <Step title="Install WebMCP">
-    ```bash
-    npm install @mcp-b/global
-    ```
+    Follow the [installation guide](/packages/global#installation) to set up `@mcp-b/global`
   </Step>
 
   <Step title="Have Vue 3 configured">
-    This guide uses Vue 3 with the Composition API. Vue 2 users should upgrade or use the vanilla JavaScript approach.
+    This guide uses Vue 3 with the Composition API
   </Step>
 </Steps>
 
-## Basic Integration
+<Info>
+  For schema validation with Zod, see the [Schemas Guide](/concepts/schemas). For response formatting, see [Tool Registration](/concepts/tool-registration#response-format).
+</Info>
 
-### Simple Tool Registration
+## Creating a Vue Composable
 
-Register a tool in a Vue component using lifecycle hooks:
-
-```vue "ProductTools.vue"
-<script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
-import '@mcp-b/global';
-
-let registration: { unregister: () => void } | null = null;
-
-onMounted(() => {
-  registration = navigator.modelContext.registerTool({
-    name: 'get_product_count',
-    description: 'Get the number of products in the catalog',
-    inputSchema: { type: 'object', properties: {} },
-    async execute() {
-      const count = await fetchProductCount();
-      return {
-        content: [{ type: 'text', text: `There are ${count} products` }]
-      };
-    }
-  });
-});
-
-onUnmounted(() => {
-  registration?.unregister();
-});
-</script>
-
-<template>
-  <!-- Your component template -->
-</template>
-```
-
-## Creating a Composable
-
-For reusable tool registration, create a `useWebMCP` composable:
+The recommended approach is creating a `useWebMCP` composable:
 
 ```typescript "composables/useWebMCP.ts"
 import { onMounted, onUnmounted, ref, type Ref } from 'vue';
@@ -130,7 +95,6 @@ import { useWebMCP } from '@/composables/useWebMCP';
 
 const cartItems = ref<string[]>([]);
 
-// Register add to cart tool
 useWebMCP({
   name: 'add_to_cart',
   description: 'Add a product to the shopping cart',
@@ -150,7 +114,6 @@ useWebMCP({
   }
 });
 
-// Register get cart tool
 useWebMCP({
   name: 'get_cart',
   description: 'Get current cart contents',
@@ -289,116 +252,7 @@ useWebMCP({
 </template>
 ```
 
-## Advanced Composable with Schema Validation
-
-Create a more robust composable with Zod schema support:
-
-```typescript "composables/useWebMCP.ts"
-import { onMounted, onUnmounted, ref, type Ref } from 'vue';
-import { z, type ZodObject, type ZodRawShape } from 'zod';
-import '@mcp-b/global';
-
-interface ToolConfig<T extends ZodRawShape> {
-  name: string;
-  description: string;
-  inputSchema: ZodObject<T>;
-  handler: (args: z.infer<ZodObject<T>>) => Promise<unknown>;
-}
-
-export function useWebMCP<T extends ZodRawShape>(
-  config: ToolConfig<T>
-): { isRegistered: Ref<boolean> } {
-  const isRegistered = ref(false);
-  let registration: { unregister: () => void } | null = null;
-
-  // Convert Zod schema to JSON Schema
-  function zodToJsonSchema(schema: ZodObject<T>) {
-    const shape = schema.shape;
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-
-    for (const [key, value] of Object.entries(shape)) {
-      const zodType = value as z.ZodTypeAny;
-      properties[key] = {
-        type: getZodType(zodType),
-        description: zodType.description
-      };
-      if (!zodType.isOptional()) {
-        required.push(key);
-      }
-    }
-
-    return {
-      type: 'object',
-      properties,
-      required: required.length > 0 ? required : undefined
-    };
-  }
-
-  function getZodType(zodType: z.ZodTypeAny): string {
-    if (zodType instanceof z.ZodString) return 'string';
-    if (zodType instanceof z.ZodNumber) return 'number';
-    if (zodType instanceof z.ZodBoolean) return 'boolean';
-    if (zodType instanceof z.ZodArray) return 'array';
-    if (zodType instanceof z.ZodOptional) return getZodType(zodType.unwrap());
-    return 'string';
-  }
-
-  onMounted(() => {
-    if (!('modelContext' in navigator)) return;
-
-    registration = navigator.modelContext.registerTool({
-      name: config.name,
-      description: config.description,
-      inputSchema: zodToJsonSchema(config.inputSchema),
-      async execute(args) {
-        // Validate with Zod
-        const validated = config.inputSchema.parse(args);
-        const result = await config.handler(validated);
-        return {
-          content: [{
-            type: 'text',
-            text: typeof result === 'string' ? result : JSON.stringify(result)
-          }]
-        };
-      }
-    });
-
-    isRegistered.value = true;
-  });
-
-  onUnmounted(() => {
-    registration?.unregister();
-  });
-
-  return { isRegistered };
-}
-```
-
-```vue "ValidatedTools.vue"
-<script setup lang="ts">
-import { z } from 'zod';
-import { useWebMCP } from '@/composables/useWebMCP';
-
-useWebMCP({
-  name: 'search_products',
-  description: 'Search for products by query',
-  inputSchema: z.object({
-    query: z.string().describe('Search query'),
-    limit: z.number().min(1).max(100).optional().describe('Max results'),
-    category: z.enum(['electronics', 'clothing', 'food']).optional()
-  }),
-  handler: async ({ query, limit = 10, category }) => {
-    const results = await searchProducts({ query, limit, category });
-    return { results, count: results.length };
-  }
-});
-</script>
-```
-
 ## Full Application Example
-
-Here's a complete Vue 3 application with WebMCP integration:
 
 ```vue "App.vue"
 <script setup lang="ts">
@@ -409,7 +263,6 @@ import CartTools from './components/CartTools.vue';
 
 const isWebMCPAvailable = ref(false);
 
-// Check WebMCP availability
 if (typeof window !== 'undefined') {
   isWebMCPAvailable.value = 'modelContext' in navigator;
 }
@@ -422,11 +275,10 @@ if (typeof window !== 'undefined') {
       <span v-if="isWebMCPAvailable" class="badge">AI-Enabled</span>
     </header>
 
-    <!-- Tool registration components (render nothing) -->
+    <!-- Tool registration components -->
     <ProductTools />
     <CartTools />
 
-    <!-- Your app content -->
     <main>
       <RouterView />
     </main>
@@ -434,103 +286,24 @@ if (typeof window !== 'undefined') {
 </template>
 ```
 
-```vue "components/ProductTools.vue"
-<script setup lang="ts">
-import { useWebMCP } from '@/composables/useWebMCP';
-import { useProductStore } from '@/stores/products';
-
-const products = useProductStore();
-
-useWebMCP({
-  name: 'list_products',
-  description: 'List all available products',
-  handler: async () => ({
-    products: products.items.map(p => ({
-      id: p.id,
-      name: p.name,
-      price: p.price
-    }))
-  })
-});
-
-useWebMCP({
-  name: 'get_product',
-  description: 'Get details for a specific product',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      productId: { type: 'string', description: 'The product ID' }
-    },
-    required: ['productId']
-  },
-  handler: async ({ productId }) => {
-    const product = products.items.find(p => p.id === productId);
-    if (!product) {
-      return { error: 'Product not found' };
-    }
-    return { product };
-  }
-});
-
-useWebMCP({
-  name: 'search_products',
-  description: 'Search products by name or description',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Search term' }
-    },
-    required: ['query']
-  },
-  handler: async ({ query }) => {
-    const results = products.search(query as string);
-    return { results, count: results.length };
-  }
-});
-</script>
-
-<template>
-  <!-- This component only registers tools, no UI -->
-</template>
-```
-
 ## Common Gotchas
 
 <AccordionGroup>
   <Accordion title="Tools not registering in SSR">
-    If using SSR (like Nuxt), tools will fail to register on the server. See the [Nuxt guide](/frameworks/nuxt) for SSR-specific patterns.
-
-    **Quick fix:** Check for browser environment:
-    ```typescript
-    onMounted(() => {
-      if (typeof window === 'undefined') return;
-      // Register tools
-    });
-    ```
+    If using SSR (like Nuxt), see the [Nuxt guide](/frameworks/nuxt) or [Framework Gotchas](/ai-frameworks/framework-gotchas) for SSR-specific patterns.
   </Accordion>
 
   <Accordion title="Stale state in tool handlers">
-    If your tool handler captures stale reactive state, access the ref's `.value` directly in the handler:
+    Access the ref's `.value` directly in the handler to get current state:
 
     ```typescript
-    // Bad - captures initial value
-    const handler = async () => ({ count: count.value }); // Captured at creation
-
-    // Good - accesses current value
-    handler: async () => ({ count: count.value }) // Accessed at execution
+    // Good - accesses current value at execution time
+    handler: async () => ({ count: count.value })
     ```
   </Accordion>
 
   <Accordion title="Memory leaks from missing cleanup">
-    Always unregister tools. The composable handles this, but if registering manually:
-
-    ```typescript
-    const registration = navigator.modelContext.registerTool({ /* ... */ });
-
-    onUnmounted(() => {
-      registration.unregister(); // Don't forget this!
-    });
-    ```
+    The composable handles cleanup automatically. For manual registration, see [Lifecycle Management](/concepts/tool-registration#cleanup-and-lifecycle).
   </Accordion>
 </AccordionGroup>
 
@@ -545,8 +318,8 @@ useWebMCP({
     SSR patterns with Nuxt
   </Card>
 
-  <Card title="Pinia Docs" icon="warehouse" href="https://pinia.vuejs.org/">
-    Vue state management
+  <Card title="Schemas Guide" icon="code" href="/concepts/schemas">
+    Zod and JSON Schema validation
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">

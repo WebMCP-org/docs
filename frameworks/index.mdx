@@ -6,9 +6,13 @@ icon: 'grid-2'
 
 ## Overview
 
-WebMCP works with any JavaScript framework. While we provide first-class React support via `@mcp-b/react-webmcp`, you can integrate WebMCP into Vue, Svelte, Angular, Rails, and any other framework using the vanilla JavaScript API.
+WebMCP works with any JavaScript framework. While we provide first-class React support via [`@mcp-b/react-webmcp`](/packages/react-webmcp), you can integrate WebMCP into Vue, Svelte, Angular, Rails, and any other framework using the [vanilla JavaScript API](/packages/global).
 
-This section covers framework-specific patterns, gotchas, and best practices for popular web frameworks.
+This section covers framework-specific patterns and composables for popular web frameworks.
+
+<Info>
+  New to WebMCP? Start with the [Quickstart Guide](/quickstart) to understand the basics before diving into framework-specific patterns.
+</Info>
 
 ## Framework Support
 
@@ -36,112 +40,46 @@ This section covers framework-specific patterns, gotchas, and best practices for
 
 ## Integration Pattern
 
-All non-React frameworks follow the same basic pattern:
+All non-React frameworks follow the same basic pattern using the [`@mcp-b/global`](/packages/global) package:
 
 <Steps>
-  <Step title="Import the global API">
-    Add `@mcp-b/global` to expose `navigator.modelContext`
+  <Step title="Install and import">
+    See the [Global Package documentation](/packages/global#installation) for installation
   </Step>
 
-  <Step title="Register tools using vanilla JS">
-    Use `navigator.modelContext.registerTool()` directly
+  <Step title="Register tools">
+    Use [`navigator.modelContext.registerTool()`](/concepts/tool-registration) in your framework's lifecycle
   </Step>
 
   <Step title="Handle cleanup">
-    Call `unregister()` when components unmount
-  </Step>
-
-  <Step title="(Optional) Connect MCP client">
-    For AI framework integration, connect an MCP client
+    Call `unregister()` when components unmount (see [Lifecycle Management](/concepts/tool-registration#cleanup-and-lifecycle))
   </Step>
 </Steps>
 
-## Basic Example
-
-Here's the core pattern that works in any framework:
-
-```typescript "Basic Tool Registration"
-import '@mcp-b/global';
-
-// Register a tool
-const registration = navigator.modelContext.registerTool({
-  name: 'get_user_data',
-  description: 'Get the current user information',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      includeEmail: {
-        type: 'boolean',
-        description: 'Include email in response'
-      }
-    }
-  },
-  async execute(args) {
-    const user = getCurrentUser();
-    return {
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          name: user.name,
-          email: args.includeEmail ? user.email : undefined
-        })
-      }]
-    };
-  }
-});
-
-// Later, when the component unmounts
-registration.unregister();
-```
-
 ## Framework Comparison
 
-| Framework | Reactivity | Server Rendering | Tool Registration |
-|-----------|------------|------------------|-------------------|
+| Framework | Reactivity | Server Rendering | Tool Registration Hook |
+|-----------|------------|------------------|------------------------|
 | Vue 3 | `ref`/`reactive` | Via Nuxt | `onMounted`/`onUnmounted` |
 | Nuxt 3 | Vue reactivity | Built-in SSR | Client-only plugins |
 | Svelte | `$state`/stores | Via SvelteKit | `onMount`/`onDestroy` |
 | SvelteKit | Svelte stores | Built-in SSR | Client-side only |
-| Rails | Stimulus | Turbo/Hotwire | Controller lifecycle |
-| Angular | RxJS/Signals | Universal | Service lifecycle |
+| Rails | Stimulus | Turbo/Hotwire | `connect`/`disconnect` |
+| Angular | RxJS/Signals | Universal | `ngOnInit`/`ngOnDestroy` |
 
 ## Key Considerations
 
 ### Client-Side Only
 
-WebMCP tools must be registered on the client side. If your framework uses server-side rendering (SSR), ensure tool registration only happens in the browser:
+WebMCP tools must be registered on the client side. For SSR frameworks, see [Framework Gotchas](/ai-frameworks/framework-gotchas) for patterns to ensure tools only register in the browser.
 
-```typescript
-// Check for browser environment
-if (typeof window !== 'undefined' && 'modelContext' in navigator) {
-  navigator.modelContext.registerTool({ /* ... */ });
-}
-```
+### Cleanup
 
-### Cleanup is Critical
+Always unregister tools when components are destroyed. See [Lifecycle Management](/concepts/tool-registration#cleanup-and-lifecycle) for details.
 
-Always unregister tools when components are destroyed to prevent memory leaks and stale tool references:
+### Schema Validation
 
-```typescript
-// Store the registration
-const registration = navigator.modelContext.registerTool({ /* ... */ });
-
-// On component destroy
-registration.unregister();
-```
-
-### State Synchronization
-
-When tools interact with framework state, ensure proper reactivity:
-
-```typescript
-// Tool handler should access current state, not stale closures
-execute: async (args) => {
-  // Access reactive state here
-  const currentValue = myReactiveStore.value;
-  return { content: [{ type: 'text', text: String(currentValue) }] };
-}
-```
+For input validation with Zod or JSON Schema, see the [Schemas Guide](/concepts/schemas).
 
 ## Next Steps
 
@@ -154,11 +92,11 @@ execute: async (args) => {
     Use our React hooks package instead
   </Card>
 
-  <Card title="AI Framework Integration" icon="robot" href="/ai-frameworks">
-    Connect WebMCP to AI assistants
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Learn the core registration API
   </Card>
 
-  <Card title="Examples" icon="code" href="/examples">
-    See complete working examples
+  <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">
+    Handle server-side rendering
   </Card>
 </CardGroup>

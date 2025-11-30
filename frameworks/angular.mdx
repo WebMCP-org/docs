@@ -12,64 +12,25 @@ Angular's dependency injection and service-based architecture makes it well-suit
 
 <Steps>
   <Step title="Install WebMCP">
-    ```bash
-    npm install @mcp-b/global
-    ```
+    Follow the [installation guide](/packages/global#installation) to set up `@mcp-b/global`
   </Step>
 
   <Step title="Have Angular configured">
-    This guide covers Angular 16+ with signals and standalone components. Patterns work with earlier versions using RxJS alternatives.
+    This guide covers Angular 16+ with signals and standalone components
   </Step>
 </Steps>
 
-## Basic Integration
-
-### Simple Component Registration
-
-```typescript "product-tools.component.ts"
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import '@mcp-b/global';
-
-@Component({
-  selector: 'app-product-tools',
-  standalone: true,
-  template: ''
-})
-export class ProductToolsComponent implements OnInit, OnDestroy {
-  private registration: { unregister: () => void } | null = null;
-
-  ngOnInit() {
-    if (!('modelContext' in navigator)) {
-      console.warn('WebMCP not available');
-      return;
-    }
-
-    this.registration = navigator.modelContext.registerTool({
-      name: 'get_products',
-      description: 'Get list of available products',
-      inputSchema: { type: 'object', properties: {} },
-      async execute() {
-        const response = await fetch('/api/products');
-        const products = await response.json();
-        return {
-          content: [{ type: 'text', text: JSON.stringify(products) }]
-        };
-      }
-    });
-  }
-
-  ngOnDestroy() {
-    this.registration?.unregister();
-  }
-}
-```
+<Info>
+  For SSR patterns, see [Framework Gotchas](/ai-frameworks/framework-gotchas). For schema validation, see [Schemas Guide](/concepts/schemas).
+</Info>
 
 ## WebMCP Service
 
 Create a centralized service for managing tool registrations:
 
 ```typescript "webmcp.service.ts"
-import { Injectable, OnDestroy, signal, computed } from '@angular/core';
+import { Injectable, OnDestroy, signal, computed, PLATFORM_ID, Inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import '@mcp-b/global';
 
 interface ToolConfig {
@@ -79,35 +40,25 @@ interface ToolConfig {
   handler: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
-interface ToolRegistration {
-  name: string;
-  unregister: () => void;
-}
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class WebMCPService implements OnDestroy {
-  private registrations = new Map<string, ToolRegistration>();
+  private registrations = new Map<string, { unregister: () => void }>();
+  private isBrowser: boolean;
 
-  // Signals for reactive state
   readonly isAvailable = signal(false);
   readonly registeredTools = signal<string[]>([]);
   readonly toolCount = computed(() => this.registeredTools().length);
 
-  constructor() {
-    this.isAvailable.set(
-      typeof window !== 'undefined' && 'modelContext' in navigator
-    );
+  constructor(@Inject(PLATFORM_ID) platformId: object) {
+    this.isBrowser = isPlatformBrowser(platformId);
+    if (this.isBrowser) {
+      this.isAvailable.set('modelContext' in navigator);
+    }
   }
 
   registerTool(config: ToolConfig): boolean {
-    if (!this.isAvailable()) {
-      console.warn('WebMCP not available');
-      return false;
-    }
+    if (!this.isBrowser || !this.isAvailable()) return false;
 
-    // Unregister existing tool with same name
     if (this.registrations.has(config.name)) {
       this.unregisterTool(config.name);
     }
@@ -127,38 +78,22 @@ export class WebMCPService implements OnDestroy {
       }
     });
 
-    this.registrations.set(config.name, {
-      name: config.name,
-      unregister: registration.unregister
-    });
-
-    this.updateRegisteredTools();
+    this.registrations.set(config.name, registration);
+    this.registeredTools.set(Array.from(this.registrations.keys()));
     return true;
   }
 
-  unregisterTool(name: string): boolean {
-    const registration = this.registrations.get(name);
-    if (registration) {
-      registration.unregister();
+  unregisterTool(name: string): void {
+    const reg = this.registrations.get(name);
+    if (reg) {
+      reg.unregister();
       this.registrations.delete(name);
-      this.updateRegisteredTools();
-      return true;
+      this.registeredTools.set(Array.from(this.registrations.keys()));
     }
-    return false;
-  }
-
-  unregisterAll(): void {
-    this.registrations.forEach(reg => reg.unregister());
-    this.registrations.clear();
-    this.updateRegisteredTools();
-  }
-
-  private updateRegisteredTools(): void {
-    this.registeredTools.set(Array.from(this.registrations.keys()));
   }
 
   ngOnDestroy(): void {
-    this.unregisterAll();
+    this.registrations.forEach(r => r.unregister());
   }
 }
 ```
@@ -175,8 +110,7 @@ import { CartService } from './cart.service';
   standalone: true,
   template: `
     <div>
-      <h2>Shopping Cart</h2>
-      <p>Items: {{ cartService.itemCount() }}</p>
+      <h2>Cart</h2>
       @if (webmcp.isAvailable()) {
         <span class="badge">AI Enabled</span>
       }
@@ -188,51 +122,37 @@ export class CartComponent implements OnInit, OnDestroy {
   cartService = inject(CartService);
 
   ngOnInit() {
-    // Register cart tools
     this.webmcp.registerTool({
       name: 'add_to_cart',
-      description: 'Add a product to the shopping cart',
+      description: 'Add a product to the cart',
       inputSchema: {
         type: 'object',
         properties: {
-          productId: { type: 'string', description: 'Product ID' },
-          quantity: { type: 'number', description: 'Quantity to add' }
+          productId: { type: 'string' },
+          quantity: { type: 'number' }
         },
         required: ['productId']
       },
       handler: async ({ productId, quantity = 1 }) => {
         this.cartService.addItem(productId as string, quantity as number);
-        return {
-          success: true,
-          itemCount: this.cartService.itemCount()
-        };
+        return { success: true, itemCount: this.cartService.itemCount() };
       }
-    });
-
-    this.webmcp.registerTool({
-      name: 'get_cart',
-      description: 'Get current cart contents',
-      handler: async () => ({
-        items: this.cartService.items(),
-        total: this.cartService.total()
-      })
     });
   }
 
   ngOnDestroy() {
     this.webmcp.unregisterTool('add_to_cart');
-    this.webmcp.unregisterTool('get_cart');
   }
 }
 ```
 
 ## RxJS Integration
 
-For reactive tool handlers using RxJS:
+For handlers returning Observables:
 
 ```typescript "webmcp-rx.service.ts"
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import '@mcp-b/global';
 
 interface ToolConfig {
@@ -242,14 +162,9 @@ interface ToolConfig {
   handler: (args: Record<string, unknown>) => Observable<unknown> | Promise<unknown>;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class WebMCPRxService implements OnDestroy {
   private registrations = new Map<string, { unregister: () => void }>();
-  private _registeredTools$ = new BehaviorSubject<string[]>([]);
-
-  readonly registeredTools$ = this._registeredTools$.asObservable();
   readonly isAvailable = typeof window !== 'undefined' && 'modelContext' in navigator;
 
   registerTool(config: ToolConfig): void {
@@ -261,8 +176,6 @@ export class WebMCPRxService implements OnDestroy {
       inputSchema: config.inputSchema ?? { type: 'object', properties: {} },
       execute: async (args) => {
         const handlerResult = config.handler(args);
-
-        // Handle both Observable and Promise
         const result = handlerResult instanceof Observable
           ? await firstValueFrom(handlerResult)
           : await handlerResult;
@@ -277,16 +190,11 @@ export class WebMCPRxService implements OnDestroy {
     });
 
     this.registrations.set(config.name, registration);
-    this._registeredTools$.next(Array.from(this.registrations.keys()));
   }
 
   unregisterTool(name: string): void {
-    const registration = this.registrations.get(name);
-    if (registration) {
-      registration.unregister();
-      this.registrations.delete(name);
-      this._registeredTools$.next(Array.from(this.registrations.keys()));
-    }
+    this.registrations.get(name)?.unregister();
+    this.registrations.delete(name);
   }
 
   ngOnDestroy(): void {
@@ -309,29 +217,20 @@ import { WebMCPRxService } from './webmcp-rx.service';
 export class ProductSearchComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private webmcp = inject(WebMCPRxService);
-
   searchQuery = '';
 
   ngOnInit() {
-    // Tool handler using RxJS Observable
     this.webmcp.registerTool({
       name: 'search_products',
       description: 'Search products by query',
       inputSchema: {
         type: 'object',
-        properties: {
-          query: { type: 'string', description: 'Search term' }
-        },
+        properties: { query: { type: 'string' } },
         required: ['query']
       },
-      handler: ({ query }) => {
-        return this.http.get<any[]>(`/api/products/search?q=${query}`).pipe(
-          map(products => ({
-            results: products,
-            count: products.length
-          }))
-        );
-      }
+      handler: ({ query }) => this.http.get<any[]>(`/api/products/search?q=${query}`).pipe(
+        map(products => ({ results: products, count: products.length }))
+      )
     });
   }
 
@@ -343,17 +242,10 @@ export class ProductSearchComponent implements OnInit, OnDestroy {
 
 ## Directive-Based Registration
 
-Create a directive for declarative tool registration:
+Create a directive for declarative registration:
 
 ```typescript "webmcp-tool.directive.ts"
-import {
-  Directive,
-  Input,
-  OnInit,
-  OnDestroy,
-  OnChanges,
-  SimpleChanges
-} from '@angular/core';
+import { Directive, Input, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import '@mcp-b/global';
 
 interface ToolDefinition {
@@ -372,9 +264,7 @@ export class WebMCPToolDirective implements OnInit, OnDestroy, OnChanges {
 
   private registration: { unregister: () => void } | null = null;
 
-  ngOnInit() {
-    this.register();
-  }
+  ngOnInit() { this.register(); }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['tool'] && !changes['tool'].firstChange) {
@@ -383,9 +273,7 @@ export class WebMCPToolDirective implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  ngOnDestroy() {
-    this.unregister();
-  }
+  ngOnDestroy() { this.unregister(); }
 
   private register() {
     if (!('modelContext' in navigator) || !this.tool) return;
@@ -397,10 +285,7 @@ export class WebMCPToolDirective implements OnInit, OnDestroy, OnChanges {
       execute: async (args) => {
         const result = await this.tool.handler(args);
         return {
-          content: [{
-            type: 'text',
-            text: typeof result === 'string' ? result : JSON.stringify(result)
-          }]
+          content: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result) }]
         };
       }
     });
@@ -413,177 +298,9 @@ export class WebMCPToolDirective implements OnInit, OnDestroy, OnChanges {
 }
 ```
 
-```typescript "product-card.component.ts"
-import { Component, Input } from '@angular/core';
-import { WebMCPToolDirective } from './webmcp-tool.directive';
+## Global Tools
 
-@Component({
-  selector: 'app-product-card',
-  standalone: true,
-  imports: [WebMCPToolDirective],
-  template: `
-    <div
-      class="product-card"
-      [webmcpTool]="viewProductTool"
-    >
-      <h3>{{ product.name }}</h3>
-      <p>{{ product.price | currency }}</p>
-    </div>
-  `
-})
-export class ProductCardComponent {
-  @Input() product!: { id: string; name: string; price: number };
-
-  get viewProductTool() {
-    return {
-      name: `view_product_${this.product.id}`,
-      description: `View details for ${this.product.name}`,
-      handler: async () => ({
-        id: this.product.id,
-        name: this.product.name,
-        price: this.product.price
-      })
-    };
-  }
-}
-```
-
-## NgRx Store Integration
-
-Integrate with NgRx for state management:
-
-```typescript "webmcp.effects.ts"
-import { Injectable, inject } from '@angular/core';
-import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { Store } from '@ngrx/store';
-import { tap, withLatestFrom } from 'rxjs/operators';
-import { selectCartItems, selectCartTotal } from './cart.selectors';
-import { addToCart, removeFromCart } from './cart.actions';
-import '@mcp-b/global';
-
-@Injectable()
-export class WebMCPEffects {
-  private actions$ = inject(Actions);
-  private store = inject(Store);
-
-  private registrations: Array<{ unregister: () => void }> = [];
-
-  constructor() {
-    this.registerTools();
-  }
-
-  private registerTools() {
-    if (!('modelContext' in navigator)) return;
-
-    // Add to cart tool
-    this.registrations.push(
-      navigator.modelContext.registerTool({
-        name: 'cart_add',
-        description: 'Add item to shopping cart',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            productId: { type: 'string' },
-            quantity: { type: 'number' }
-          },
-          required: ['productId']
-        },
-        execute: async (args) => {
-          this.store.dispatch(addToCart({
-            productId: args.productId as string,
-            quantity: (args.quantity as number) || 1
-          }));
-          return { content: [{ type: 'text', text: 'Item added to cart' }] };
-        }
-      })
-    );
-
-    // Get cart tool
-    this.registrations.push(
-      navigator.modelContext.registerTool({
-        name: 'cart_get',
-        description: 'Get current cart contents',
-        inputSchema: { type: 'object', properties: {} },
-        execute: async () => {
-          return new Promise(resolve => {
-            this.store.select(selectCartItems).pipe(
-              withLatestFrom(this.store.select(selectCartTotal))
-            ).subscribe(([items, total]) => {
-              resolve({
-                content: [{
-                  type: 'text',
-                  text: JSON.stringify({ items, total })
-                }]
-              });
-            });
-          });
-        }
-      })
-    );
-  }
-
-  ngOnDestroy() {
-    this.registrations.forEach(r => r.unregister());
-  }
-}
-```
-
-## Server-Side Rendering (Angular Universal)
-
-Handle SSR with platform checks:
-
-```typescript "webmcp.service.ts"
-import { Injectable, OnDestroy, PLATFORM_ID, Inject, signal } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import '@mcp-b/global';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class WebMCPService implements OnDestroy {
-  private registrations = new Map<string, { unregister: () => void }>();
-  private isBrowser: boolean;
-
-  readonly isAvailable = signal(false);
-
-  constructor(@Inject(PLATFORM_ID) platformId: object) {
-    this.isBrowser = isPlatformBrowser(platformId);
-
-    if (this.isBrowser) {
-      this.isAvailable.set('modelContext' in navigator);
-    }
-  }
-
-  registerTool(config: ToolConfig): boolean {
-    // Only register in browser
-    if (!this.isBrowser || !this.isAvailable()) {
-      return false;
-    }
-
-    const registration = navigator.modelContext.registerTool({
-      name: config.name,
-      description: config.description,
-      inputSchema: config.inputSchema ?? { type: 'object', properties: {} },
-      execute: async (args) => {
-        const result = await config.handler(args);
-        return {
-          content: [{
-            type: 'text',
-            text: typeof result === 'string' ? result : JSON.stringify(result)
-          }]
-        };
-      }
-    });
-
-    this.registrations.set(config.name, registration);
-    return true;
-  }
-
-  // ... rest of service
-}
-```
-
-## Full Application Example
+Register app-wide tools in the root component:
 
 ```typescript "app.component.ts"
 import { Component, OnInit, inject } from '@angular/core';
@@ -596,16 +313,11 @@ import { WebMCPService } from './webmcp.service';
   template: `
     <nav>
       <a routerLink="/">Home</a>
-      <a routerLink="/products">Products</a>
-      <a routerLink="/cart">Cart</a>
       @if (webmcp.isAvailable()) {
-        <span class="ai-badge">AI Ready ({{ webmcp.toolCount() }} tools)</span>
+        <span class="badge">AI Ready</span>
       }
     </nav>
-
-    <main>
-      <router-outlet></router-outlet>
-    </main>
+    <router-outlet></router-outlet>
   `
 })
 export class AppComponent implements OnInit {
@@ -613,41 +325,17 @@ export class AppComponent implements OnInit {
   private router = inject(Router);
 
   ngOnInit() {
-    // Register global navigation tool
     this.webmcp.registerTool({
       name: 'navigate',
-      description: 'Navigate to a different page',
+      description: 'Navigate to a page',
       inputSchema: {
         type: 'object',
-        properties: {
-          path: { type: 'string', description: 'Path to navigate to' }
-        },
+        properties: { path: { type: 'string' } },
         required: ['path']
       },
       handler: async ({ path }) => {
         await this.router.navigateByUrl(path as string);
         return { navigated: true, path };
-      }
-    });
-
-    // Register global search tool
-    this.webmcp.registerTool({
-      name: 'get_current_route',
-      description: 'Get the current route information',
-      handler: async () => ({
-        url: this.router.url,
-        routerState: this.router.routerState.snapshot.url
-      })
-    });
-
-    // Register theme toggle
-    this.webmcp.registerTool({
-      name: 'toggle_theme',
-      description: 'Toggle between light and dark theme',
-      handler: async () => {
-        document.body.classList.toggle('dark-theme');
-        const isDark = document.body.classList.contains('dark-theme');
-        return { theme: isDark ? 'dark' : 'light' };
       }
     });
   }
@@ -658,7 +346,7 @@ export class AppComponent implements OnInit {
 
 <AccordionGroup>
   <Accordion title="'navigator is not defined' with Angular Universal">
-    Use platform checks to avoid SSR errors:
+    Use platform checks:
 
     ```typescript
     import { isPlatformBrowser } from '@angular/common';
@@ -670,42 +358,25 @@ export class AppComponent implements OnInit {
       }
     }
     ```
+
+    See [Framework Gotchas](/ai-frameworks/framework-gotchas) for more SSR patterns.
   </Accordion>
 
-  <Accordion title="Memory leaks from unregistered tools">
-    Always clean up in `ngOnDestroy`:
+  <Accordion title="Stale data in handlers">
+    Read signal values inside the handler:
 
     ```typescript
-    ngOnDestroy() {
-      this.registration?.unregister();
-    }
-    ```
-
-    Or use the service's `unregisterTool` method.
-  </Accordion>
-
-  <Accordion title="Stale data in tool handlers">
-    With signals, always read the signal value in the handler:
-
-    ```typescript
-    // Bad - captures stale value
-    const count = this.count();
-    handler: async () => ({ count })
-
     // Good - reads current value
     handler: async () => ({ count: this.count() })
     ```
   </Accordion>
 
-  <Accordion title="Zone.js and async tool handlers">
-    Tool handlers run outside Angular's zone. If you need change detection:
+  <Accordion title="Zone.js and async handlers">
+    Use `NgZone.run()` if you need change detection:
 
     ```typescript
-    constructor(private ngZone: NgZone) {}
-
     handler: async (args) => {
       return this.ngZone.run(() => {
-        // Code that needs Angular change detection
         this.someSignal.set(newValue);
         return { result: 'done' };
       });
@@ -725,8 +396,8 @@ export class AppComponent implements OnInit {
     Guide to Angular signals
   </Card>
 
-  <Card title="NgRx Docs" icon="warehouse" href="https://ngrx.io/docs">
-    NgRx state management
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Core registration patterns
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">

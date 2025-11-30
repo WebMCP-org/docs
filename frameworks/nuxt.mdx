@@ -12,35 +12,27 @@ Nuxt 3 is a full-stack Vue framework with built-in SSR, making WebMCP integratio
 
 <Steps>
   <Step title="Install WebMCP">
-    ```bash
-    npm install @mcp-b/global
-    ```
+    Follow the [installation guide](/packages/global#installation) to set up `@mcp-b/global`
   </Step>
 
   <Step title="Have Nuxt 3 configured">
-    This guide is for Nuxt 3. Nuxt 2 users should upgrade or adapt these patterns.
+    This guide is for Nuxt 3
   </Step>
 </Steps>
 
-## The SSR Challenge
-
-In Nuxt, components can render on both server and client. Since WebMCP requires browser APIs (`navigator.modelContext`), you must ensure tools only register on the client side.
-
-<Warning>
-  Attempting to register tools during SSR will cause errors because `navigator` doesn't exist on the server.
-</Warning>
+<Info>
+  For general SSR patterns and common issues, see [Framework Gotchas](/ai-frameworks/framework-gotchas). For the base Vue composable pattern, see [Vue Integration](/frameworks/vue).
+</Info>
 
 ## Client-Only Plugin
 
-The cleanest approach is creating a Nuxt plugin that initializes WebMCP client-side:
+Create a Nuxt plugin that initializes WebMCP client-side:
 
 ```typescript "plugins/webmcp.client.ts"
 import '@mcp-b/global';
 
 export default defineNuxtPlugin(() => {
   // This plugin only runs on the client due to .client.ts suffix
-  console.log('WebMCP initialized');
-
   return {
     provide: {
       isWebMCPAvailable: 'modelContext' in navigator
@@ -51,7 +43,7 @@ export default defineNuxtPlugin(() => {
 
 The `.client.ts` suffix tells Nuxt to only load this plugin in the browser.
 
-## Creating a Nuxt Composable
+## Nuxt Composable
 
 Create a composable that handles SSR-safe tool registration:
 
@@ -65,26 +57,14 @@ interface ToolConfig {
   handler: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
-interface UseWebMCPReturn {
-  isRegistered: Ref<boolean>;
-  isAvailable: Ref<boolean>;
-}
-
-export function useWebMCP(config: ToolConfig): UseWebMCPReturn {
+export function useWebMCP(config: ToolConfig): { isRegistered: Ref<boolean> } {
   const isRegistered = ref(false);
-  const isAvailable = ref(false);
   let registration: { unregister: () => void } | null = null;
 
   // Only run on client
   if (import.meta.client) {
     onMounted(() => {
-      // Check if WebMCP is available
-      if (!('modelContext' in navigator)) {
-        console.warn('WebMCP not available in this browser');
-        return;
-      }
-
-      isAvailable.value = true;
+      if (!('modelContext' in navigator)) return;
 
       registration = navigator.modelContext.registerTool({
         name: config.name,
@@ -110,7 +90,7 @@ export function useWebMCP(config: ToolConfig): UseWebMCPReturn {
     });
   }
 
-  return { isRegistered, isAvailable };
+  return { isRegistered };
 }
 ```
 
@@ -118,89 +98,25 @@ export function useWebMCP(config: ToolConfig): UseWebMCPReturn {
   The `import.meta.client` check is Nuxt 3's way to conditionally run code only on the client.
 </Note>
 
-## Using the Composable
-
-### Basic Usage
-
-```vue "components/CartTools.vue"
-<script setup lang="ts">
-const cart = useCartStore();
-
-const { isRegistered } = useWebMCP({
-  name: 'add_to_cart',
-  description: 'Add a product to the shopping cart',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      productId: { type: 'string', description: 'Product ID' },
-      quantity: { type: 'number', description: 'Quantity to add' }
-    },
-    required: ['productId']
-  },
-  handler: async ({ productId, quantity = 1 }) => {
-    await cart.addItem(productId as string, quantity as number);
-    return { success: true, cartSize: cart.totalItems };
-  }
-});
-
-useWebMCP({
-  name: 'get_cart',
-  description: 'Get current cart contents',
-  handler: async () => ({
-    items: cart.items,
-    total: cart.totalPrice
-  })
-});
-</script>
-
-<template>
-  <div v-if="isRegistered" class="ai-badge">AI Tools Active</div>
-</template>
-```
-
-### With Server Data
+## Using with Server Data
 
 Pass server-fetched data to client-side tools:
 
 ```vue "pages/products/[id].vue"
 <script setup lang="ts">
-// Fetch product on server
 const route = useRoute();
 const { data: product } = await useFetch(`/api/products/${route.params.id}`);
 
-// Register tool on client with server data
 useWebMCP({
   name: 'get_current_product',
   description: 'Get details about the currently viewed product',
   handler: async () => {
-    if (!product.value) {
-      return { error: 'No product loaded' };
-    }
+    if (!product.value) return { error: 'No product loaded' };
     return {
       id: product.value.id,
       name: product.value.name,
-      price: product.value.price,
-      description: product.value.description
+      price: product.value.price
     };
-  }
-});
-
-useWebMCP({
-  name: 'add_current_to_cart',
-  description: 'Add the currently viewed product to cart',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      quantity: { type: 'number', description: 'Quantity to add' }
-    }
-  },
-  handler: async ({ quantity = 1 }) => {
-    if (!product.value) {
-      return { error: 'No product loaded' };
-    }
-    const cart = useCartStore();
-    cart.addItem(product.value.id, quantity as number);
-    return { success: true, product: product.value.name };
   }
 });
 </script>
@@ -208,84 +124,38 @@ useWebMCP({
 <template>
   <div v-if="product">
     <h1>{{ product.name }}</h1>
-    <p>{{ product.price }}</p>
   </div>
 </template>
 ```
 
-## ClientOnly Component Wrapper
+## ClientOnly Wrapper
 
 For components that should only render on the client:
-
-```vue "components/WebMCPTools.vue"
-<script setup lang="ts">
-// All tool registration happens here
-useWebMCP({
-  name: 'navigate_to',
-  description: 'Navigate to a different page',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      path: { type: 'string', description: 'Path to navigate to' }
-    },
-    required: ['path']
-  },
-  handler: async ({ path }) => {
-    const router = useRouter();
-    await router.push(path as string);
-    return { navigated: true, path };
-  }
-});
-
-useWebMCP({
-  name: 'get_current_route',
-  description: 'Get the current route information',
-  handler: async () => {
-    const route = useRoute();
-    return {
-      path: route.path,
-      params: route.params,
-      query: route.query
-    };
-  }
-});
-</script>
-
-<template>
-  <slot />
-</template>
-```
 
 ```vue "app.vue"
 <template>
   <div>
     <ClientOnly>
-      <WebMCPTools />
+      <GlobalTools />
     </ClientOnly>
     <NuxtPage />
   </div>
 </template>
 ```
 
-## Global Tool Registration
+## Global Tools in Layout
 
-Register app-wide tools in a layout or app.vue:
+Register app-wide tools in a layout:
 
 ```vue "layouts/default.vue"
 <script setup lang="ts">
-const { $isWebMCPAvailable } = useNuxtApp();
-
-// Global tools available on all pages
 if (import.meta.client) {
   useWebMCP({
     name: 'get_user_session',
     description: 'Get current user session info',
     handler: async () => {
-      const { data } = useAuth(); // Your auth composable
-      return {
-        isLoggedIn: !!data.value,
-        user: data.value?.user ?? null
-      };
+      const { data } = useAuth();
+      return { isLoggedIn: !!data.value, user: data.value?.user ?? null };
     }
   });
 
@@ -313,9 +183,9 @@ if (import.meta.client) {
 </template>
 ```
 
-## Working with Pinia in Nuxt
+## Pinia Integration
 
-Nuxt's auto-imported Pinia stores work seamlessly with WebMCP:
+Nuxt's auto-imported Pinia stores work seamlessly:
 
 ```typescript "stores/cart.ts"
 export const useCartStore = defineStore('cart', {
@@ -328,11 +198,8 @@ export const useCartStore = defineStore('cart', {
   actions: {
     addItem(id: string, quantity: number) {
       const existing = this.items.find(i => i.id === id);
-      if (existing) {
-        existing.quantity += quantity;
-      } else {
-        this.items.push({ id, quantity });
-      }
+      if (existing) existing.quantity += quantity;
+      else this.items.push({ id, quantity });
     }
   }
 });
@@ -340,7 +207,6 @@ export const useCartStore = defineStore('cart', {
 
 ```vue "components/CartTools.vue"
 <script setup lang="ts">
-// Store is auto-imported in Nuxt
 const cart = useCartStore();
 
 useWebMCP({
@@ -362,17 +228,14 @@ useWebMCP({
 </script>
 ```
 
-## API Routes Integration
+## API Routes
 
-Create API routes that tools can call for server-side operations:
+Create API routes that tools can call:
 
 ```typescript "server/api/products/search.ts"
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
-  const searchTerm = query.q as string;
-
-  // Server-side search logic
-  const products = await searchProducts(searchTerm);
+  const products = await searchProducts(query.q as string);
   return products;
 });
 ```
@@ -390,140 +253,38 @@ useWebMCP({
     required: ['query']
   },
   handler: async ({ query }) => {
-    // Call Nuxt API route
-    const results = await $fetch('/api/products/search', {
-      query: { q: query }
-    });
+    const results = await $fetch('/api/products/search', { query: { q: query } });
     return { results, count: results.length };
   }
 });
 </script>
 ```
 
-## Full Application Example
-
-```vue "app.vue"
-<script setup lang="ts">
-// Check WebMCP availability
-const isAIEnabled = ref(false);
-
-if (import.meta.client) {
-  onMounted(() => {
-    isAIEnabled.value = 'modelContext' in navigator;
-  });
-}
-</script>
-
-<template>
-  <div>
-    <ClientOnly>
-      <GlobalTools />
-    </ClientOnly>
-
-    <header>
-      <NuxtLink to="/">My Store</NuxtLink>
-      <span v-if="isAIEnabled" class="ai-badge">AI Ready</span>
-    </header>
-
-    <NuxtPage />
-  </div>
-</template>
-```
-
-```vue "components/GlobalTools.vue"
-<script setup lang="ts">
-const cart = useCartStore();
-const router = useRouter();
-const route = useRoute();
-
-// Navigation tool
-useWebMCP({
-  name: 'navigate',
-  description: 'Navigate to a page in the application',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      path: { type: 'string', description: 'The path to navigate to' }
-    },
-    required: ['path']
-  },
-  handler: async ({ path }) => {
-    await router.push(path as string);
-    return { navigated: true, currentPath: path };
-  }
-});
-
-// Cart tools
-useWebMCP({
-  name: 'view_cart',
-  description: 'Get the current shopping cart',
-  handler: async () => ({
-    items: cart.items,
-    total: cart.totalItems
-  })
-});
-
-// Page context tool
-useWebMCP({
-  name: 'get_page_context',
-  description: 'Get information about the current page',
-  handler: async () => ({
-    path: route.path,
-    name: route.name,
-    params: route.params
-  })
-});
-</script>
-
-<template>
-  <!-- No UI, just tool registration -->
-</template>
-```
-
 ## Common Gotchas
 
 <AccordionGroup>
   <Accordion title="'navigator is not defined' error">
-    This happens when code runs during SSR. Solutions:
+    Code is running during SSR. Use one of:
+    - `import.meta.client` check
+    - `.client.ts` suffix for plugins
+    - `<ClientOnly>` component
+    - `onMounted` lifecycle hook
 
-    1. Use `import.meta.client` check
-    2. Use `.client.ts` suffix for plugins
-    3. Wrap in `<ClientOnly>` component
-    4. Use `onMounted` lifecycle hook
+    See [Framework Gotchas](/ai-frameworks/framework-gotchas) for more SSR patterns.
   </Accordion>
 
-  <Accordion title="Tools not available after navigation">
-    If tools disappear after client-side navigation, ensure the component registering tools persists across routes (e.g., in `app.vue` or a layout).
+  <Accordion title="Tools disappear after navigation">
+    Ensure the component registering tools persists across routes (e.g., in `app.vue` or a layout).
   </Accordion>
 
   <Accordion title="Hydration mismatch warnings">
-    If your tool registration affects rendered output, wrap that UI in `<ClientOnly>`:
+    Wrap tool-dependent UI in `<ClientOnly>`:
 
     ```vue
-    <template>
-      <ClientOnly>
-        <div v-if="isRegistered">AI Tools Active</div>
-        <template #fallback>
-          <div>Loading AI...</div>
-        </template>
-      </ClientOnly>
-    </template>
-    ```
-  </Accordion>
-
-  <Accordion title="Store not available in tool handler">
-    Always access stores inside the handler, not outside:
-
-    ```typescript
-    // Bad - store might not be ready
-    const cart = useCartStore();
-    handler: async () => ({ items: cart.items })
-
-    // Good - access store in handler
-    handler: async () => {
-      const cart = useCartStore();
-      return { items: cart.items };
-    }
+    <ClientOnly>
+      <div v-if="isRegistered">AI Tools Active</div>
+      <template #fallback>Loading...</template>
+    </ClientOnly>
     ```
   </Accordion>
 </AccordionGroup>
@@ -539,8 +300,8 @@ useWebMCP({
     Base Vue patterns
   </Card>
 
-  <Card title="SSR Patterns" icon="server" href="/ai-frameworks/framework-gotchas">
-    General SSR gotchas
+  <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">
+    General SSR patterns
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">
