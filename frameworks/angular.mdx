@@ -6,39 +6,13 @@ icon: 'angular'
 
 ## Overview
 
-Angular's dependency injection and service-based architecture makes it well-suited for WebMCP integration. This guide covers using Angular services, signals (Angular 16+), and RxJS for tool registration with proper lifecycle management.
-
-## How It Works
-
-When you import `@mcp-b/global`, your Angular app starts an **MCP server**:
-
-1. **MCP server starts** - `navigator.modelContext` is initialized with `TabServerTransport`
-2. **Tools are registered** - Your services/components call `registerTool()` to expose functionality
-3. **AI agents connect** - External agents use `TabClientTransport` to discover and call tools
-
-For Angular Universal (SSR), use `isPlatformBrowser()` to ensure WebMCP code only runs on the client.
-
-## Prerequisites
-
-<Steps>
-  <Step title="Install WebMCP">
-    ```bash
-    npm install @mcp-b/global
-    ```
-  </Step>
-
-  <Step title="Have Angular configured">
-    This guide covers Angular 16+ with signals and standalone components
-  </Step>
-</Steps>
+Angular's dependency injection and service-based architecture makes it well-suited for WebMCP integration. This guide covers Angular services, signals (Angular 16+), and RxJS patterns.
 
 <Info>
-  For schema validation, see [Schemas Guide](/concepts/schemas).
+  **Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For schema validation, see [Schemas](/concepts/schemas).
 </Info>
 
 ## WebMCP Service
-
-Create a centralized service for managing tool registrations:
 
 ```typescript "webmcp.service.ts"
 import { Injectable, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
@@ -102,10 +76,6 @@ export class WebMCPService implements OnDestroy {
   }
 }
 ```
-
-<Info>
-  **How AI agents call your tools**: AI agents use `TabClientTransport` to connect to your page and call `client.listTools()` to discover available tools, then `client.callTool()` to execute them. See [Transports](/packages/transports) for details.
-</Info>
 
 ### Using the Service
 
@@ -250,8 +220,6 @@ export class ProductSearchComponent implements OnInit, OnDestroy {
 
 ## Directive-Based Registration
 
-Create a directive for declarative registration:
-
 ```typescript "webmcp-tool.directive.ts"
 import { Directive, Input, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import '@mcp-b/global';
@@ -308,8 +276,6 @@ export class WebMCPToolDirective implements OnInit, OnDestroy, OnChanges {
 
 ## Global Tools
 
-Register app-wide tools in the root component:
-
 ```typescript "app.component.ts"
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
@@ -363,15 +329,12 @@ export class AppComponent implements OnInit {
       }
     }
     ```
-
-    See [Framework Gotchas](/ai-frameworks/framework-gotchas) for more SSR patterns.
   </Accordion>
 
   <Accordion title="Stale data in handlers">
     Read signal values inside the handler:
 
     ```typescript
-    // Good - reads current value
     handler: async () => ({ count: this.count() })
     ```
   </Accordion>
@@ -401,11 +364,11 @@ export class AppComponent implements OnInit {
     Guide to Angular signals
   </Card>
 
-  <Card title="Transports" icon="plug" href="/packages/transports">
-    TabClientTransport and TabServerTransport reference
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Full registerTool API
   </Card>
 
-  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
-    Integrate with Assistant-UI, AG-UI, or custom runtimes
+  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
+    Input validation
   </Card>
 </CardGroup>

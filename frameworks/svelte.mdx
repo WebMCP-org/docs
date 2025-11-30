@@ -6,38 +6,10 @@ icon: 'code'
 
 ## Overview
 
-Svelte's reactive primitives make WebMCP integration straightforward. This guide covers both Svelte 5 (with runes) and Svelte 4 (with stores), plus SvelteKit-specific patterns for SSR.
-
-## How It Works
-
-When you import `@mcp-b/global`, your Svelte app starts an **MCP server**:
-
-1. **MCP server starts** - `navigator.modelContext` is initialized with `TabServerTransport`
-2. **Tools are registered** - Your components call `registerTool()` to expose functionality
-3. **AI agents connect** - External agents use `TabClientTransport` to discover and call tools
-
-For SvelteKit with SSR, ensure WebMCP code only runs on the client using `onMount` or the `browser` check.
-
-## Prerequisites
-
-<Steps>
-  <Step title="Install WebMCP">
-    ```bash
-    npm install @mcp-b/global
-    ```
-  </Step>
-
-  <Step title="Initialize in your app">
-    Import once at your app's entry point to start the MCP server:
-
-    ```typescript
-    import '@mcp-b/global'; // Starts MCP server
-    ```
-  </Step>
-</Steps>
+Svelte's reactive primitives make WebMCP integration straightforward. This guide covers Svelte 5 (with runes), Svelte 4 (with stores), and SvelteKit SSR patterns.
 
 <Info>
-  For schema validation, see [Schemas Guide](/concepts/schemas).
+  **Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For schema validation, see [Schemas](/concepts/schemas).
 </Info>
 
 ## Svelte Action
@@ -117,8 +89,6 @@ export function webmcp(node: HTMLElement, config: ToolConfig) {
 
 ## Svelte 5 Runes
 
-Create a reactive integration using Svelte 5 runes:
-
 ```typescript "lib/webmcp.svelte.ts"
 import { onMount, onDestroy } from 'svelte';
 import '@mcp-b/global';
@@ -158,10 +128,6 @@ export function useWebMCP(config: ToolConfig): void {
 }
 ```
 
-<Info>
-  **How AI agents call your tools**: AI agents use `TabClientTransport` to connect to your page and call `client.listTools()` to discover available tools, then `client.callTool()` to execute them. See [Transports](/packages/transports) for details.
-</Info>
-
 ```svelte "Counter.svelte"
 <script lang="ts">
   import { useWebMCP } from '$lib/webmcp.svelte';
@@ -191,7 +157,7 @@ export function useWebMCP(config: ToolConfig): void {
 
 ## SvelteKit SSR
 
-SvelteKit renders on the server by default. Use `onMount` or `browser` checks:
+Use `onMount` or `browser` checks:
 
 ```svelte "+page.svelte"
 <script lang="ts">
@@ -199,7 +165,7 @@ SvelteKit renders on the server by default. Use `onMount` or `browser` checks:
   import { onMount, onDestroy } from 'svelte';
   import '@mcp-b/global';
 
-  export let data; // From +page.server.ts
+  export let data;
 
   let registration: { unregister: () => void } | null = null;
 
@@ -228,8 +194,6 @@ SvelteKit renders on the server by default. Use `onMount` or `browser` checks:
 ```
 
 ## Layout-Level Tools
-
-Register global tools in your layout:
 
 ```svelte "+layout.svelte"
 <script lang="ts">
@@ -266,8 +230,6 @@ Register global tools in your layout:
 ```
 
 ## Store Integration
-
-Integrate tools with Svelte stores:
 
 ```typescript "lib/stores/cart.ts"
 import { writable, get } from 'svelte/store';
@@ -320,8 +282,6 @@ export const cart = createCartStore();
       // Safe to use WebMCP
     }
     ```
-
-    See [Framework Gotchas](/ai-frameworks/framework-gotchas) for more patterns.
   </Accordion>
 
   <Accordion title="Stale state in handlers">
@@ -352,11 +312,11 @@ export const cart = createCartStore();
     Official SvelteKit documentation
   </Card>
 
-  <Card title="Transports" icon="plug" href="/packages/transports">
-    TabClientTransport and TabServerTransport reference
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Full registerTool API
   </Card>
 
-  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
-    Integrate with Assistant-UI, AG-UI, or custom runtimes
+  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
+    Input validation
   </Card>
 </CardGroup>

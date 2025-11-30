@@ -6,48 +6,25 @@ icon: 'gem'
 
 ## Overview
 
-Ruby on Rails applications can integrate WebMCP through JavaScript on the frontend. This guide shows how to use Stimulus controllers (Rails' default JS framework) and Hotwire/Turbo patterns to register AI tools that interact with your Rails backend.
-
-## How It Works
-
-When you import `@mcp-b/global` in your JavaScript, your Rails app starts an **MCP server** on the client side:
-
-1. **MCP server starts** - `navigator.modelContext` is initialized with `TabServerTransport`
-2. **Tools are registered** - Your Stimulus controllers call `registerTool()` to expose functionality
-3. **AI agents connect** - External agents use `TabClientTransport` to discover and call tools
-4. **Tools call your backend** - Tool handlers make API requests to your Rails backend
-
-## Prerequisites
-
-<Steps>
-  <Step title="Install WebMCP">
-    **With importmap (Rails 7+):**
-    ```bash
-    bin/importmap pin @mcp-b/global
-    ```
-
-    **With npm/yarn:**
-    ```bash
-    npm install @mcp-b/global
-    ```
-  </Step>
-
-  <Step title="Have Rails 7+ configured">
-    This guide uses Rails 7+ patterns with Stimulus and Turbo
-  </Step>
-</Steps>
+Ruby on Rails applications can integrate WebMCP through JavaScript on the frontend using Stimulus controllers and Hotwire/Turbo patterns.
 
 <Info>
-  For schema validation, see [Schemas Guide](/concepts/schemas).
+  **Prerequisites**: For schema validation, see [Schemas](/concepts/schemas). For the API reference, see [Global Package](/packages/global).
 </Info>
 
-<Info>
-  **How AI agents call your tools**: AI agents use `TabClientTransport` to connect to your page and call `client.listTools()` to discover available tools, then `client.callTool()` to execute them. See [Transports](/packages/transports) for details.
-</Info>
+## Installation
+
+**With importmap (Rails 7+):**
+```bash
+bin/importmap pin @mcp-b/global
+```
+
+**With npm/yarn:**
+```bash
+npm install @mcp-b/global
+```
 
 ## Stimulus Controller
-
-Create a Stimulus controller for tool registration:
 
 ```javascript "app/javascript/controllers/webmcp_controller.js"
 import { Controller } from "@hotwired/stimulus"
@@ -114,8 +91,6 @@ export default class extends Controller {
 
 ## Feature-Specific Controllers
 
-Create dedicated controllers for specific functionality:
-
 ```javascript "app/javascript/controllers/cart_tools_controller.js"
 import { Controller } from "@hotwired/stimulus"
 import "@mcp-b/global"
@@ -171,8 +146,6 @@ export default class extends Controller {
 
 ## Rails API Endpoints
 
-Create API endpoints for tools:
-
 ```ruby
 # app/controllers/api/tools_controller.rb
 class Api::ToolsController < ApplicationController
@@ -202,8 +175,6 @@ end
 ```
 
 ## Turbo Integration
-
-Combine with Turbo Frames:
 
 ```javascript "app/javascript/controllers/turbo_tools_controller.js"
 import { Controller } from "@hotwired/stimulus"
@@ -235,8 +206,6 @@ export default class extends Controller {
 ```
 
 ## Global Tools
-
-Place on `<body>` for app-wide tools:
 
 ```erb
 <%# app/views/layouts/application.html.erb %>
@@ -321,11 +290,11 @@ export default class extends Controller {
     Official Stimulus documentation
   </Card>
 
-  <Card title="Transports" icon="plug" href="/packages/transports">
-    TabClientTransport and TabServerTransport reference
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Full registerTool API
   </Card>
 
-  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
-    Integrate with Assistant-UI, AG-UI, or custom runtimes
+  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
+    Input validation
   </Card>
 </CardGroup>

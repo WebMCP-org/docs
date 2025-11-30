@@ -8,60 +8,11 @@ icon: 'vuejs'
 
 Vue 3's Composition API provides an elegant way to integrate WebMCP tools. This guide shows how to create a reusable composable for tool registration that handles reactivity and cleanup automatically.
 
-## How It Works
-
-When you import `@mcp-b/global`, your Vue app starts an **MCP server**:
-
-```mermaid
-sequenceDiagram
-    participant App as Vue App
-    participant MC as navigator.modelContext
-    participant Server as MCP Server
-    participant Agent as AI Agent (Client)
-
-    App->>MC: import '@mcp-b/global'
-    MC->>Server: Start TabServerTransport
-    App->>MC: registerTool('add_to_cart', ...)
-    MC->>Server: Tool available
-    Agent->>Server: Connect via TabClientTransport
-    Agent->>Server: listTools()
-    Server-->>Agent: ['add_to_cart', ...]
-    Agent->>Server: callTool('add_to_cart', {...})
-    Server->>MC: Execute handler
-    MC-->>Agent: Result
-```
-
-Your Vue components register tools with the MCP server. AI agents (browser extensions, copilots) connect as clients to discover and call those tools.
-
-## Prerequisites
-
-<Steps>
-  <Step title="Install WebMCP">
-    ```bash
-    npm install @mcp-b/global
-    ```
-  </Step>
-
-  <Step title="Initialize in main.ts">
-    Import once at your app's entry point to start the MCP server:
-
-    ```typescript "main.ts"
-    import '@mcp-b/global'; // Starts MCP server
-    import { createApp } from 'vue';
-    import App from './App.vue';
-
-    createApp(App).mount('#app');
-    ```
-  </Step>
-</Steps>
-
 <Info>
-  For schema validation with Zod, see the [Schemas Guide](/concepts/schemas). For response formatting, see [Tool Registration](/concepts/tool-registration).
+  **Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For schema validation, see [Schemas](/concepts/schemas).
 </Info>
 
 ## Creating a Vue Composable
-
-The recommended approach is creating a `useWebMCP` composable:
 
 ```typescript "composables/useWebMCP.ts"
 import { onMounted, onUnmounted } from 'vue';
@@ -101,10 +52,6 @@ export function useWebMCP(config: ToolConfig): void {
   });
 }
 ```
-
-<Info>
-  **How AI agents call your tools**: AI agents use `TabClientTransport` to connect to your page and call `client.listTools()` to discover available tools, then `client.callTool()` to execute them. See [Transports](/packages/transports) for details.
-</Info>
 
 ### Using the Composable
 
@@ -200,8 +147,6 @@ useWebMCP({
 
 ## Working with Pinia Stores
 
-Integrate WebMCP with Pinia for state management:
-
 ```typescript "stores/cart.ts"
 import { defineStore } from 'pinia';
 
@@ -221,9 +166,6 @@ export const useCartStore = defineStore('cart', {
       } else {
         this.items.push({ id, name, quantity });
       }
-    },
-    removeItem(id: string) {
-      this.items = this.items.filter(i => i.id !== id);
     }
   }
 });
@@ -253,16 +195,6 @@ useWebMCP({
     return { success: true, totalItems: cart.totalItems };
   }
 });
-
-useWebMCP({
-  name: 'get_cart_summary',
-  description: 'Get a summary of the cart contents',
-  handler: async () => ({
-    items: cart.items,
-    total: cart.totalItems,
-    summary: cart.cartSummary
-  })
-});
 </script>
 
 <template>
@@ -272,50 +204,23 @@ useWebMCP({
 </template>
 ```
 
-## Full Application Example
-
-```vue "App.vue"
-<script setup lang="ts">
-import '@mcp-b/global';
-import ProductTools from './components/ProductTools.vue';
-import CartTools from './components/CartTools.vue';
-</script>
-
-<template>
-  <div id="app">
-    <header>
-      <h1>My Vue Store</h1>
-    </header>
-
-    <!-- Tool registration components -->
-    <ProductTools />
-    <CartTools />
-
-    <main>
-      <RouterView />
-    </main>
-  </div>
-</template>
-```
-
 ## Common Gotchas
 
 <AccordionGroup>
   <Accordion title="Tools not registering in SSR">
-    If using SSR (like Nuxt), see the [Nuxt guide](/frameworks/nuxt) or [Framework Gotchas](/ai-frameworks/framework-gotchas) for SSR-specific patterns.
+    If using SSR (like Nuxt), see the [Nuxt guide](/frameworks/nuxt).
   </Accordion>
 
   <Accordion title="Stale state in tool handlers">
     Access the ref's `.value` directly in the handler to get current state:
 
     ```typescript
-    // Good - accesses current value at execution time
     handler: async () => ({ count: count.value })
     ```
   </Accordion>
 
   <Accordion title="Memory leaks from missing cleanup">
-    The composable handles cleanup automatically. For manual registration, see [Tool Lifecycle](/concepts/tool-registration#tool-lifecycle).
+    The composable handles cleanup automatically. For manual registration, see [Tool Registration](/concepts/tool-registration).
   </Accordion>
 </AccordionGroup>
 
@@ -330,11 +235,11 @@ import CartTools from './components/CartTools.vue';
     SSR patterns with Nuxt
   </Card>
 
-  <Card title="Transports" icon="plug" href="/packages/transports">
-    TabClientTransport and TabServerTransport reference
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Full registerTool API
   </Card>
 
-  <Card title="AI Frameworks" icon="sparkles" href="/ai-frameworks">
-    Integrate with Assistant-UI, AG-UI, or custom runtimes
+  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
+    Input validation
   </Card>
 </CardGroup>
