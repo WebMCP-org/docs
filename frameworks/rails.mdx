@@ -32,6 +32,10 @@ Ruby on Rails applications can integrate WebMCP through JavaScript on the fronte
   For response formatting and schema validation, see [Tool Registration](/concepts/tool-registration) and [Schemas Guide](/concepts/schemas).
 </Info>
 
+<Info>
+  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your controllers just register and unregister tools—no need to track them internally.
+</Info>
+
 ## Stimulus Controller
 
 Create a Stimulus controller for tool registration:
@@ -308,11 +312,11 @@ export default class extends Controller {
     Official Stimulus documentation
   </Card>
 
-  <Card title="Turbo Handbook" icon="rocket" href="https://turbo.hotwired.dev/handbook/introduction">
-    Official Turbo documentation
+  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
+    How AI agents discover and call tools
   </Card>
 
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Core registration patterns
+  <Card title="Examples" icon="code" href="/examples">
+    Complete working examples
   </Card>
 </CardGroup>

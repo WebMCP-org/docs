@@ -56,6 +56,10 @@ All non-React frameworks follow the same basic pattern using the [`@mcp-b/global
   </Step>
 </Steps>
 
+<Info>
+  **Tool Discovery**: AI agents discover and call registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—the transport handles discovery.
+</Info>
+
 ## Framework Comparison
 
 | Framework | Reactivity | Server Rendering | Tool Registration Hook |
@@ -92,8 +96,8 @@ For input validation with Zod or JSON Schema, see the [Schemas Guide](/concepts/
     Use our React hooks package instead
   </Card>
 
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Learn the core registration API
+  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
+    How AI agents discover and call tools
   </Card>
 
   <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">

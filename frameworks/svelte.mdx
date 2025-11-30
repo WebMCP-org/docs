@@ -114,21 +114,18 @@ interface ToolConfig {
   handler: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
-class WebMCPTool {
-  #registration: { unregister: () => void } | null = null;
-  isRegistered = $state(false);
+export function useWebMCP(config: ToolConfig): void {
+  let registration: { unregister: () => void } | null = null;
 
-  constructor(private config: ToolConfig) {}
-
-  register() {
+  onMount(() => {
     if (typeof window === 'undefined' || !('modelContext' in navigator)) return;
 
-    this.#registration = navigator.modelContext.registerTool({
-      name: this.config.name,
-      description: this.config.description,
-      inputSchema: this.config.inputSchema ?? { type: 'object', properties: {} },
+    registration = navigator.modelContext.registerTool({
+      name: config.name,
+      description: config.description,
+      inputSchema: config.inputSchema ?? { type: 'object', properties: {} },
       execute: async (args) => {
-        const result = await this.config.handler(args);
+        const result = await config.handler(args);
         return {
           content: [{
             type: 'text',
@@ -137,23 +134,17 @@ class WebMCPTool {
         };
       }
     });
+  });
 
-    this.isRegistered = true;
-  }
-
-  unregister() {
-    this.#registration?.unregister();
-    this.isRegistered = false;
-  }
-}
-
-export function useWebMCP(config: ToolConfig) {
-  const tool = new WebMCPTool(config);
-  onMount(() => tool.register());
-  onDestroy(() => tool.unregister());
-  return tool;
+  onDestroy(() => {
+    registration?.unregister();
+  });
 }
 ```
+
+<Info>
+  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—no need to track them internally.
+</Info>
 
 ```svelte "Counter.svelte"
 <script lang="ts">
@@ -161,7 +152,7 @@ export function useWebMCP(config: ToolConfig) {
 
   let count = $state(0);
 
-  const tool = useWebMCP({
+  useWebMCP({
     name: 'increment_count',
     description: 'Increment the counter',
     inputSchema: {
@@ -179,9 +170,6 @@ export function useWebMCP(config: ToolConfig) {
 
 <div>
   <p>Count: {count}</p>
-  {#if tool.isRegistered}
-    <span class="badge">AI Connected</span>
-  {/if}
 </div>
 ```
 
@@ -348,8 +336,8 @@ export const cart = createCartStore();
     Official SvelteKit documentation
   </Card>
 
-  <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">
-    General SSR patterns
+  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
+    How AI agents discover and call tools
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">

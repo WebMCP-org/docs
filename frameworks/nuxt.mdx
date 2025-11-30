@@ -33,11 +33,7 @@ import '@mcp-b/global';
 
 export default defineNuxtPlugin(() => {
   // This plugin only runs on the client due to .client.ts suffix
-  return {
-    provide: {
-      isWebMCPAvailable: 'modelContext' in navigator
-    }
-  };
+  // WebMCP is now initialized and tools can be registered
 });
 ```
 
@@ -48,8 +44,6 @@ The `.client.ts` suffix tells Nuxt to only load this plugin in the browser.
 Create a composable that handles SSR-safe tool registration:
 
 ```typescript "composables/useWebMCP.ts"
-import type { Ref } from 'vue';
-
 interface ToolConfig {
   name: string;
   description: string;
@@ -57,8 +51,7 @@ interface ToolConfig {
   handler: (args: Record<string, unknown>) => Promise<unknown>;
 }
 
-export function useWebMCP(config: ToolConfig): { isRegistered: Ref<boolean> } {
-  const isRegistered = ref(false);
+export function useWebMCP(config: ToolConfig): void {
   let registration: { unregister: () => void } | null = null;
 
   // Only run on client
@@ -80,23 +73,22 @@ export function useWebMCP(config: ToolConfig): { isRegistered: Ref<boolean> } {
           };
         }
       });
-
-      isRegistered.value = true;
     });
 
     onUnmounted(() => {
       registration?.unregister();
-      isRegistered.value = false;
     });
   }
-
-  return { isRegistered };
 }
 ```
 
 <Note>
   The `import.meta.client` check is Nuxt 3's way to conditionally run code only on the client.
 </Note>
+
+<Info>
+  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—no need to track them internally.
+</Info>
 
 ## Using with Server Data
 
@@ -278,11 +270,11 @@ useWebMCP({
   </Accordion>
 
   <Accordion title="Hydration mismatch warnings">
-    Wrap tool-dependent UI in `<ClientOnly>`:
+    Wrap client-only UI in `<ClientOnly>`:
 
     ```vue
     <ClientOnly>
-      <div v-if="isRegistered">AI Tools Active</div>
+      <ToolRegistrationComponent />
       <template #fallback>Loading...</template>
     </ClientOnly>
     ```
@@ -300,8 +292,8 @@ useWebMCP({
     Base Vue patterns
   </Card>
 
-  <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">
-    General SSR patterns
+  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
+    How AI agents discover and call tools
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">

@@ -29,7 +29,7 @@ Angular's dependency injection and service-based architecture makes it well-suit
 Create a centralized service for managing tool registrations:
 
 ```typescript "webmcp.service.ts"
-import { Injectable, OnDestroy, signal, computed, PLATFORM_ID, Inject } from '@angular/core';
+import { Injectable, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import '@mcp-b/global';
 
@@ -44,20 +44,15 @@ interface ToolConfig {
 export class WebMCPService implements OnDestroy {
   private registrations = new Map<string, { unregister: () => void }>();
   private isBrowser: boolean;
-
-  readonly isAvailable = signal(false);
-  readonly registeredTools = signal<string[]>([]);
-  readonly toolCount = computed(() => this.registeredTools().length);
+  readonly isAvailable: boolean;
 
   constructor(@Inject(PLATFORM_ID) platformId: object) {
     this.isBrowser = isPlatformBrowser(platformId);
-    if (this.isBrowser) {
-      this.isAvailable.set('modelContext' in navigator);
-    }
+    this.isAvailable = this.isBrowser && 'modelContext' in navigator;
   }
 
-  registerTool(config: ToolConfig): boolean {
-    if (!this.isBrowser || !this.isAvailable()) return false;
+  registerTool(config: ToolConfig): { unregister: () => void } | null {
+    if (!this.isAvailable) return null;
 
     if (this.registrations.has(config.name)) {
       this.unregisterTool(config.name);
@@ -79,8 +74,7 @@ export class WebMCPService implements OnDestroy {
     });
 
     this.registrations.set(config.name, registration);
-    this.registeredTools.set(Array.from(this.registrations.keys()));
-    return true;
+    return registration;
   }
 
   unregisterTool(name: string): void {
@@ -88,7 +82,6 @@ export class WebMCPService implements OnDestroy {
     if (reg) {
       reg.unregister();
       this.registrations.delete(name);
-      this.registeredTools.set(Array.from(this.registrations.keys()));
     }
   }
 
@@ -97,6 +90,10 @@ export class WebMCPService implements OnDestroy {
   }
 }
 ```
+
+<Info>
+  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—no need to track them internally.
+</Info>
 
 ### Using the Service
 
@@ -111,15 +108,12 @@ import { CartService } from './cart.service';
   template: `
     <div>
       <h2>Cart</h2>
-      @if (webmcp.isAvailable()) {
-        <span class="badge">AI Enabled</span>
-      }
     </div>
   `
 })
 export class CartComponent implements OnInit, OnDestroy {
-  webmcp = inject(WebMCPService);
-  cartService = inject(CartService);
+  private webmcp = inject(WebMCPService);
+  private cartService = inject(CartService);
 
   ngOnInit() {
     this.webmcp.registerTool({
@@ -313,15 +307,12 @@ import { WebMCPService } from './webmcp.service';
   template: `
     <nav>
       <a routerLink="/">Home</a>
-      @if (webmcp.isAvailable()) {
-        <span class="badge">AI Ready</span>
-      }
     </nav>
     <router-outlet></router-outlet>
   `
 })
 export class AppComponent implements OnInit {
-  webmcp = inject(WebMCPService);
+  private webmcp = inject(WebMCPService);
   private router = inject(Router);
 
   ngOnInit() {
@@ -396,8 +387,8 @@ export class AppComponent implements OnInit {
     Guide to Angular signals
   </Card>
 
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Core registration patterns
+  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
+    How AI agents discover and call tools
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">
