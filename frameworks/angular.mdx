@@ -200,12 +200,14 @@ export class WebMCPRxService implements OnDestroy {
 ```typescript "product-search.component.ts"
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { map } from 'rxjs/operators';
 import { WebMCPRxService } from './webmcp-rx.service';
 
 @Component({
   selector: 'app-product-search',
   standalone: true,
+  imports: [FormsModule],
   template: `<input [(ngModel)]="searchQuery" />`
 })
 export class ProductSearchComponent implements OnInit, OnDestroy {

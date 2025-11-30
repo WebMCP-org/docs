@@ -225,6 +225,10 @@ useWebMCP({
 Create API routes that tools can call:
 
 ```typescript "server/api/products/search.ts"
+// getQuery is auto-imported by Nuxt from 'h3'
+// searchProducts is your own function - import from your data layer
+import { searchProducts } from '~/server/utils/products';
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const products = await searchProducts(query.q as string);
