@@ -202,7 +202,7 @@
             ]
           },
           {
-            "group": "Frontend Frameworks",
+            "group": "AI UI Libraries",
             "pages": [
               "ai-frameworks/assistant-ui",
               "ai-frameworks/ag-ui",
@@ -215,6 +215,33 @@
               "ai-frameworks/setup",
               "ai-frameworks/best-practices",
               "ai-frameworks/framework-gotchas"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Frameworks",
+        "icon": "grid-2",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "frameworks/index"
+            ]
+          },
+          {
+            "group": "JavaScript Frameworks",
+            "pages": [
+              "frameworks/vue",
+              "frameworks/nuxt",
+              "frameworks/svelte",
+              "frameworks/angular"
+            ]
+          },
+          {
+            "group": "Backend Frameworks",
+            "pages": [
+              "frameworks/rails"
             ]
           }
         ]

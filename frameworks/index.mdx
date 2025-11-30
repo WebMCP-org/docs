@@ -1,0 +1,106 @@
+---
+title: 'Framework Integrations'
+description: 'Integrate WebMCP with Vue, Nuxt, Svelte, Rails, Angular, and other web frameworks. Use AI tools in any JavaScript environment.'
+icon: 'grid-2'
+---
+
+## Overview
+
+WebMCP works with any JavaScript framework. While we provide first-class React support via [`@mcp-b/react-webmcp`](/packages/react-webmcp), you can integrate WebMCP into Vue, Svelte, Angular, Rails, and any other framework using the [vanilla JavaScript API](/packages/global).
+
+This section covers framework-specific patterns and composables for popular web frameworks.
+
+<Info>
+  New to WebMCP? Start with the [Quickstart Guide](/quickstart) to understand the basics before diving into framework-specific patterns.
+</Info>
+
+## Framework Support
+
+<CardGroup cols={2}>
+  <Card title="Vue.js" icon="vuejs" href="/frameworks/vue">
+    Vue 3 Composition API with reactive tool registration
+  </Card>
+
+  <Card title="Nuxt" icon="n" href="/frameworks/nuxt">
+    Full-stack Vue framework with SSR support
+  </Card>
+
+  <Card title="Svelte" icon="code" href="/frameworks/svelte">
+    Svelte and SvelteKit with stores integration
+  </Card>
+
+  <Card title="Rails" icon="gem" href="/frameworks/rails">
+    Ruby on Rails with Stimulus and Hotwire
+  </Card>
+
+  <Card title="Angular" icon="angular" href="/frameworks/angular">
+    Angular with services and dependency injection
+  </Card>
+</CardGroup>
+
+## Integration Pattern
+
+All non-React frameworks follow the same basic pattern using the [`@mcp-b/global`](/packages/global) package:
+
+<Steps>
+  <Step title="Install and import">
+    See the [Global Package documentation](/packages/global#installation) for installation
+  </Step>
+
+  <Step title="Register tools">
+    Use [`navigator.modelContext.registerTool()`](/concepts/tool-registration) in your framework's lifecycle
+  </Step>
+
+  <Step title="Handle cleanup">
+    Call `unregister()` when components unmount (see [Tool Lifecycle](/concepts/tool-registration#tool-lifecycle))
+  </Step>
+</Steps>
+
+<Info>
+  **Tool Discovery**: AI agents discover and call registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—the transport handles discovery.
+</Info>
+
+## Framework Comparison
+
+| Framework | Reactivity | Server Rendering | Tool Registration Hook |
+|-----------|------------|------------------|------------------------|
+| Vue 3 | `ref`/`reactive` | Via Nuxt | `onMounted`/`onUnmounted` |
+| Nuxt 3 | Vue reactivity | Built-in SSR | Client-only plugins |
+| Svelte | `$state`/stores | Via SvelteKit | `onMount`/`onDestroy` |
+| SvelteKit | Svelte stores | Built-in SSR | Client-side only |
+| Rails | Stimulus | Turbo/Hotwire | `connect`/`disconnect` |
+| Angular | RxJS/Signals | Universal | `ngOnInit`/`ngOnDestroy` |
+
+## Key Considerations
+
+### Client-Side Only
+
+WebMCP tools must be registered on the client side. For SSR frameworks, see [Framework Gotchas](/ai-frameworks/framework-gotchas) for patterns to ensure tools only register in the browser.
+
+### Cleanup
+
+Always unregister tools when components are destroyed. See [Tool Lifecycle](/concepts/tool-registration#tool-lifecycle) for details.
+
+### Schema Validation
+
+For input validation with Zod or JSON Schema, see the [Schemas Guide](/concepts/schemas).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Choose Your Framework" icon="arrow-right" href="/frameworks/vue">
+    Start with Vue.js integration guide
+  </Card>
+
+  <Card title="React Users" icon="react" href="/packages/react-webmcp">
+    Use our React hooks package instead
+  </Card>
+
+  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
+    How AI agents discover and call tools
+  </Card>
+
+  <Card title="SSR Gotchas" icon="server" href="/ai-frameworks/framework-gotchas">
+    Handle server-side rendering
+  </Card>
+</CardGroup>
