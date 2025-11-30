@@ -213,7 +213,8 @@
             "group": "Integration Guides",
             "pages": [
               "ai-frameworks/setup",
-              "ai-frameworks/best-practices"
+              "ai-frameworks/best-practices",
+              "ai-frameworks/framework-gotchas"
             ]
           }
         ]
