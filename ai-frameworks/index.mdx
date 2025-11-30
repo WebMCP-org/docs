@@ -1,64 +1,162 @@
 ---
-title: 'AI Framework Integration'
-description: 'Integrate WebMCP tools with frontend AI frameworks including Assistant-UI, AG-UI, and custom runtimes. Build intelligent applications with AI copilots and assistants.'
-icon: 'wand-magic-sparkles'
+title: 'AI Frameworks Overview'
+description: 'Integrate WebMCP with popular AI frameworks like Assistant-UI, AG-UI, and custom runtimes. Expose frontend tools to AI assistants and copilots.'
+sidebarTitle: 'Overview'
+icon: 'brain-circuit'
 ---
 
-## Overview
+## What is WebMCP?
 
-Your frontend AI agents need a way to interact with your website. This guide shows how to wire WebMCP tools into frameworks like Assistant-UI, AG-UI, or custom runtimes, then use the MCP client protocol to let agents discover and call your tools. By the end, your AI will be able to understand and use every feature you expose.
-
-## How Frontend Tool Calling Works
-
-<Steps>
-  <Step title="Register tools on your website">
-    Tools are defined and registered on your website using `navigator.modelContext`
-  </Step>
-
-  <Step title="Connect an MCP client">
-    Your AI runtime connects to the website's tools using an MCP client
-  </Step>
-
-  <Step title="Register tools with AI runtime">
-    The MCP tools are registered with your frontend AI framework
-  </Step>
-
-  <Step title="AI calls tools">
-    When the AI needs to use a tool, it calls through your runtime → MCP client → WebMCP
-  </Step>
-
-  <Step title="Tool executes on frontend">
-    The tool runs in the browser, returns results to the AI
-  </Step>
-</Steps>
+WebMCP lets you expose JavaScript functions on your website as **tools** that AI agents can discover and call. It implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) in the browser.
 
 ```mermaid
-sequenceDiagram
-    participant AI as AI Agent (Frontend)
-    participant Runtime as AI Runtime
-    participant Client as MCP Client
-    participant WebMCP as WebMCP Tools
+graph LR
+    subgraph Your Website
+        A[Your App] --> B[navigator.modelContext]
+        B --> C[MCP Server]
+    end
 
-    AI->>Runtime: "Add item to cart"
-    Runtime->>Client: callTool('add_to_cart', {...})
-    Client->>WebMCP: Execute tool
-    WebMCP->>WebMCP: Run tool function
-    WebMCP-->>Client: Tool result
-    Client-->>Runtime: MCP response
-    Runtime-->>AI: "Item added successfully"
+    subgraph AI Agents
+        D[Browser Extension] --> E[MCP Client]
+        F[Embedded Copilot] --> G[MCP Client]
+    end
+
+    E --> C
+    G --> C
 ```
 
-## Supported Frameworks
+## How It Works
 
-WebMCP tools work with any frontend AI framework that supports tool calling:
+WebMCP consists of two main parts:
+
+### 1. The Server (Your Website)
+
+When you import `@mcp-b/global`, your webpage starts an **MCP server**:
+
+```tsx "main.tsx"
+import '@mcp-b/global'; // Starts MCP server on your page
+```
+
+Then you register tools using `useWebMCP`:
+
+```tsx "MyComponent.tsx"
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function MyComponent() {
+  useWebMCP({
+    name: 'add_to_cart',
+    description: 'Add a product to the shopping cart',
+    inputSchema: {
+      productId: z.string(),
+      quantity: z.number().min(1)
+    },
+    handler: async (input) => {
+      await addToCart(input.productId, input.quantity);
+      return { success: true };
+    }
+  });
+
+  return <div>...</div>;
+}
+```
+
+### 2. The Client (AI Agents)
+
+AI agents connect to your page using an **MCP client**:
+
+```tsx
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+
+const client = new Client(
+  { name: 'MyAgent', version: '1.0.0' },
+  { capabilities: {} }
+);
+
+const transport = new TabClientTransport({
+  targetOrigin: 'https://your-website.com',
+  channelId: 'mcp-default'
+});
+
+await client.connect(transport);
+
+// Discover tools
+const { tools } = await client.listTools();
+
+// Call a tool
+const result = await client.callTool({
+  name: 'add_to_cart',
+  arguments: { productId: 'abc', quantity: 2 }
+});
+```
+
+## Common Use Cases
 
 <CardGroup cols={2}>
+  <Card title="External AI Agents" icon="chrome">
+    Browser extensions, desktop apps, or other AI agents discover and call your tools
+  </Card>
+
+  <Card title="Embedded Copilots" icon="robot">
+    AI assistants built into your website that can interact with your app
+  </Card>
+
+  <Card title="Agentic UIs" icon="sparkles">
+    Frameworks like Assistant-UI or AG-UI that support frontend-defined tools
+  </Card>
+
+  <Card title="Custom Runtimes" icon="code">
+    Build your own AI integration with any LLM provider
+  </Card>
+</CardGroup>
+
+## Architecture Patterns
+
+### Pattern A: External AI Agents (Most Common)
+
+Your website exposes tools. External AI agents connect as clients.
+
+```
+Your Website (Server)          External AI Agent (Client)
+┌─────────────────────┐        ┌─────────────────────┐
+│  @mcp-b/global      │   ←    │  MCP Client         │
+│  + useWebMCP        │        │  (Browser Extension)│
+└─────────────────────┘        └─────────────────────┘
+```
+
+**You need:** `@mcp-b/global`, `@mcp-b/react-webmcp`, `zod`
+
+### Pattern B: Embedded Copilot
+
+Your website both hosts tools AND has an embedded AI assistant that uses them.
+
+```
+Your Website
+┌─────────────────────────────────────────┐
+│  @mcp-b/global (Server)                 │
+│  + useWebMCP (Tool Registration)        │
+│                                         │
+│  McpClientProvider (Client)             │
+│  + AI Framework (Assistant-UI, AG-UI)   │
+└─────────────────────────────────────────┘
+```
+
+**You need:** `@mcp-b/global`, `@mcp-b/react-webmcp`, `@mcp-b/transports`, `@modelcontextprotocol/sdk`, `zod`, + your AI framework
+
+## Choose Your Integration
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="gear" href="/ai-frameworks/setup">
+    **Start here** - Install packages and understand the architecture
+  </Card>
+
   <Card title="Assistant-UI" icon="robot" href="/ai-frameworks/assistant-ui">
-    React framework for building AI assistants with built-in tool support
+    Integrate with the Assistant-UI React framework
   </Card>
 
   <Card title="AG-UI" icon="sparkles" href="/ai-frameworks/ag-ui">
-    Agentic UI framework with frontend-defined tools
+    Integrate with the AG-UI agentic framework
   </Card>
 
   <Card title="Custom Runtime" icon="code" href="/ai-frameworks/custom-runtime">
@@ -66,62 +164,61 @@ WebMCP tools work with any frontend AI framework that supports tool calling:
   </Card>
 </CardGroup>
 
-## Key Benefits
+## Quick Start
 
-### Tool Execution in Browser
+The fastest way to get started:
 
-With WebMCP frontend tool calling, tools execute **in the browser**:
-
-- ✅ Direct access to DOM, localStorage, app state
-- ✅ No server roundtrip required
-- ✅ Works offline
-- ✅ Real-time UI updates
-
-### MCP Client as Bridge
-
-The MCP client acts as a bridge between your AI runtime and WebMCP:
-
-```
-AI Runtime → MCP Client → WebMCP → Tool Function → Result
+```bash
+npm install @mcp-b/global @mcp-b/react-webmcp zod
 ```
 
-### Dynamic Tool Updates
+```tsx "main.tsx"
+import '@mcp-b/global';
+import { createRoot } from 'react-dom/client';
+import App from './App';
 
-Tools can be registered/unregistered dynamically, and the AI runtime stays synchronized:
-
-```typescript
-// Register a new tool
-const registration = navigator.modelContext.registerTool({
-  name: 'new_feature',
-  description: 'A new feature',
-  inputSchema: { type: 'object', properties: {} },
-  async execute() {
-    return { content: [{ type: 'text', text: 'Done!' }] };
-  }
-});
-
-// Tool is immediately available to the AI
-
-// Later, remove it
-registration.unregister();
+createRoot(document.getElementById('root')!).render(<App />);
 ```
 
-## Getting Started
+```tsx "App.tsx"
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export function App() {
+  // Register a tool that AI agents can call
+  useWebMCP({
+    name: 'get_page_info',
+    description: 'Get information about the current page',
+    inputSchema: {},
+    handler: async () => ({
+      title: document.title,
+      url: window.location.href,
+      timestamp: new Date().toISOString()
+    })
+  });
+
+  return <div>My AI-enabled App</div>;
+}
+```
+
+Your page now exposes a `get_page_info` tool that any MCP client can discover and call.
+
+## Resources
 
 <CardGroup cols={2}>
-  <Card title="Setup Guide" icon="gear" href="/ai-frameworks/setup">
-    Install packages and configure your MCP client
+  <Card title="React Hooks API" icon="react" href="/packages/react-webmcp">
+    Full API reference for useWebMCP, McpClientProvider, and useMcpClient
+  </Card>
+
+  <Card title="Transports" icon="arrows-rotate" href="/packages/transports">
+    TabClientTransport, TabServerTransport, and other transport options
   </Card>
 
   <Card title="Best Practices" icon="stars" href="/ai-frameworks/best-practices">
-    Learn patterns for building robust AI integrations
-  </Card>
-
-  <Card title="React Hooks" icon="react" href="/packages/react-webmcp">
-    Use `@mcp-b/react-webmcp` for easier integration
+    Performance optimization and patterns
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">
-    See complete working examples
+    Complete working examples
   </Card>
 </CardGroup>

@@ -1,8 +1,37 @@
 ---
 title: 'Setup & Installation'
-description: 'Install packages and configure MCP client for frontend AI integration. Complete setup guide for TabClientTransport and tool consumption in React applications.'
+description: 'Install packages and configure WebMCP for frontend AI integration. Understand the architecture and set up tool registration with React hooks.'
 icon: 'gear'
 ---
+
+## Understanding the Architecture
+
+Before diving into setup, it's important to understand how WebMCP works:
+
+```mermaid
+graph LR
+    subgraph Your Website
+        A[Your React App] --> B[useWebMCP hook]
+        B --> C[navigator.modelContext]
+        C --> D[MCP Server<br/>TabServerTransport]
+    end
+
+    subgraph AI Clients
+        E[Browser Extension] --> F[MCP Client]
+        G[Embedded Copilot] --> H[MCP Client]
+    end
+
+    F --> D
+    H --> D
+```
+
+**Key concepts:**
+
+1. **`@mcp-b/global`** - A polyfill that adds `navigator.modelContext` to the browser and runs an **MCP server**
+2. **`useWebMCP`** - A React hook that registers tools with `navigator.modelContext`
+3. **External AI agents** (browser extensions, copilots) connect as **MCP clients** to discover and call your tools
+
+When you import `@mcp-b/global`, your webpage becomes an MCP server that AI agents can connect to.
 
 ## Installation
 
@@ -11,49 +40,72 @@ Install the required packages:
 <Tabs>
   <Tab title="npm">
 ```bash
-npm install @mcp-b/react-webmcp @mcp-b/transports @modelcontextprotocol/sdk
+npm install @mcp-b/global @mcp-b/react-webmcp zod
 ```
   </Tab>
   <Tab title="yarn">
 ```bash
-yarn add @mcp-b/react-webmcp @mcp-b/transports @modelcontextprotocol/sdk
+yarn add @mcp-b/global @mcp-b/react-webmcp zod
 ```
   </Tab>
   <Tab title="pnpm">
 ```bash
-pnpm add @mcp-b/react-webmcp @mcp-b/transports @modelcontextprotocol/sdk
+pnpm add @mcp-b/global @mcp-b/react-webmcp zod
 ```
   </Tab>
 </Tabs>
 
 <Note>
-  You'll also need `zod` for schema validation if you don't already have it installed.
+  For embedded AI copilots that call your own tools, you'll also need `@mcp-b/transports` and `@modelcontextprotocol/sdk`. See [Embedded Copilot Setup](#embedded-copilot-setup) below.
 </Note>
 
-## Register WebMCP Tools
+## Basic Setup: Exposing Tools to AI Agents
 
-First, register tools that your AI can call using the `useWebMCP` hook:
+This is the most common pattern: your website registers tools that external AI agents can discover and call.
 
-```tsx
+### Step 1: Initialize the Polyfill
+
+Import `@mcp-b/global` once at your app's entry point. This auto-initializes `navigator.modelContext` and starts the MCP server:
+
+```tsx "main.tsx" icon="react"
+import '@mcp-b/global'; // Auto-initializes navigator.modelContext
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+```
+
+### Step 2: Register Tools with useWebMCP
+
+Use the `useWebMCP` hook to register tools. Tools are automatically registered when components mount and unregistered when they unmount:
+
+```tsx "ShoppingCart.tsx" icon="react"
 import { useWebMCP } from '@mcp-b/react-webmcp';
 import { z } from 'zod';
 
 function ShoppingCart() {
-  // Register a tool
+  const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Register a tool that AI agents can call
   useWebMCP({
     name: 'add_to_cart',
     description: 'Add a product to the shopping cart',
     inputSchema: {
-      productId: z.string(),
-      quantity: z.number().min(1)
+      productId: z.string().describe('Product ID to add'),
+      quantity: z.number().min(1).default(1).describe('Quantity to add')
     },
     handler: async (input) => {
-      // Add to cart logic
-      const cart = await addToCart(input.productId, input.quantity);
+      const item = await addToCart(input.productId, input.quantity);
+      setCart(prev => [...prev, item]);
 
       return {
-        message: `Added ${input.quantity}x product ${input.productId} to cart`,
-        cart
+        message: `Added ${input.quantity}x ${item.name} to cart`,
+        cartTotal: calculateTotal([...cart, item])
       };
     }
   });
@@ -62,103 +114,198 @@ function ShoppingCart() {
 }
 ```
 
-<Note>
-  The `useWebMCP` hook automatically handles tool registration and cleanup when the component unmounts.
-</Note>
+That's it! Your tools are now discoverable by any MCP client connecting to your page.
 
-## Set Up MCP Client
+## How External AI Agents Connect
 
-Use the `McpClientProvider` to connect to your website's tools:
+External AI agents (like browser extensions or standalone apps) use an MCP client to connect to your page's tools:
 
-```tsx
-import { McpClientProvider, useMcpClient } from '@mcp-b/react-webmcp';
+```tsx "BrowserExtension.ts" icon="chrome"
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { TabClientTransport } from '@mcp-b/transports';
 
-// Create client and transport
-const client = new Client({
-  name: 'MyAIAssistant',
-  version: '1.0.0'
+// Create transport targeting the webpage
+const transport = new TabClientTransport({
+  targetOrigin: 'https://your-website.com', // Required for security
+  channelId: 'mcp-default' // Optional, defaults to 'mcp-default'
 });
 
-const transport = new TabClientTransport('mcp', {
-  clientInstanceId: 'my-ai-assistant'
+// Create MCP client
+const client = new Client(
+  { name: 'MyAIAgent', version: '1.0.0' },
+  { capabilities: {} }
+);
+
+// Connect and discover tools
+await client.connect(transport);
+
+// List available tools
+const { tools } = await client.listTools();
+console.log('Available tools:', tools.map(t => t.name));
+
+// Call a tool
+const result = await client.callTool({
+  name: 'add_to_cart',
+  arguments: { productId: 'prod-123', quantity: 2 }
+});
+```
+
+<Warning>
+  The `targetOrigin` parameter is **required** for security. It must match the origin of the webpage hosting the MCP server.
+</Warning>
+
+## Embedded Copilot Setup
+
+If you're building an AI copilot embedded within your own website (like Assistant-UI or AG-UI), you need to connect an MCP client to your own MCP server.
+
+### Additional Installation
+
+```bash
+npm install @mcp-b/transports @modelcontextprotocol/sdk
+```
+
+### Full Setup with McpClientProvider
+
+```tsx "App.tsx" icon="react"
+import '@mcp-b/global'; // Initialize the MCP server
+import { McpClientProvider, useMcpClient, useWebMCP } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { z } from 'zod';
+
+// Create client and transport ONCE, outside components
+const mcpClient = new Client(
+  { name: 'EmbeddedCopilot', version: '1.0.0' },
+  { capabilities: {} }
+);
+
+const transport = new TabClientTransport({
+  targetOrigin: window.location.origin, // Connect to self
+  channelId: 'mcp-default'
 });
 
-// Wrap your app with the provider
-function App() {
+export function App() {
   return (
-    <McpClientProvider client={client} transport={transport}>
-      <AIAssistant />
+    <McpClientProvider client={mcpClient} transport={transport}>
+      <ToolProvider />
+      <AICopilot />
     </McpClientProvider>
   );
 }
 
-// Use the client in your components
-function AIAssistant() {
-  const { client, tools, isConnected, isLoading } = useMcpClient();
+// Component that registers tools
+function ToolProvider() {
+  useWebMCP({
+    name: 'get_user_info',
+    description: 'Get current user information',
+    inputSchema: {},
+    handler: async () => {
+      const user = getCurrentUser();
+      return { name: user.name, email: user.email };
+    }
+  });
 
-  if (isLoading) return <div>Connecting...</div>;
+  return null; // This component just registers tools
+}
+
+// Component that uses tools via MCP client
+function AICopilot() {
+  const { client, tools, isConnected, isLoading, error } = useMcpClient();
+
+  if (isLoading) return <div>Connecting to tools...</div>;
+  if (error) return <div>Error: {error.message}</div>;
   if (!isConnected) return <div>Not connected</div>;
+
+  const callTool = async (name: string, args: Record<string, unknown>) => {
+    const result = await client.callTool({ name, arguments: args });
+    return result.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+  };
 
   return (
     <div>
-      <p>Available tools: {tools.length}</p>
-      <ul>
-        {tools.map(tool => (
-          <li key={tool.name}>{tool.name} - {tool.description}</li>
-        ))}
-      </ul>
+      <h2>AI Copilot</h2>
+      <p>Available tools: {tools.map(t => t.name).join(', ')}</p>
+      {/* Your AI chat interface here */}
     </div>
   );
 }
 ```
 
+### How It Works
+
+1. `@mcp-b/global` starts an MCP server on your page via `TabServerTransport`
+2. `useWebMCP` registers tools with `navigator.modelContext` (the server)
+3. `McpClientProvider` creates an MCP client that connects back to the same page
+4. `useMcpClient` provides access to discovered tools and the ability to call them
+
+```mermaid
+sequenceDiagram
+    participant App as Your App
+    participant Server as MCP Server<br/>(navigator.modelContext)
+    participant Client as MCP Client<br/>(McpClientProvider)
+    participant AI as AI Framework
+
+    App->>Server: useWebMCP registers tools
+    Client->>Server: Connect via TabClientTransport
+    Server-->>Client: tools/list response
+    AI->>Client: callTool('add_to_cart', {...})
+    Client->>Server: tools/call request
+    Server->>Server: Execute tool handler
+    Server-->>Client: Tool result
+    Client-->>AI: Return result
+```
+
 ## Configuration Options
 
-### Client Configuration
+### Polyfill Options
+
+Configure `@mcp-b/global` before auto-initialization:
 
 ```tsx
-const client = new Client({
-  name: 'MyAIAssistant',      // Your application name
-  version: '1.0.0',            // Your application version
+// Set before importing @mcp-b/global
+window.__webModelContextOptions = {
+  transport: {
+    tabServer: {
+      allowedOrigins: ['https://trusted-agent.com'], // Restrict who can connect
+      channelId: 'my-custom-channel'
+    },
+    iframeServer: false // Disable iframe transport if not needed
+  }
+};
+
+import '@mcp-b/global';
+```
+
+### TabClientTransport Options
+
+```tsx
+const transport = new TabClientTransport({
+  targetOrigin: 'https://example.com', // Required: origin of the MCP server
+  channelId: 'mcp-default'             // Optional: channel for communication
 });
 ```
 
-### Transport Options
+## Verifying Your Setup
 
-The `TabClientTransport` accepts configuration options:
-
-```tsx
-const transport = new TabClientTransport('mcp', {
-  clientInstanceId: 'unique-client-id',  // Unique identifier for this client
-  timeout: 5000,                          // Optional: request timeout in ms
-});
-```
-
-## Verify Connection
-
-Check the connection status in your components:
+Check that tools are registered correctly:
 
 ```tsx
-function ConnectionStatus() {
-  const { isConnected, isLoading, error, tools } = useMcpClient();
-
-  if (isLoading) {
-    return <div>Connecting to WebMCP...</div>;
-  }
-
-  if (error) {
-    return <div>Connection error: {error.message}</div>;
-  }
-
-  if (!isConnected) {
-    return <div>Not connected</div>;
-  }
+function DebugPanel() {
+  const tools = navigator.modelContext.listTools();
 
   return (
     <div>
-      ✅ Connected - {tools.length} tools available
+      <h3>Registered Tools ({tools.length})</h3>
+      <ul>
+        {tools.map(tool => (
+          <li key={tool.name}>
+            <strong>{tool.name}</strong>: {tool.description}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
