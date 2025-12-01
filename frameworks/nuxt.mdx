@@ -1,259 +1,92 @@
 ---
 title: 'Nuxt Integration'
-description: 'Integrate WebMCP tools with Nuxt 3. Handle SSR/SSG patterns with client-only plugins and composables for full-stack Vue applications.'
+description: 'Integrate WebMCP tools with Nuxt 3, handling SSR safely.'
 icon: 'n'
 ---
 
-## Overview
-
-Nuxt 3 is a full-stack Vue framework with built-in SSR, making WebMCP integration slightly more complex than client-only Vue apps. This guide covers Nuxt-specific patterns for registering tools that work correctly with server-side rendering.
-
-## Prerequisites
-
-<Steps>
-  <Step title="Install WebMCP">
-    Follow the [installation guide](/packages/global#installation) to set up `@mcp-b/global`
-  </Step>
-
-  <Step title="Have Nuxt 3 configured">
-    This guide is for Nuxt 3
-  </Step>
-</Steps>
-
 <Info>
-  For general SSR patterns and common issues, see [Framework Gotchas](/ai-frameworks/framework-gotchas). For the base Vue composable pattern, see [Vue Integration](/frameworks/vue).
+**Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For base Vue patterns, see [Vue Integration](/frameworks/vue).
 </Info>
+
+Nuxt's SSR requires ensuring WebMCP code only runs on the client.
 
 ## Client-Only Plugin
 
-Create a Nuxt plugin that initializes WebMCP client-side:
+Create a plugin that initializes WebMCP on the client:
 
 ```typescript "plugins/webmcp.client.ts"
 import '@mcp-b/global';
 
 export default defineNuxtPlugin(() => {
-  // This plugin only runs on the client due to .client.ts suffix
-  // WebMCP is now initialized and tools can be registered
+  // .client.ts suffix ensures this only runs in browser
 });
 ```
 
-The `.client.ts` suffix tells Nuxt to only load this plugin in the browser.
+## Basic Usage
 
-## Nuxt Composable
+Use `import.meta.client` to guard registration:
 
-Create a composable that handles SSR-safe tool registration:
+```vue
+<script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue';
 
-```typescript "composables/useWebMCP.ts"
-interface ToolConfig {
-  name: string;
-  description: string;
-  inputSchema?: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => Promise<unknown>;
-}
+let reg: { unregister: () => void } | null = null;
 
-export function useWebMCP(config: ToolConfig): void {
-  let registration: { unregister: () => void } | null = null;
-
-  // Only run on client
-  if (import.meta.client) {
-    onMounted(() => {
-      if (!('modelContext' in navigator)) return;
-
-      registration = navigator.modelContext.registerTool({
-        name: config.name,
-        description: config.description,
-        inputSchema: config.inputSchema ?? { type: 'object', properties: {} },
-        async execute(args) {
-          const result = await config.handler(args);
-          return {
-            content: [{
-              type: 'text',
-              text: typeof result === 'string' ? result : JSON.stringify(result)
-            }]
-          };
-        }
-      });
+if (import.meta.client) {
+  onMounted(() => {
+    reg = navigator.modelContext.registerTool({
+      name: 'get_page',
+      description: 'Get current page info',
+      inputSchema: { type: 'object', properties: {} },
+      async execute() {
+        return { content: [{ type: 'text', text: window.location.pathname }] };
+      }
     });
+  });
 
-    onUnmounted(() => {
-      registration?.unregister();
-    });
-  }
+  onUnmounted(() => reg?.unregister());
 }
+</script>
 ```
 
-<Note>
-  The `import.meta.client` check is Nuxt 3's way to conditionally run code only on the client.
-</Note>
-
-<Info>
-  **Tool Discovery**: AI agents discover registered tools via [TabClientTransport](/packages/transports#tab-transport-examples) using `client.listTools()`. Your components just register and unregister tools—no need to track them internally.
-</Info>
-
-## Using with Server Data
-
-Pass server-fetched data to client-side tools:
+## With Server Data
 
 ```vue "pages/products/[id].vue"
 <script setup lang="ts">
 const route = useRoute();
 const { data: product } = await useFetch(`/api/products/${route.params.id}`);
 
-useWebMCP({
-  name: 'get_current_product',
-  description: 'Get details about the currently viewed product',
-  handler: async () => {
-    if (!product.value) return { error: 'No product loaded' };
-    return {
-      id: product.value.id,
-      name: product.value.name,
-      price: product.value.price
-    };
-  }
-});
-</script>
+let reg: { unregister: () => void } | null = null;
 
-<template>
-  <div v-if="product">
-    <h1>{{ product.name }}</h1>
-  </div>
-</template>
+if (import.meta.client) {
+  onMounted(() => {
+    reg = navigator.modelContext.registerTool({
+      name: 'get_product',
+      description: 'Get current product details',
+      inputSchema: { type: 'object', properties: {} },
+      async execute() {
+        if (!product.value) return { content: [{ type: 'text', text: 'No product' }] };
+        return { content: [{ type: 'text', text: JSON.stringify(product.value) }] };
+      }
+    });
+  });
+
+  onUnmounted(() => reg?.unregister());
+}
+</script>
 ```
 
 ## ClientOnly Wrapper
 
-For components that should only render on the client:
+For client-only components:
 
 ```vue "app.vue"
 <template>
-  <div>
-    <ClientOnly>
-      <GlobalTools />
-    </ClientOnly>
-    <NuxtPage />
-  </div>
+  <ClientOnly>
+    <ToolRegistrationComponent />
+  </ClientOnly>
+  <NuxtPage />
 </template>
-```
-
-## Global Tools in Layout
-
-Register app-wide tools in a layout:
-
-```vue "layouts/default.vue"
-<script setup lang="ts">
-if (import.meta.client) {
-  useWebMCP({
-    name: 'get_user_session',
-    description: 'Get current user session info',
-    handler: async () => {
-      const { data } = useAuth();
-      return { isLoggedIn: !!data.value, user: data.value?.user ?? null };
-    }
-  });
-
-  useWebMCP({
-    name: 'toggle_dark_mode',
-    description: 'Toggle between light and dark mode',
-    handler: async () => {
-      const colorMode = useColorMode();
-      colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark';
-      return { mode: colorMode.preference };
-    }
-  });
-}
-</script>
-
-<template>
-  <div>
-    <header>
-      <NuxtLink to="/">Home</NuxtLink>
-    </header>
-    <main>
-      <slot />
-    </main>
-  </div>
-</template>
-```
-
-## Pinia Integration
-
-Nuxt's auto-imported Pinia stores work seamlessly:
-
-```typescript "stores/cart.ts"
-export const useCartStore = defineStore('cart', {
-  state: () => ({
-    items: [] as Array<{ id: string; quantity: number }>
-  }),
-  getters: {
-    totalItems: (state) => state.items.reduce((sum, i) => sum + i.quantity, 0)
-  },
-  actions: {
-    addItem(id: string, quantity: number) {
-      const existing = this.items.find(i => i.id === id);
-      if (existing) existing.quantity += quantity;
-      else this.items.push({ id, quantity });
-    }
-  }
-});
-```
-
-```vue "components/CartTools.vue"
-<script setup lang="ts">
-const cart = useCartStore();
-
-useWebMCP({
-  name: 'cart_add',
-  description: 'Add item to cart',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      productId: { type: 'string' },
-      quantity: { type: 'number' }
-    },
-    required: ['productId']
-  },
-  handler: async ({ productId, quantity = 1 }) => {
-    cart.addItem(productId as string, quantity as number);
-    return { totalItems: cart.totalItems };
-  }
-});
-</script>
-```
-
-## API Routes
-
-Create API routes that tools can call:
-
-```typescript "server/api/products/search.ts"
-// getQuery is auto-imported by Nuxt from 'h3'
-// searchProducts is your own function - import from your data layer
-import { searchProducts } from '~/server/utils/products';
-
-export default defineEventHandler(async (event) => {
-  const query = getQuery(event);
-  const products = await searchProducts(query.q as string);
-  return products;
-});
-```
-
-```vue "components/SearchTools.vue"
-<script setup lang="ts">
-useWebMCP({
-  name: 'search_products',
-  description: 'Search products in the catalog',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Search term' }
-    },
-    required: ['query']
-  },
-  handler: async ({ query }) => {
-    const results = await $fetch('/api/products/search', { query: { q: query } });
-    return { results, count: results.length };
-  }
-});
-</script>
 ```
 
 ## Common Gotchas
@@ -264,43 +97,10 @@ useWebMCP({
     - `import.meta.client` check
     - `.client.ts` suffix for plugins
     - `<ClientOnly>` component
-    - `onMounted` lifecycle hook
-
-    See [Framework Gotchas](/ai-frameworks/framework-gotchas) for more SSR patterns.
+    - `onMounted` hook (runs client-side only)
   </Accordion>
 
   <Accordion title="Tools disappear after navigation">
-    Ensure the component registering tools persists across routes (e.g., in `app.vue` or a layout).
-  </Accordion>
-
-  <Accordion title="Hydration mismatch warnings">
-    Wrap client-only UI in `<ClientOnly>`:
-
-    ```vue
-    <ClientOnly>
-      <ToolRegistrationComponent />
-      <template #fallback>Loading...</template>
-    </ClientOnly>
-    ```
+    Register tools in `app.vue` or a layout so they persist across routes.
   </Accordion>
 </AccordionGroup>
-
-## Resources
-
-<CardGroup cols={2}>
-  <Card title="Nuxt 3 Docs" icon="book" href="https://nuxt.com/docs">
-    Official Nuxt 3 documentation
-  </Card>
-
-  <Card title="Vue Integration" icon="vuejs" href="/frameworks/vue">
-    Base Vue patterns
-  </Card>
-
-  <Card title="TabClientTransport" icon="plug" href="/packages/transports#tab-transport-examples">
-    How AI agents discover and call tools
-  </Card>
-
-  <Card title="Examples" icon="code" href="/examples">
-    Complete working examples
-  </Card>
-</CardGroup>
