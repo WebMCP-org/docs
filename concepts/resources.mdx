@@ -125,21 +125,34 @@ navigator.modelContext.registerResource({
 });
 ```
 
-## Reading Resources
+## How AI Agents Read Resources
 
-AI agents read resources using `readResource()`:
+When an AI agent wants to read a resource, it calls `readResource()` through the MCP protocol. This invokes your registered `read()` handler:
 
 ```typescript twoslash icon="typescript"
-// Read a static resource
-const config = await navigator.modelContext.readResource('config://app-settings');
-console.log(config.contents[0].text);
-// { "theme": "dark", "language": "en", ... }
+// AI agent calls readResource('config://app-settings')
+// Your handler is invoked and returns the content
 
-// Read a template resource
-const file = await navigator.modelContext.readResource('file://readme.txt');
-console.log(file.contents[0].text);
-// Contents of readme.txt...
+navigator.modelContext.registerResource({
+  uri: 'config://app-settings',
+  name: 'App Settings',
+  async read() {
+    // This handler is called when AI reads the resource
+    console.log('AI reading app settings');
+    return {
+      contents: [{
+        uri: 'config://app-settings',
+        text: JSON.stringify(settings),
+        mimeType: 'application/json',
+      }],
+    };
+  },
+});
 ```
+
+<Note>
+The `readResource()` method is called by AI agents through the MCP protocol, not directly from your application code. Your `read()` handler is invoked automatically when an agent requests the resource.
+</Note>
 
 ## Listing Resources
 

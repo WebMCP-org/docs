@@ -162,27 +162,18 @@ interface PromptMessage {
 }
 ```
 
-### `getPrompt(name, args?)`
-
-Retrieves a prompt by name with optional arguments.
-
-```typescript
-const result = await navigator.modelContext.getPrompt('code-review', {
-  code: 'function add(a, b) { return a + b; }',
-  language: 'javascript'
-});
-
-// result.messages contains the generated messages
-```
-
 ### `listPrompts()`
 
-Returns all registered prompts.
+Returns all registered prompts (called by AI agents via MCP protocol).
 
 ```typescript
 const prompts = navigator.modelContext.listPrompts();
 // [{ name: 'greeting', description: '...' }, ...]
 ```
+
+<Note>
+The `getPrompt()` method is called by AI agents through the MCP protocol, not directly from your application code. When an AI agent calls `getPrompt('greeting')`, your registered `get()` handler is invoked and the result is returned to the agent.
+</Note>
 
 ---
 

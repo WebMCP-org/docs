@@ -155,21 +155,6 @@ interface ResourceContents {
 }
 ```
 
-### `readResource(uri)`
-
-Reads a resource by its URI.
-
-```typescript
-// Static resource
-const config = await navigator.modelContext.readResource('config://app-settings');
-
-// Template resource (path parameter extracted automatically)
-const file = await navigator.modelContext.readResource('file://readme.txt');
-
-// Access content
-console.log(config.contents[0].text);
-```
-
 ### `listResources()`
 
 Returns all registered static resources.
@@ -187,6 +172,10 @@ Returns all registered resource templates.
 const templates = navigator.modelContext.listResourceTemplates();
 // [{ uriTemplate: 'file://{path}', name: 'Virtual File', ... }]
 ```
+
+<Note>
+The `readResource()` method is called by AI agents through the MCP protocol, not directly from your application code. When an AI agent calls `readResource('config://app-settings')`, your registered `read()` handler is invoked and the result is returned to the agent.
+</Note>
 
 ---
 

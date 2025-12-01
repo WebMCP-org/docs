@@ -40,6 +40,29 @@ export const ConfigResource = () => {
     }
   };
 
+  const startExecution = async (onExecute) => {
+    setExecutionPhase('executing');
+    showPageEffect('#10B981');
+
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await onExecute();
+
+    setExecutionPhase('complete');
+    hidePageEffect();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setExecutionPhase(null);
+
+    return result;
+  };
+
+  // Use a ref to always have the latest config in the read handler
+  const configRef = useRef(config);
+  configRef.current = config;
+
   useEffect(() => {
     const registerResource = async () => {
       if (typeof window === 'undefined' || !window.navigator?.modelContext) {
@@ -53,21 +76,23 @@ export const ConfigResource = () => {
           description: 'Current application configuration settings',
           mimeType: 'application/json',
           async read() {
-            const content = {
-              uri: 'config://app-settings',
-              text: JSON.stringify(config, null, 2),
-              mimeType: 'application/json',
-            };
+            return startExecution(async () => {
+              const content = {
+                uri: 'config://app-settings',
+                text: JSON.stringify(configRef.current, null, 2),
+                mimeType: 'application/json',
+              };
 
-            setLastContent(content);
-            setResourceReads(prev => [...prev, {
-              time: new Date().toISOString(),
-              uri: 'config://app-settings',
-              status: 'success',
-              content,
-            }]);
+              setLastContent(content);
+              setResourceReads(prev => [...prev, {
+                time: new Date().toISOString(),
+                uri: 'config://app-settings',
+                status: 'success',
+                content,
+              }]);
 
-            return { contents: [content] };
+              return { contents: [content] };
+            });
           },
         });
 
@@ -86,37 +111,7 @@ export const ConfigResource = () => {
         window.navigator.modelContext.unregisterResource('config://app-settings');
       }
     };
-  }, [config]);
-
-  const handleRead = async () => {
-    if (typeof window !== 'undefined' && window.__mcpBridge?.modelContext?.readResource) {
-      try {
-        setExecutionPhase('executing');
-        showPageEffect('#10B981');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const result = await window.__mcpBridge.modelContext.readResource('config://app-settings');
-        if (result.contents?.[0]) {
-          setLastContent(result.contents[0]);
-          setResourceReads(prev => [...prev, {
-            time: new Date().toISOString(),
-            uri: 'config://app-settings',
-            status: 'success',
-            content: result.contents[0],
-          }]);
-        }
-
-        setExecutionPhase('complete');
-        hidePageEffect();
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setExecutionPhase(null);
-      } catch (error) {
-        console.error('Failed to read resource:', error);
-        setExecutionPhase(null);
-        hidePageEffect();
-      }
-    }
-  };
+  }, []);
 
   const updateConfig = (key, value) => {
     setConfig(prev => ({ ...prev, [key]: value }));
@@ -192,57 +187,66 @@ export const ConfigResource = () => {
       )}
 
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Theme</label>
-            <select
-              value={config.theme}
-              onChange={(e) => updateConfig('theme', e.target.value)}
-              className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
-            </select>
+        {/* Config editor */}
+        <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">
+            Edit Settings (updates resource content)
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Theme</label>
+              <select
+                value={config.theme}
+                onChange={(e) => updateConfig('theme', e.target.value)}
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Language</label>
+              <select
+                value={config.language}
+                onChange={(e) => updateConfig('language', e.target.value)}
+                className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
+              >
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Language</label>
-            <select
-              value={config.language}
-              onChange={(e) => updateConfig('language', e.target.value)}
-              className="w-full px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
-            >
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-            </select>
+
+          <div className="flex items-center gap-3 mt-3">
+            <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={config.notifications}
+                onChange={(e) => updateConfig('notifications', e.target.checked)}
+                className="rounded border-zinc-300 dark:border-zinc-700"
+              />
+              Notifications
+            </label>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <input
-              type="checkbox"
-              checked={config.notifications}
-              onChange={(e) => updateConfig('notifications', e.target.checked)}
-              className="rounded border-zinc-300 dark:border-zinc-700"
-            />
-            Notifications
-          </label>
+        {/* Current resource value preview */}
+        <div className="p-4 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+            Current Resource Content
+          </p>
+          <pre className="text-xs text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap font-mono">
+            {JSON.stringify(config, null, 2)}
+          </pre>
         </div>
 
-        <button
-          onClick={handleRead}
-          disabled={!isRegistered || isActive}
-          className="w-full px-4 py-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-        >
-          Read Resource
-        </button>
-
-        {lastContent && (executionPhase === 'complete' || !isActive) && (
+        {/* AI Result Display */}
+        {lastContent && (executionPhase === 'complete' || resourceReads.length > 0) && (
           <div className="p-4 rounded-lg bg-[#10B981]/5 dark:bg-[#10B981]/10 border border-[#10B981]/20">
             <p className="text-xs font-medium text-[#10B981] dark:text-[#34D399] mb-2 uppercase tracking-wide">
-              Resource Content
+              Last Read Content
             </p>
             <pre className="text-xs text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg overflow-x-auto font-mono">
               {lastContent.text}

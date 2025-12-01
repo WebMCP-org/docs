@@ -5,8 +5,7 @@ export const CodeReviewPrompt = () => {
   const [promptCalls, setPromptCalls] = useState([]);
   const [executionPhase, setExecutionPhase] = useState(null);
   const [lastMessages, setLastMessages] = useState(null);
-  const [code, setCode] = useState('function add(a, b) {\n  return a + b;\n}');
-  const [language, setLanguage] = useState('javascript');
+  const [lastArgs, setLastArgs] = useState(null);
   const containerRef = useRef(null);
 
   const showPageEffect = (color = '#8B5CF6') => {
@@ -36,6 +35,25 @@ export const CodeReviewPrompt = () => {
     }
   };
 
+  const startExecution = async (onExecute) => {
+    setExecutionPhase('executing');
+    showPageEffect('#8B5CF6');
+
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await onExecute();
+
+    setExecutionPhase('complete');
+    hidePageEffect();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setExecutionPhase(null);
+
+    return result;
+  };
+
   useEffect(() => {
     const registerPrompt = async () => {
       if (typeof window === 'undefined' || !window.navigator?.modelContext) {
@@ -62,29 +80,32 @@ export const CodeReviewPrompt = () => {
             required: ['code'],
           },
           async get(args) {
-            const codeToReview = args.code;
-            const lang = args.language || 'unknown';
+            return startExecution(async () => {
+              const codeToReview = args.code;
+              const lang = args.language || 'unknown';
 
-            const messages = [
-              {
-                role: 'user',
-                content: {
-                  type: 'text',
-                  text: `Please review this ${lang} code for best practices:\n\n\`\`\`${lang}\n${codeToReview}\n\`\`\``,
+              const messages = [
+                {
+                  role: 'user',
+                  content: {
+                    type: 'text',
+                    text: `Please review this ${lang} code for best practices:\n\n\`\`\`${lang}\n${codeToReview}\n\`\`\``,
+                  },
                 },
-              },
-            ];
+              ];
 
-            setLastMessages(messages);
-            setPromptCalls(prev => [...prev, {
-              time: new Date().toISOString(),
-              name: 'code-review',
-              args: { code: codeToReview.substring(0, 50) + '...', language: lang },
-              status: 'success',
-              messages,
-            }]);
+              setLastMessages(messages);
+              setLastArgs({ code: codeToReview, language: lang });
+              setPromptCalls(prev => [...prev, {
+                time: new Date().toISOString(),
+                name: 'code-review',
+                args: { code: codeToReview.substring(0, 50) + (codeToReview.length > 50 ? '...' : ''), language: lang },
+                status: 'success',
+                messages,
+              }]);
 
-            return { messages };
+              return { messages };
+            });
           },
         });
 
@@ -104,38 +125,6 @@ export const CodeReviewPrompt = () => {
       }
     };
   }, []);
-
-  const handleTest = async () => {
-    if (typeof window !== 'undefined' && window.__mcpBridge?.modelContext?.getPrompt) {
-      try {
-        setExecutionPhase('executing');
-        showPageEffect('#8B5CF6');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const result = await window.__mcpBridge.modelContext.getPrompt('code-review', {
-          code,
-          language,
-        });
-        setLastMessages(result.messages);
-        setPromptCalls(prev => [...prev, {
-          time: new Date().toISOString(),
-          name: 'code-review',
-          args: { code: code.substring(0, 30) + '...', language },
-          status: 'success',
-          messages: result.messages,
-        }]);
-
-        setExecutionPhase('complete');
-        hidePageEffect();
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setExecutionPhase(null);
-      } catch (error) {
-        console.error('Failed to get prompt:', error);
-        setExecutionPhase(null);
-        hidePageEffect();
-      }
-    }
-  };
 
   const isActive = executionPhase !== null;
 
@@ -207,60 +196,39 @@ export const CodeReviewPrompt = () => {
       )}
 
       <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            Language
-          </label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent"
-          >
-            <option value="javascript">JavaScript</option>
-            <option value="typescript">TypeScript</option>
-            <option value="python">Python</option>
-            <option value="rust">Rust</option>
-            <option value="go">Go</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            Code to Review
-          </label>
-          <textarea
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            rows={4}
-            className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono text-sm focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent"
-          />
-        </div>
-
-        <button
-          onClick={handleTest}
-          disabled={!isRegistered || isActive || !code.trim()}
-          className="w-full px-4 py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-        >
-          Generate Review Request
-        </button>
-
-        {lastMessages && (executionPhase === 'complete' || !isActive) && (
-          <div className="p-4 rounded-lg bg-[#8B5CF6]/5 dark:bg-[#8B5CF6]/10 border border-[#8B5CF6]/20">
-            <p className="text-xs font-medium text-[#8B5CF6] dark:text-[#A78BFA] mb-2 uppercase tracking-wide">
-              Generated Message
-            </p>
-            <div className="space-y-2">
-              {lastMessages.map((msg, idx) => (
-                <div key={idx}>
-                  <span className="inline-block px-1.5 py-0.5 text-xs rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 mb-1">
-                    {msg.role}
-                  </span>
-                  <pre className="text-xs text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg overflow-x-auto">
-                    {msg.content?.text || msg.content}
-                  </pre>
-                </div>
-              ))}
+        {/* Show argument schema */}
+        <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+            Arguments Schema
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <code className="text-violet-600 dark:text-violet-400">code</code>
+              <span className="text-zinc-500 dark:text-zinc-400">string</span>
+              <span className="px-1.5 py-0.5 text-xs rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">required</span>
             </div>
+            <div className="flex items-center gap-2">
+              <code className="text-violet-600 dark:text-violet-400">language</code>
+              <span className="text-zinc-500 dark:text-zinc-400">string</span>
+              <span className="text-zinc-400 dark:text-zinc-500">default: "javascript"</span>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Result Display */}
+        {lastMessages && lastArgs && (executionPhase === 'complete' || promptCalls.length > 0) && (
+          <div className="p-4 rounded-lg bg-[#8B5CF6]/5 dark:bg-[#8B5CF6]/10 border border-[#8B5CF6]/20">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-[#8B5CF6] dark:text-[#A78BFA] uppercase tracking-wide">
+                Last Generated Message
+              </p>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                lang: {lastArgs.language}
+              </span>
+            </div>
+            <pre className="text-xs text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg overflow-x-auto max-h-40">
+              {lastMessages[0]?.content?.text || lastMessages[0]?.content}
+            </pre>
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ export const FileResource = () => {
   const [resourceReads, setResourceReads] = useState([]);
   const [executionPhase, setExecutionPhase] = useState(null);
   const [lastContent, setLastContent] = useState(null);
-  const [filePath, setFilePath] = useState('readme.txt');
+  const [lastPath, setLastPath] = useState(null);
   const containerRef = useRef(null);
 
   // Virtual filesystem for demo
@@ -43,6 +43,25 @@ export const FileResource = () => {
     }
   };
 
+  const startExecution = async (onExecute) => {
+    setExecutionPhase('executing');
+    showPageEffect('#10B981');
+
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await onExecute();
+
+    setExecutionPhase('complete');
+    hidePageEffect();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setExecutionPhase(null);
+
+    return result;
+  };
+
   useEffect(() => {
     const registerResource = async () => {
       if (typeof window === 'undefined' || !window.navigator?.modelContext) {
@@ -56,24 +75,28 @@ export const FileResource = () => {
           description: 'Read files from the virtual filesystem. Available files: readme.txt, config.json, notes.md, data.csv',
           mimeType: 'text/plain',
           async read(uri, params) {
-            const path = params?.path || 'unknown';
-            const fileContent = virtualFiles[path] || `File not found: ${path}`;
+            return startExecution(async () => {
+              const path = params?.path || 'unknown';
+              const fileContent = virtualFiles[path] || `File not found: ${path}`;
+              const found = !!virtualFiles[path];
 
-            const content = {
-              uri: uri.href,
-              text: fileContent,
-              mimeType: path.endsWith('.json') ? 'application/json' : 'text/plain',
-            };
+              const content = {
+                uri: uri.href,
+                text: fileContent,
+                mimeType: path.endsWith('.json') ? 'application/json' : 'text/plain',
+              };
 
-            setLastContent(content);
-            setResourceReads(prev => [...prev, {
-              time: new Date().toISOString(),
-              uri: `file://${path}`,
-              status: virtualFiles[path] ? 'success' : 'not_found',
-              content,
-            }]);
+              setLastContent(content);
+              setLastPath(path);
+              setResourceReads(prev => [...prev, {
+                time: new Date().toISOString(),
+                uri: `file://${path}`,
+                status: found ? 'success' : 'not_found',
+                content,
+              }]);
 
-            return { contents: [content] };
+              return { contents: [content] };
+            });
           },
         });
 
@@ -93,36 +116,6 @@ export const FileResource = () => {
       }
     };
   }, []);
-
-  const handleRead = async () => {
-    if (typeof window !== 'undefined' && window.__mcpBridge?.modelContext?.readResource) {
-      try {
-        setExecutionPhase('executing');
-        showPageEffect('#10B981');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const result = await window.__mcpBridge.modelContext.readResource(`file://${filePath}`);
-        if (result.contents?.[0]) {
-          setLastContent(result.contents[0]);
-          setResourceReads(prev => [...prev, {
-            time: new Date().toISOString(),
-            uri: `file://${filePath}`,
-            status: 'success',
-            content: result.contents[0],
-          }]);
-        }
-
-        setExecutionPhase('complete');
-        hidePageEffect();
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setExecutionPhase(null);
-      } catch (error) {
-        console.error('Failed to read resource:', error);
-        setExecutionPhase(null);
-        hidePageEffect();
-      }
-    }
-  };
 
   const isActive = executionPhase !== null;
 
@@ -194,45 +187,32 @@ export const FileResource = () => {
       )}
 
       <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            Select File
-          </label>
+        {/* Available files display */}
+        <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+            Available Files
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {Object.keys(virtualFiles).map((file) => (
-              <button
+              <div
                 key={file}
-                onClick={() => setFilePath(file)}
-                className={`px-3 py-2 text-sm rounded-lg border transition-all ${
-                  filePath === file
-                    ? 'border-[#10B981] bg-[#10B981]/10 text-[#10B981] dark:text-[#34D399]'
-                    : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600'
-                }`}
+                className="px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 font-mono"
               >
                 {file}
-              </button>
+              </div>
             ))}
           </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+            AI agents can read any of these files using <code className="text-emerald-600 dark:text-emerald-400">readResource("file://filename")</code>
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">URI:</span>
-          <code className="text-sm font-mono text-zinc-900 dark:text-zinc-100">file://{filePath}</code>
-        </div>
-
-        <button
-          onClick={handleRead}
-          disabled={!isRegistered || isActive}
-          className="w-full px-4 py-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-        >
-          Read File
-        </button>
-
-        {lastContent && (executionPhase === 'complete' || !isActive) && (
+        {/* AI Result Display */}
+        {lastContent && lastPath && (executionPhase === 'complete' || resourceReads.length > 0) && (
           <div className="p-4 rounded-lg bg-[#10B981]/5 dark:bg-[#10B981]/10 border border-[#10B981]/20">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-[#10B981] dark:text-[#34D399] uppercase tracking-wide">
-                File Content
+                Last Read: {lastPath}
               </p>
               <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
                 {lastContent.mimeType}

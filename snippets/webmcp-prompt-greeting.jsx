@@ -7,7 +7,7 @@ export const GreetingPrompt = () => {
   const [lastMessages, setLastMessages] = useState(null);
   const containerRef = useRef(null);
 
-  const showPageEffect = (color = '#1F5EFF') => {
+  const showPageEffect = (color = '#8B5CF6') => {
     const overlay = document.createElement('div');
     overlay.id = 'webmcp-prompt-effect';
     overlay.style.cssText = `
@@ -105,34 +105,6 @@ export const GreetingPrompt = () => {
     };
   }, []);
 
-  const handleTest = async () => {
-    if (typeof window !== 'undefined' && window.__mcpBridge?.modelContext?.getPrompt) {
-      try {
-        setExecutionPhase('executing');
-        showPageEffect('#8B5CF6');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const result = await window.__mcpBridge.modelContext.getPrompt('greeting');
-        setLastMessages(result.messages);
-        setPromptCalls(prev => [...prev, {
-          time: new Date().toISOString(),
-          name: 'greeting',
-          status: 'success',
-          messages: result.messages,
-        }]);
-
-        setExecutionPhase('complete');
-        hidePageEffect();
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setExecutionPhase(null);
-      } catch (error) {
-        console.error('Failed to get prompt:', error);
-        setExecutionPhase(null);
-        hidePageEffect();
-      }
-    }
-  };
-
   const isActive = executionPhase !== null;
 
   return (
@@ -202,19 +174,27 @@ export const GreetingPrompt = () => {
         </div>
       )}
 
+      {/* Show what message will be returned */}
       <div className="space-y-3">
-        <button
-          onClick={handleTest}
-          disabled={!isRegistered || isActive}
-          className="w-full px-4 py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
-        >
-          Test Prompt
-        </button>
+        <div className="p-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+            Prompt Template
+          </p>
+          <div className="flex items-start gap-2">
+            <span className="px-1.5 py-0.5 text-xs rounded bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+              user
+            </span>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+              Hello! How can you help me today?
+            </p>
+          </div>
+        </div>
 
-        {lastMessages && (executionPhase === 'complete' || !isActive) && (
+        {/* AI Result Display */}
+        {lastMessages && (executionPhase === 'complete' || promptCalls.length > 0) && (
           <div className="p-4 rounded-lg bg-[#8B5CF6]/5 dark:bg-[#8B5CF6]/10 border border-[#8B5CF6]/20">
             <p className="text-xs font-medium text-[#8B5CF6] dark:text-[#A78BFA] mb-2 uppercase tracking-wide">
-              Generated Message
+              Last Retrieved
             </p>
             <div className="space-y-2">
               {lastMessages.map((msg, idx) => (

@@ -156,23 +156,30 @@ navigator.modelContext.registerPrompt({
 });
 ```
 
-## Retrieving Prompts
+## How AI Agents Use Prompts
 
-AI agents retrieve prompts using `getPrompt()`:
+When an AI agent wants to use a prompt, it calls `getPrompt()` through the MCP protocol. This invokes your registered `get()` handler:
 
 ```typescript twoslash icon="typescript"
-// Get a simple prompt
-const greeting = await navigator.modelContext.getPrompt('greeting');
-console.log(greeting.messages);
-// [{ role: 'user', content: { type: 'text', text: 'Hello!...' } }]
+// AI agent calls getPrompt('code-review', { code: '...', language: 'javascript' })
+// Your handler receives the arguments and returns messages
 
-// Get a prompt with arguments
-const review = await navigator.modelContext.getPrompt('code-review', {
-  code: 'function add(a, b) { return a + b; }',
-  language: 'javascript',
-  focus: 'readability'
+navigator.modelContext.registerPrompt({
+  name: 'code-review',
+  argsSchema: { /* ... */ },
+  async get(args) {
+    // This handler is called when AI requests the prompt
+    console.log('AI requested code review for:', args.language);
+    return {
+      messages: [/* ... */]
+    };
+  },
 });
 ```
+
+<Note>
+The `getPrompt()` method is called by AI agents through the MCP protocol, not directly from your application code. Your `get()` handler is invoked automatically when an agent requests the prompt.
+</Note>
 
 ## Listing Available Prompts
 
