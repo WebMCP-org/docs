@@ -348,6 +348,13 @@ ${schemaProps}
         .animate-bounce-in {
           animation: bounce-in 0.5s ease;
         }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
       `}</style>
 
       {/* Two-column layout */}
@@ -408,7 +415,7 @@ ${schemaProps}
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Input Parameter
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={toolConfig.parameters[0]?.name || ''}
@@ -419,7 +426,7 @@ ${schemaProps}
               <select
                 value={toolConfig.parameters[0]?.type || 'string'}
                 onChange={(e) => updateParameter(0, 'type', e.target.value)}
-                className="px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full sm:w-auto px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="string">string</option>
                 <option value="number">number</option>
@@ -450,7 +457,7 @@ ${schemaProps}
             <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
               <h5 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Test Your Tool</h5>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={testInput[toolConfig.parameters[0]?.name] || ''}
@@ -461,7 +468,7 @@ ${schemaProps}
                 <button
                   onClick={testTool}
                   disabled={isExecuting}
-                  className="px-4 py-2 text-sm font-medium rounded-md bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto px-4 py-2 text-sm font-medium rounded-md bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                 >
                   {isExecuting ? (
                     <>
@@ -502,34 +509,36 @@ ${schemaProps}
         </div>
 
         {/* Right: Live Code Preview */}
-        <div className="flex flex-col bg-zinc-900 min-h-[400px]">
+        <div className="flex flex-col bg-zinc-900 min-h-[300px] sm:min-h-[400px]">
           {/* Tabs */}
-          <div className="flex border-b border-zinc-700">
-            {[
-              { id: 'react', label: 'React', icon: '⚛️' },
-              { id: 'vanilla', label: 'Vanilla JS', icon: '📦' },
-              { id: 'script', label: 'Script Tag', icon: '🏷️' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                  activeTab === tab.id
-                    ? 'text-white bg-zinc-800 border-b-2 border-blue-500'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                }`}
-              >
-                <span className="text-base">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-            <div className="flex-1"></div>
+          <div className="flex flex-col sm:flex-row border-b border-zinc-700">
+            <div className="flex overflow-x-auto scrollbar-hide">
+              {[
+                { id: 'react', label: 'React', icon: '⚛️' },
+                { id: 'vanilla', label: 'Vanilla JS', icon: '📦' },
+                { id: 'script', label: 'Script Tag', icon: '🏷️' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'text-white bg-zinc-800 border-b-2 border-blue-500'
+                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <span className="text-base">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="hidden sm:flex flex-1"></div>
             <button
               onClick={copyCode}
-              className={`px-3 py-1.5 m-1.5 text-xs font-medium rounded transition-all flex items-center gap-1.5 ${
+              className={`w-full sm:w-auto px-3 py-2 sm:py-1.5 sm:m-1.5 text-xs font-medium sm:rounded transition-all flex items-center justify-center gap-1.5 border-t sm:border-t-0 border-zinc-700 ${
                 copied
                   ? 'bg-green-600 text-white'
-                  : 'bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
+                  : 'bg-zinc-800 sm:bg-zinc-700 hover:bg-zinc-600 text-zinc-300'
               }`}
             >
               {copied ? (
@@ -544,7 +553,7 @@ ${schemaProps}
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
-                  Copy
+                  Copy Code
                 </>
               )}
             </button>
