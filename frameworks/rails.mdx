@@ -1,15 +1,11 @@
 ---
 title: 'Rails Integration'
-description: 'Integrate WebMCP tools with Ruby on Rails. Use Stimulus controllers and Hotwire for AI-enabled interactions in your Rails applications.'
+description: 'Integrate WebMCP tools with Ruby on Rails using Stimulus controllers.'
 icon: 'gem'
 ---
 
-## Overview
-
-Ruby on Rails applications can integrate WebMCP through JavaScript on the frontend using Stimulus controllers and Hotwire/Turbo patterns.
-
 <Info>
-  **Prerequisites**: For schema validation, see [Schemas](/concepts/schemas). For the API reference, see [Global Package](/packages/global).
+**Prerequisites**: For the full API, see [Global Package](/packages/global) and [Tool Registration](/concepts/tool-registration).
 </Info>
 
 ## Installation
@@ -24,164 +20,14 @@ bin/importmap pin @mcp-b/global
 npm install @mcp-b/global
 ```
 
-## Stimulus Controller
+## Basic Stimulus Controller
 
 ```javascript "app/javascript/controllers/webmcp_controller.js"
 import { Controller } from "@hotwired/stimulus"
 import "@mcp-b/global"
 
 export default class extends Controller {
-  static values = { tools: Array }
-
-  #registrations = []
-
-  connect() {
-    if (!('modelContext' in navigator)) return
-
-    this.toolsValue.forEach(tool => {
-      const reg = navigator.modelContext.registerTool({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema || { type: 'object', properties: {} },
-        execute: async (args) => this.executeTool(tool.name, args)
-      })
-      this.#registrations.push(reg)
-    })
-  }
-
-  disconnect() {
-    this.#registrations.forEach(r => r.unregister())
-    this.#registrations = []
-  }
-
-  async executeTool(name, args) {
-    const response = await fetch(`/api/tools/${name}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify(args)
-    })
-    const result = await response.json()
-    return { content: [{ type: 'text', text: JSON.stringify(result) }] }
-  }
-}
-```
-
-### Usage in Views
-
-```erb
-<%# app/views/products/index.html.erb %>
-<div data-controller="webmcp"
-     data-webmcp-tools-value='<%= [
-       {
-         name: "search_products",
-         description: "Search for products by name",
-         inputSchema: {
-           type: "object",
-           properties: { query: { type: "string" } },
-           required: ["query"]
-         }
-       }
-     ].to_json %>'>
-  <%= render @products %>
-</div>
-```
-
-## Feature-Specific Controllers
-
-```javascript "app/javascript/controllers/cart_tools_controller.js"
-import { Controller } from "@hotwired/stimulus"
-import "@mcp-b/global"
-
-export default class extends Controller {
-  static targets = ["count"]
-
-  #registrations = []
-
-  connect() {
-    if (!('modelContext' in navigator)) return
-
-    this.#registrations.push(
-      navigator.modelContext.registerTool({
-        name: 'add_to_cart',
-        description: 'Add a product to the cart',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            productId: { type: 'string' },
-            quantity: { type: 'number' }
-          },
-          required: ['productId']
-        },
-        execute: async (args) => this.addToCart(args.productId, args.quantity || 1)
-      })
-    )
-  }
-
-  disconnect() {
-    this.#registrations.forEach(r => r.unregister())
-  }
-
-  async addToCart(productId, quantity) {
-    const response = await fetch('/cart/items', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-      },
-      body: JSON.stringify({ product_id: productId, quantity })
-    })
-    const result = await response.json()
-
-    if (this.hasCountTarget) {
-      this.countTarget.textContent = result.total_items
-    }
-
-    return { content: [{ type: 'text', text: JSON.stringify(result) }] }
-  }
-}
-```
-
-## Rails API Endpoints
-
-```ruby
-# app/controllers/api/tools_controller.rb
-class Api::ToolsController < ApplicationController
-  def execute
-    result = case params[:tool_name]
-    when 'search_products'
-      { results: Product.search(params[:query]).limit(10).as_json }
-    when 'add_to_cart'
-      item = current_cart.add_item(params[:product_id], params[:quantity].to_i)
-      { success: true, total_items: current_cart.item_count }
-    else
-      { error: 'Unknown tool' }
-    end
-
-    render json: result
-  end
-end
-```
-
-```ruby
-# config/routes.rb
-Rails.application.routes.draw do
-  namespace :api do
-    post 'tools/:tool_name', to: 'tools#execute'
-  end
-end
-```
-
-## Turbo Integration
-
-```javascript "app/javascript/controllers/turbo_tools_controller.js"
-import { Controller } from "@hotwired/stimulus"
-import "@mcp-b/global"
-
-export default class extends Controller {
-  static values = { frameId: String }
+  static values = { name: String, description: String }
 
   #registration = null
 
@@ -189,12 +35,63 @@ export default class extends Controller {
     if (!('modelContext' in navigator)) return
 
     this.#registration = navigator.modelContext.registerTool({
-      name: 'refresh_content',
-      description: 'Refresh this section',
+      name: this.nameValue,
+      description: this.descriptionValue,
       inputSchema: { type: 'object', properties: {} },
       execute: async () => {
-        document.getElementById(this.frameIdValue)?.reload()
-        return { content: [{ type: 'text', text: 'Refreshed' }] }
+        return { content: [{ type: 'text', text: 'Done' }] }
+      }
+    })
+  }
+
+  disconnect() {
+    this.#registration?.unregister()
+  }
+}
+```
+
+```erb
+<div data-controller="webmcp"
+     data-webmcp-name-value="my_tool"
+     data-webmcp-description-value="My tool description">
+  Content
+</div>
+```
+
+## With Backend API
+
+```javascript "app/javascript/controllers/cart_controller.js"
+import { Controller } from "@hotwired/stimulus"
+import "@mcp-b/global"
+
+export default class extends Controller {
+  #registration = null
+
+  connect() {
+    if (!('modelContext' in navigator)) return
+
+    this.#registration = navigator.modelContext.registerTool({
+      name: 'add_to_cart',
+      description: 'Add a product to the cart',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          productId: { type: 'string' },
+          quantity: { type: 'number' }
+        },
+        required: ['productId']
+      },
+      execute: async ({ productId, quantity = 1 }) => {
+        const response = await fetch('/cart/items', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ product_id: productId, quantity })
+        })
+        const result = await response.json()
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] }
       }
     })
   }
@@ -207,42 +104,42 @@ export default class extends Controller {
 
 ## Global Tools
 
+Attach to `<body>` for persistence across Turbo navigations:
+
 ```erb
 <%# app/views/layouts/application.html.erb %>
-<body data-controller="app-tools">
+<body data-controller="global-tools">
   <%= yield %>
 </body>
 ```
 
-```javascript "app/javascript/controllers/app_tools_controller.js"
+```javascript "app/javascript/controllers/global_tools_controller.js"
 import { Controller } from "@hotwired/stimulus"
 import "@mcp-b/global"
 
 export default class extends Controller {
-  #registrations = []
+  #registration = null
 
   connect() {
     if (!('modelContext' in navigator)) return
 
-    this.#registrations.push(
-      navigator.modelContext.registerTool({
-        name: 'navigate',
-        description: 'Navigate to a page',
-        inputSchema: {
-          type: 'object',
-          properties: { path: { type: 'string' } },
-          required: ['path']
-        },
-        execute: async (args) => {
-          Turbo.visit(args.path)
-          return { content: [{ type: 'text', text: `Navigating to ${args.path}` }] }
-        }
-      })
-    )
+    this.#registration = navigator.modelContext.registerTool({
+      name: 'navigate',
+      description: 'Navigate to a page',
+      inputSchema: {
+        type: 'object',
+        properties: { path: { type: 'string' } },
+        required: ['path']
+      },
+      execute: async ({ path }) => {
+        Turbo.visit(path)
+        return { content: [{ type: 'text', text: `Navigating to ${path}` }] }
+      }
+    })
   }
 
   disconnect() {
-    this.#registrations.forEach(r => r.unregister())
+    this.#registration?.unregister()
   }
 }
 ```
@@ -251,8 +148,7 @@ export default class extends Controller {
 
 <AccordionGroup>
   <Accordion title="CSRF token issues">
-    Always include the CSRF token in requests:
-
+    Include the CSRF token in requests:
     ```javascript
     headers: {
       'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
@@ -261,8 +157,7 @@ export default class extends Controller {
   </Accordion>
 
   <Accordion title="Tools not registering after Turbo navigation">
-    Place the controller on `<body>` so it persists across navigations, or use:
-
+    Place controllers on `<body>` so they persist, or use `turbo:load` event:
     ```javascript
     document.addEventListener('turbo:load', () => {
       // Re-register if needed
@@ -272,29 +167,8 @@ export default class extends Controller {
 
   <Accordion title="importmap not finding @mcp-b/global">
     Pin the package:
-
     ```bash
     bin/importmap pin @mcp-b/global
     ```
   </Accordion>
 </AccordionGroup>
-
-## Resources
-
-<CardGroup cols={2}>
-  <Card title="Rails Guides" icon="book" href="https://guides.rubyonrails.org/">
-    Official Ruby on Rails documentation
-  </Card>
-
-  <Card title="Stimulus Handbook" icon="bolt" href="https://stimulus.hotwired.dev/handbook/introduction">
-    Official Stimulus documentation
-  </Card>
-
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Full registerTool API
-  </Card>
-
-  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
-    Input validation
-  </Card>
-</CardGroup>

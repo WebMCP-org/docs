@@ -1,163 +1,49 @@
 ---
 title: 'Svelte & SvelteKit Integration'
-description: 'Integrate WebMCP tools with Svelte and SvelteKit. Use Svelte 5 runes or stores for reactive tool registration with automatic cleanup.'
+description: 'Integrate WebMCP tools with Svelte and SvelteKit.'
 icon: 'code'
 ---
 
-## Overview
-
-Svelte's reactive primitives make WebMCP integration straightforward. This guide covers Svelte 5 (with runes), Svelte 4 (with stores), and SvelteKit SSR patterns.
-
 <Info>
-  **Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For schema validation, see [Schemas](/concepts/schemas).
+**Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For the full API, see [Tool Registration](/concepts/tool-registration).
 </Info>
 
-## Svelte Action
+## Basic Usage (Svelte 5)
 
-Svelte actions provide a clean way to add WebMCP functionality:
-
-```typescript "lib/actions/webmcp.ts"
-import '@mcp-b/global';
-
-interface ToolConfig {
-  name: string;
-  description: string;
-  inputSchema?: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => Promise<unknown>;
-}
-
-export function webmcp(node: HTMLElement, config: ToolConfig) {
-  let registration: { unregister: () => void } | null = null;
-
-  function register(cfg: ToolConfig) {
-    if (!('modelContext' in navigator)) return;
-
-    registration = navigator.modelContext.registerTool({
-      name: cfg.name,
-      description: cfg.description,
-      inputSchema: cfg.inputSchema ?? { type: 'object', properties: {} },
-      async execute(args) {
-        const result = await cfg.handler(args);
-        return {
-          content: [{
-            type: 'text',
-            text: typeof result === 'string' ? result : JSON.stringify(result)
-          }]
-        };
-      }
-    });
-  }
-
-  register(config);
-
-  return {
-    update(newConfig: ToolConfig) {
-      registration?.unregister();
-      register(newConfig);
-    },
-    destroy() {
-      registration?.unregister();
-    }
-  };
-}
-```
-
-### Using the Action
-
-```svelte "ProductCard.svelte"
+```svelte
 <script lang="ts">
-  import { webmcp } from '$lib/actions/webmcp';
-
-  export let product: { id: string; name: string; price: number };
-</script>
-
-<div
-  use:webmcp={{
-    name: `view_product_${product.id}`,
-    description: `View details for ${product.name}`,
-    handler: async () => ({
-      id: product.id,
-      name: product.name,
-      price: product.price
-    })
-  }}
->
-  <h3>{product.name}</h3>
-  <p>${product.price}</p>
-</div>
-```
-
-## Svelte 5 Runes
-
-```typescript "lib/webmcp.svelte.ts"
-import { onMount, onDestroy } from 'svelte';
-import '@mcp-b/global';
-
-interface ToolConfig {
-  name: string;
-  description: string;
-  inputSchema?: Record<string, unknown>;
-  handler: (args: Record<string, unknown>) => Promise<unknown>;
-}
-
-export function useWebMCP(config: ToolConfig): void {
-  let registration: { unregister: () => void } | null = null;
-
-  onMount(() => {
-    if (typeof window === 'undefined' || !('modelContext' in navigator)) return;
-
-    registration = navigator.modelContext.registerTool({
-      name: config.name,
-      description: config.description,
-      inputSchema: config.inputSchema ?? { type: 'object', properties: {} },
-      execute: async (args) => {
-        const result = await config.handler(args);
-        return {
-          content: [{
-            type: 'text',
-            text: typeof result === 'string' ? result : JSON.stringify(result)
-          }]
-        };
-      }
-    });
-  });
-
-  onDestroy(() => {
-    registration?.unregister();
-  });
-}
-```
-
-```svelte "Counter.svelte"
-<script lang="ts">
-  import { useWebMCP } from '$lib/webmcp.svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import '@mcp-b/global';
 
   let count = $state(0);
+  let reg: { unregister: () => void } | null = null;
 
-  useWebMCP({
-    name: 'increment_count',
-    description: 'Increment the counter',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        amount: { type: 'number', description: 'Amount to increment' }
+  onMount(() => {
+    reg = navigator.modelContext.registerTool({
+      name: 'increment',
+      description: 'Increment the counter',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          amount: { type: 'number' }
+        }
+      },
+      async execute({ amount = 1 }) {
+        count += amount as number;
+        return { content: [{ type: 'text', text: `Count: ${count}` }] };
       }
-    },
-    handler: async ({ amount = 1 }) => {
-      count += amount as number;
-      return { newCount: count };
-    }
+    });
   });
+
+  onDestroy(() => reg?.unregister());
 </script>
 
-<div>
-  <p>Count: {count}</p>
-</div>
+<p>Count: {count}</p>
 ```
 
-## SvelteKit SSR
+## SvelteKit (SSR-Safe)
 
-Use `onMount` or `browser` checks:
+Use the `browser` check for SvelteKit:
 
 ```svelte "+page.svelte"
 <script lang="ts">
@@ -166,34 +52,65 @@ Use `onMount` or `browser` checks:
   import '@mcp-b/global';
 
   export let data;
-
-  let registration: { unregister: () => void } | null = null;
+  let reg: { unregister: () => void } | null = null;
 
   onMount(() => {
-    if (!browser || !('modelContext' in navigator)) return;
+    if (!browser) return;
 
-    registration = navigator.modelContext.registerTool({
-      name: 'search_products',
-      description: 'Search loaded products',
+    reg = navigator.modelContext.registerTool({
+      name: 'search',
+      description: 'Search loaded data',
       inputSchema: {
         type: 'object',
         properties: { query: { type: 'string' } },
         required: ['query']
       },
-      async execute(args) {
-        const results = data.products.filter(p =>
-          p.name.toLowerCase().includes((args.query as string).toLowerCase())
+      async execute({ query }) {
+        const results = data.items.filter(i =>
+          i.name.toLowerCase().includes((query as string).toLowerCase())
         );
         return { content: [{ type: 'text', text: JSON.stringify(results) }] };
       }
     });
   });
 
-  onDestroy(() => registration?.unregister());
+  onDestroy(() => reg?.unregister());
 </script>
 ```
 
+## Using Actions
+
+Svelte actions can encapsulate tool registration:
+
+```typescript "lib/actions/webmcp.ts"
+import '@mcp-b/global';
+
+export function webmcp(node: HTMLElement, tool: Parameters<typeof navigator.modelContext.registerTool>[0]) {
+  const reg = navigator.modelContext.registerTool(tool);
+  return { destroy: () => reg.unregister() };
+}
+```
+
+```svelte
+<script lang="ts">
+  import { webmcp } from '$lib/actions/webmcp';
+</script>
+
+<div use:webmcp={{
+  name: 'my_tool',
+  description: 'My tool',
+  inputSchema: { type: 'object', properties: {} },
+  async execute() {
+    return { content: [{ type: 'text', text: 'Done' }] };
+  }
+}}>
+  Content
+</div>
+```
+
 ## Layout-Level Tools
+
+Register in `+layout.svelte` for persistence across routes:
 
 ```svelte "+layout.svelte"
 <script lang="ts">
@@ -201,122 +118,42 @@ Use `onMount` or `browser` checks:
   import { goto } from '$app/navigation';
   import '@mcp-b/global';
 
-  let registrations: Array<{ unregister: () => void }> = [];
+  let reg: { unregister: () => void } | null = null;
 
   onMount(() => {
-    if (!('modelContext' in navigator)) return;
-
-    registrations.push(
-      navigator.modelContext.registerTool({
-        name: 'navigate',
-        description: 'Navigate to a page',
-        inputSchema: {
-          type: 'object',
-          properties: { path: { type: 'string' } },
-          required: ['path']
-        },
-        async execute(args) {
-          await goto(args.path as string);
-          return { content: [{ type: 'text', text: `Navigated to ${args.path}` }] };
-        }
-      })
-    );
+    reg = navigator.modelContext.registerTool({
+      name: 'navigate',
+      description: 'Navigate to a page',
+      inputSchema: {
+        type: 'object',
+        properties: { path: { type: 'string' } },
+        required: ['path']
+      },
+      async execute({ path }) {
+        await goto(path as string);
+        return { content: [{ type: 'text', text: `Navigated to ${path}` }] };
+      }
+    });
   });
 
-  onDestroy(() => registrations.forEach(r => r.unregister()));
+  onDestroy(() => reg?.unregister());
 </script>
 
 <slot />
-```
-
-## Store Integration
-
-```typescript "lib/stores/cart.ts"
-import { writable, get } from 'svelte/store';
-import '@mcp-b/global';
-
-function createCartStore() {
-  const { subscribe, update } = writable<Array<{ id: string; quantity: number }>>([]);
-
-  return {
-    subscribe,
-    addItem: (id: string, quantity: number) => update(items => {
-      const existing = items.find(i => i.id === id);
-      if (existing) existing.quantity += quantity;
-      else items.push({ id, quantity });
-      return [...items];
-    }),
-
-    registerTools: () => {
-      if (typeof window === 'undefined' || !('modelContext' in navigator)) {
-        return () => {};
-      }
-
-      const reg = navigator.modelContext.registerTool({
-        name: 'cart_view',
-        description: 'View cart contents',
-        inputSchema: { type: 'object', properties: {} },
-        async execute() {
-          return { content: [{ type: 'text', text: JSON.stringify(get({ subscribe })) }] };
-        }
-      });
-
-      return () => reg.unregister();
-    }
-  };
-}
-
-export const cart = createCartStore();
 ```
 
 ## Common Gotchas
 
 <AccordionGroup>
   <Accordion title="'navigator is not defined' during SSR">
-    Use `browser` check or `onMount`:
-
+    Use the `browser` check:
     ```typescript
     import { browser } from '$app/environment';
-
-    if (browser && 'modelContext' in navigator) {
-      // Safe to use WebMCP
-    }
-    ```
-  </Accordion>
-
-  <Accordion title="Stale state in handlers">
-    Read state inside the handler:
-
-    ```typescript
-    // Svelte 5: Access rune directly
-    handler: async () => ({ count })
-
-    // Svelte 4: Use get()
-    handler: async () => ({ count: get(countStore) })
+    if (browser) { /* safe to use navigator */ }
     ```
   </Accordion>
 
   <Accordion title="Tools disappear after navigation">
-    Move registration to `+layout.svelte` for persistence across routes.
+    Move registration to `+layout.svelte` for persistence.
   </Accordion>
 </AccordionGroup>
-
-## Resources
-
-<CardGroup cols={2}>
-  <Card title="Svelte Docs" icon="book" href="https://svelte.dev/docs">
-    Official Svelte documentation
-  </Card>
-
-  <Card title="SvelteKit Docs" icon="book" href="https://kit.svelte.dev/docs">
-    Official SvelteKit documentation
-  </Card>
-
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Full registerTool API
-  </Card>
-
-  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
-    Input validation
-  </Card>
-</CardGroup>

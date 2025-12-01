@@ -1,78 +1,67 @@
 ---
 title: 'Framework Integrations'
-description: 'Integrate WebMCP with Vue, Nuxt, Svelte, Rails, Angular, and other web frameworks. Use AI tools in any JavaScript environment.'
+description: 'Integrate WebMCP with Vue, Nuxt, Svelte, Rails, Angular, and other web frameworks.'
 icon: 'grid-2'
 ---
 
-## Overview
+WebMCP works with any JavaScript framework. While we provide first-class React support via [`@mcp-b/react-webmcp`](/packages/react-webmcp), you can integrate WebMCP into any framework using [`@mcp-b/global`](/packages/global).
 
-WebMCP works with any JavaScript framework. While we provide first-class React support via [`@mcp-b/react-webmcp`](/packages/react-webmcp), you can integrate WebMCP into Vue, Svelte, Angular, Rails, and any other framework using the [vanilla JavaScript API](/packages/global).
+## The Pattern
 
-<Info>
-  New to WebMCP? Start with the [Quickstart Guide](/quickstart) to understand the basics before diving into framework-specific patterns.
-</Info>
+All frameworks follow the same approach:
 
-## Framework Support
+1. Import `@mcp-b/global` to add `navigator.modelContext`
+2. Call `registerTool()` in your mount lifecycle
+3. Call `unregister()` in your unmount lifecycle
+
+```javascript
+import '@mcp-b/global';
+
+// In your mount hook:
+const reg = navigator.modelContext.registerTool({
+  name: 'my_tool',
+  description: 'Does something useful',
+  inputSchema: { type: 'object', properties: {} },
+  execute: async () => ({ content: [{ type: 'text', text: 'Done' }] })
+});
+
+// In your unmount hook:
+reg.unregister();
+```
+
+## Framework Guides
+
+| Framework | Mount | Unmount |
+|-----------|-------|---------|
+| [Vue 3](/frameworks/vue) | `onMounted` | `onUnmounted` |
+| [Nuxt 3](/frameworks/nuxt) | `onMounted` + `import.meta.client` | `onUnmounted` |
+| [Svelte](/frameworks/svelte) | `onMount` | `onDestroy` |
+| [SvelteKit](/frameworks/svelte) | `onMount` + `browser` check | `onDestroy` |
+| [Angular](/frameworks/angular) | `ngOnInit` | `ngOnDestroy` |
+| [Rails/Stimulus](/frameworks/rails) | `connect` | `disconnect` |
 
 <CardGroup cols={2}>
   <Card title="Vue.js" icon="vuejs" href="/frameworks/vue">
-    Vue 3 Composition API with reactive tool registration
+    Composition API patterns
   </Card>
 
   <Card title="Nuxt" icon="n" href="/frameworks/nuxt">
-    Full-stack Vue framework with SSR support
+    SSR-safe patterns
   </Card>
 
   <Card title="Svelte" icon="code" href="/frameworks/svelte">
-    Svelte and SvelteKit with stores integration
-  </Card>
-
-  <Card title="Rails" icon="gem" href="/frameworks/rails">
-    Ruby on Rails with Stimulus and Hotwire
+    Actions and runes
   </Card>
 
   <Card title="Angular" icon="angular" href="/frameworks/angular">
-    Angular with services and dependency injection
+    Services and DI
+  </Card>
+
+  <Card title="Rails" icon="gem" href="/frameworks/rails">
+    Stimulus controllers
   </Card>
 </CardGroup>
 
-## Integration Pattern
+## React Users
 
-All non-React frameworks follow the same pattern using [`@mcp-b/global`](/packages/global):
-
-1. Import `@mcp-b/global` to initialize [the polyfill](/packages/global)
-2. Call `navigator.modelContext.registerTool()` in your framework's mount lifecycle
-3. Call `unregister()` in your framework's unmount lifecycle
-
-See [Tool Registration](/concepts/tool-registration) for the full API.
-
-## Framework Comparison
-
-| Framework | Tool Registration Hook |
-|-----------|------------------------|
-| Vue 3 | `onMounted`/`onUnmounted` |
-| Nuxt 3 | Client-only plugins + `onMounted` |
-| Svelte | `onMount`/`onDestroy` |
-| SvelteKit | `onMount` with `browser` check |
-| Rails | Stimulus `connect`/`disconnect` |
-| Angular | `ngOnInit`/`ngOnDestroy` |
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card title="Global Package" icon="box" href="/packages/global">
-    API reference for navigator.modelContext
-  </Card>
-
-  <Card title="React Users" icon="react" href="/packages/react-webmcp">
-    Use our React hooks package instead
-  </Card>
-
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Full tool registration API
-  </Card>
-
-  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
-    Input validation with Zod or JSON Schema
-  </Card>
-</CardGroup>
+Use [`@mcp-b/react-webmcp`](/packages/react-webmcp) instead - it handles lifecycle automatically.
