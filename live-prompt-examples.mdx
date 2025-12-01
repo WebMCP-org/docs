@@ -1,0 +1,217 @@
+---
+title: "Live WebMCP Prompt Examples"
+description: "Interactive examples of WebMCP prompts that AI agents can retrieve in real-time. Working demonstrations of greeting and code review prompts."
+sidebarTitle: "Live Prompt Examples"
+icon: "message-lines"
+---
+
+import { GreetingPrompt } from '/snippets/webmcp-prompt-greeting.jsx';
+import { CodeReviewPrompt } from '/snippets/webmcp-prompt-code-review.jsx';
+import { PolyfillSetup } from '/snippets/webmcp-polyfill-setup.jsx';
+
+This page demonstrates **live WebMCP prompts** that register themselves with the browser and can be retrieved by AI agents in real-time. Prompts are reusable message templates that help standardize AI interactions.
+
+<Note>
+**These prompts are live and ready!** The WebMCP polyfill is included with this documentation site. Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents (like Claude) to discover and use these prompts directly.
+</Note>
+
+<CardGroup cols={3}>
+  <Card title="Prompt Registration" icon="list-check" href="/concepts/prompts">
+    Understanding prompt registration
+  </Card>
+  <Card title="Live Tools" icon="wand-magic-sparkles" href="/live-tool-examples">
+    Interactive tool demonstrations
+  </Card>
+  <Card title="Live Resources" icon="database" href="/live-resource-examples">
+    Interactive resource demonstrations
+  </Card>
+</CardGroup>
+
+---
+
+## WebMCP Status
+
+Check if the WebMCP polyfill is loaded and ready:
+
+<PolyfillSetup />
+
+---
+
+## What are Prompts?
+
+Prompts in MCP are **reusable message templates** that AI agents can retrieve and use. Unlike tools (which execute actions) or resources (which read data), prompts generate structured messages that guide AI interactions.
+
+| Feature | Description |
+|---------|-------------|
+| **Purpose** | Generate pre-formatted messages for AI |
+| **Arguments** | Optional schema-validated parameters |
+| **Output** | Array of role-based messages (user/assistant) |
+| **Use Case** | Standardized AI conversation starters |
+
+---
+
+## Greeting Prompt
+
+**Demonstrates:** Basic prompt registration without arguments
+
+This prompt shows the fundamentals of `registerPrompt()` - a simple prompt that returns a greeting message. Perfect for initializing conversations with AI agents.
+
+<GreetingPrompt />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "use the greeting prompt" and watch it retrieve the pre-formatted message!
+</Tip>
+
+<CodeGroup>
+```jsx "Greeting Prompt Implementation"
+// Register a simple prompt without arguments
+navigator.modelContext.registerPrompt({
+  name: 'greeting',
+  description: 'A friendly greeting prompt that welcomes users',
+  async get() {
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: 'Hello! How can you help me today?'
+          },
+        },
+      ],
+    };
+  },
+});
+```
+</CodeGroup>
+
+---
+
+## Code Review Prompt
+
+**Demonstrates:** Prompt with validated arguments schema
+
+This prompt shows advanced usage with `argsSchema` - it accepts code and language parameters to generate a customized code review request. The schema validation ensures correct argument types.
+
+<CodeReviewPrompt />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "get the code-review prompt for my React component" and watch it generate a formatted review request!
+</Tip>
+
+<CodeGroup>
+```jsx "Code Review Prompt Implementation"
+// Register a prompt with arguments schema
+navigator.modelContext.registerPrompt({
+  name: 'code-review',
+  description: 'Generate a code review request with syntax-highlighted code',
+  argsSchema: {
+    type: 'object',
+    properties: {
+      code: {
+        type: 'string',
+        description: 'The code to review'
+      },
+      language: {
+        type: 'string',
+        description: 'Programming language',
+        default: 'javascript'
+      },
+    },
+    required: ['code'],
+  },
+  async get(args) {
+    const code = args.code;
+    const language = args.language || 'unknown';
+
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please review this ${language} code:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+          },
+        },
+      ],
+    };
+  },
+});
+```
+</CodeGroup>
+
+---
+
+## Prompt API Reference
+
+### `registerPrompt(descriptor)`
+
+Registers a new prompt with the browser.
+
+```typescript
+interface PromptDescriptor {
+  name: string;                    // Unique prompt name
+  description?: string;            // Human-readable description
+  argsSchema?: InputSchema;        // Optional JSON Schema for arguments
+  get: (args: object) => Promise<{ messages: PromptMessage[] }>;
+}
+
+interface PromptMessage {
+  role: 'user' | 'assistant';
+  content: { type: 'text'; text: string };
+}
+```
+
+### `listPrompts()`
+
+Returns all registered prompts (called by AI agents via MCP protocol).
+
+```typescript
+const prompts = navigator.modelContext.listPrompts();
+// [{ name: 'greeting', description: '...' }, ...]
+```
+
+<Note>
+The `getPrompt()` method is called by AI agents through the MCP protocol, not directly from your application code. When an AI agent calls `getPrompt('greeting')`, your registered `get()` handler is invoked and the result is returned to the agent.
+</Note>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive names">
+    Choose prompt names that clearly indicate their purpose. Use kebab-case for multi-word names (e.g., `code-review`, `bug-report`).
+  </Accordion>
+  <Accordion title="Provide helpful descriptions">
+    Write descriptions that help AI agents understand when to use the prompt and what it generates.
+  </Accordion>
+  <Accordion title="Validate arguments with schemas">
+    Use `argsSchema` to ensure AI agents provide the correct argument types. Include descriptions for each property.
+  </Accordion>
+  <Accordion title="Keep messages focused">
+    Generate concise, focused messages. Avoid overly complex prompts that try to do too much.
+  </Accordion>
+  <Accordion title="Use appropriate roles">
+    Use `user` role for requests and `assistant` role for context or examples the AI should follow.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Concepts: Prompts" icon="lightbulb" href="/concepts/prompts">
+    Deep dive into prompt architecture and patterns
+  </Card>
+  <Card title="Live Tool Examples" icon="wand-magic-sparkles" href="/live-tool-examples">
+    Interactive tool demonstrations
+  </Card>
+  <Card title="Live Resource Examples" icon="database" href="/live-resource-examples">
+    Interactive resource demonstrations
+  </Card>
+  <Card title="Best Practices" icon="star" href="/best-practices">
+    Guidelines for effective WebMCP usage
+  </Card>
+</CardGroup>

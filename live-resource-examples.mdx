@@ -1,0 +1,280 @@
+---
+title: "Live WebMCP Resource Examples"
+description: "Interactive examples of WebMCP resources that AI agents can read in real-time. Working demonstrations of static and template-based resources."
+sidebarTitle: "Live Resource Examples"
+icon: "database"
+---
+
+import { ConfigResource } from '/snippets/webmcp-resource-config.jsx';
+import { FileResource } from '/snippets/webmcp-resource-file.jsx';
+import { PolyfillSetup } from '/snippets/webmcp-polyfill-setup.jsx';
+
+This page demonstrates **live WebMCP resources** that register themselves with the browser and can be read by AI agents in real-time. Resources expose data that AI models can access asynchronously.
+
+<Note>
+**These resources are live and ready!** The WebMCP polyfill is included with this documentation site. Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents (like Claude) to discover and read these resources directly.
+</Note>
+
+<CardGroup cols={3}>
+  <Card title="Resource Registration" icon="list-check" href="/concepts/resources">
+    Understanding resource registration
+  </Card>
+  <Card title="Live Tools" icon="wand-magic-sparkles" href="/live-tool-examples">
+    Interactive tool demonstrations
+  </Card>
+  <Card title="Live Prompts" icon="message-lines" href="/live-prompt-examples">
+    Interactive prompt demonstrations
+  </Card>
+</CardGroup>
+
+---
+
+## WebMCP Status
+
+Check if the WebMCP polyfill is loaded and ready:
+
+<PolyfillSetup />
+
+---
+
+## What are Resources?
+
+Resources in MCP are **data endpoints** that AI agents can read. Unlike tools (which execute actions) or prompts (which generate messages), resources provide access to dynamic or static content like configuration, files, or API data.
+
+| Feature | Description |
+|---------|-------------|
+| **Purpose** | Expose readable data to AI agents |
+| **URI** | Unique identifier (static or template) |
+| **MIME Type** | Content type hint (application/json, text/plain, etc.) |
+| **Output** | Array of content objects with text or binary data |
+
+---
+
+## App Settings Resource
+
+**Demonstrates:** Static resource with fixed URI
+
+This resource shows the fundamentals of `registerResource()` - a static resource with a fixed URI that returns configuration data. The resource content updates dynamically based on the current settings.
+
+<ConfigResource />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "read the app-settings resource" and watch it retrieve the current configuration!
+</Tip>
+
+<CodeGroup>
+```jsx "Static Resource Implementation"
+// Register a static resource with fixed URI
+navigator.modelContext.registerResource({
+  uri: 'config://app-settings',
+  name: 'App Settings',
+  description: 'Current application configuration',
+  mimeType: 'application/json',
+  async read() {
+    return {
+      contents: [{
+        uri: 'config://app-settings',
+        text: JSON.stringify({
+          theme: 'dark',
+          language: 'en',
+          notifications: true,
+        }, null, 2),
+        mimeType: 'application/json',
+      }],
+    };
+  },
+});
+```
+</CodeGroup>
+
+---
+
+## File Reader Resource
+
+**Demonstrates:** Resource template with URI parameters
+
+This resource shows advanced usage with **URI templates** - the `{path}` placeholder allows AI agents to read different files by specifying the path parameter. Templates enable flexible, parameterized data access.
+
+<FileResource />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "read the file readme.txt" and watch it access the virtual filesystem!
+</Tip>
+
+<CodeGroup>
+```jsx "Template Resource Implementation"
+// Register a resource with URI template
+navigator.modelContext.registerResource({
+  uri: 'file://{path}',  // {path} is extracted from the request
+  name: 'Virtual File',
+  description: 'Read files from the virtual filesystem',
+  mimeType: 'text/plain',
+  async read(uri, params) {
+    // params.path contains the extracted path
+    const path = params?.path || 'unknown';
+
+    // Fetch file content (from filesystem, API, etc.)
+    const content = await fetchFileContent(path);
+
+    return {
+      contents: [{
+        uri: uri.href,
+        text: content,
+        mimeType: 'text/plain',
+      }],
+    };
+  },
+});
+```
+</CodeGroup>
+
+---
+
+## Resource API Reference
+
+### `registerResource(descriptor)`
+
+Registers a new resource with the browser.
+
+```typescript
+interface ResourceDescriptor {
+  uri: string;              // Static URI or template with {params}
+  name: string;             // Human-readable name
+  description?: string;     // Description for AI agents
+  mimeType?: string;        // Content type hint
+  read: (uri: URL, params?: Record<string, string>) => Promise<{
+    contents: ResourceContents[];
+  }>;
+}
+
+interface ResourceContents {
+  uri: string;              // The resolved URI
+  text?: string;            // Text content
+  blob?: string;            // Base64 binary content
+  mimeType?: string;        // Content type
+}
+```
+
+### `listResources()`
+
+Returns all registered static resources.
+
+```typescript
+const resources = navigator.modelContext.listResources();
+// [{ uri: 'config://app-settings', name: 'App Settings', ... }]
+```
+
+### `listResourceTemplates()`
+
+Returns all registered resource templates.
+
+```typescript
+const templates = navigator.modelContext.listResourceTemplates();
+// [{ uriTemplate: 'file://{path}', name: 'Virtual File', ... }]
+```
+
+<Note>
+The `readResource()` method is called by AI agents through the MCP protocol, not directly from your application code. When an AI agent calls `readResource('config://app-settings')`, your registered `read()` handler is invoked and the result is returned to the agent.
+</Note>
+
+---
+
+## Static vs Template Resources
+
+<Tabs>
+  <Tab title="Static Resources">
+    Static resources have fixed URIs and provide single data endpoints.
+
+    ```typescript
+    // Fixed URI - always returns the same logical resource
+    registerResource({
+      uri: 'config://app-settings',
+      // ...
+    });
+
+    // Read with exact URI
+    readResource('config://app-settings');
+    ```
+
+    **Use cases:**
+    - Application configuration
+    - User preferences
+    - System status
+    - Single data endpoints
+  </Tab>
+  <Tab title="Template Resources">
+    Template resources use URI parameters to access dynamic data.
+
+    ```typescript
+    // Template with {param} placeholders
+    registerResource({
+      uri: 'file://{path}',
+      // params.path available in read()
+    });
+
+    // Read with resolved URI
+    readResource('file://readme.txt');  // path = "readme.txt"
+    readResource('file://config.json'); // path = "config.json"
+    ```
+
+    **Use cases:**
+    - File systems
+    - Database records
+    - API endpoints
+    - Any parameterized data
+  </Tab>
+</Tabs>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose meaningful URIs">
+    Use descriptive URI schemes that indicate the data type: `config://`, `file://`, `user://`, `api://`. This helps AI agents understand what they're accessing.
+  </Accordion>
+  <Accordion title="Specify MIME types">
+    Always provide `mimeType` to help AI agents parse content correctly. Use standard MIME types like `application/json` or `text/plain`.
+  </Accordion>
+  <Accordion title="Handle errors gracefully">
+    Return helpful error messages in the content when resources can't be read. Include context about what went wrong.
+  </Accordion>
+  <Accordion title="Use templates for collections">
+    When exposing multiple similar items (files, users, records), use URI templates instead of registering each item separately.
+  </Accordion>
+  <Accordion title="Keep content focused">
+    Return only the relevant data. Avoid dumping entire databases - let AI agents request specific resources as needed.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## URI Scheme Examples
+
+| Scheme | Example | Use Case |
+|--------|---------|----------|
+| `config://` | `config://app-settings` | Application configuration |
+| `file://` | `file://{path}` | Virtual filesystem |
+| `user://` | `user://{id}/profile` | User data |
+| `api://` | `api://weather/{city}` | External API data |
+| `db://` | `db://products/{sku}` | Database records |
+| `session://` | `session://current` | Session state |
+
+---
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Concepts: Resources" icon="lightbulb" href="/concepts/resources">
+    Deep dive into resource architecture and patterns
+  </Card>
+  <Card title="Live Tool Examples" icon="wand-magic-sparkles" href="/live-tool-examples">
+    Interactive tool demonstrations
+  </Card>
+  <Card title="Live Prompt Examples" icon="message-lines" href="/live-prompt-examples">
+    Interactive prompt demonstrations
+  </Card>
+  <Card title="Best Practices" icon="star" href="/best-practices">
+    Guidelines for effective WebMCP usage
+  </Card>
+</CardGroup>

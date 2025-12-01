@@ -1,0 +1,376 @@
+---
+title: "Prompts"
+description: "Learn how to register and use prompts in WebMCP. Prompts are reusable message templates that standardize AI interactions."
+sidebarTitle: "Prompts"
+icon: "message-lines"
+---
+
+Prompts in WebMCP are **reusable message templates** that AI agents can retrieve and use to guide interactions. They provide a standardized way to create consistent AI conversations.
+
+<Note>
+Prompts are part of the Model Context Protocol (MCP) specification. WebMCP implements prompts for browser environments, enabling web applications to expose conversational templates to AI agents.
+</Note>
+
+## Overview
+
+| Concept | Description |
+|---------|-------------|
+| **Purpose** | Generate pre-formatted messages for AI interactions |
+| **Registration** | Via `registerPrompt()` or `provideContext()` |
+| **Arguments** | Optional schema-validated parameters |
+| **Output** | Array of role-based messages (user/assistant) |
+
+## When to Use Prompts
+
+<CardGroup cols={2}>
+  <Card title="Standardized Interactions" icon="message">
+    Create consistent conversation starters across your application
+  </Card>
+  <Card title="Template Messages" icon="copy">
+    Generate parameterized messages with validated arguments
+  </Card>
+  <Card title="Workflow Guidance" icon="route">
+    Guide AI agents through specific interaction patterns
+  </Card>
+  <Card title="Context Injection" icon="syringe">
+    Inject application-specific context into AI conversations
+  </Card>
+</CardGroup>
+
+## Basic Registration
+
+Register a simple prompt without arguments:
+
+```typescript twoslash icon="typescript"
+// Register a greeting prompt
+navigator.modelContext.registerPrompt({
+  name: 'greeting',
+  description: 'A friendly greeting to start a conversation',
+  async get() {
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: 'Hello! How can you help me today?'
+          },
+        },
+      ],
+    };
+  },
+});
+```
+
+## Prompts with Arguments
+
+Use `argsSchema` to accept validated parameters:
+
+```typescript twoslash icon="typescript"
+navigator.modelContext.registerPrompt({
+  name: 'code-review',
+  description: 'Request a code review with syntax highlighting',
+  argsSchema: {
+    type: 'object',
+    properties: {
+      code: {
+        type: 'string',
+        description: 'The code to review'
+      },
+      language: {
+        type: 'string',
+        description: 'Programming language',
+        enum: ['javascript', 'typescript', 'python', 'rust'],
+        default: 'javascript'
+      },
+      focus: {
+        type: 'string',
+        description: 'Specific areas to focus on',
+        enum: ['performance', 'security', 'readability', 'all'],
+        default: 'all'
+      }
+    },
+    required: ['code'],
+  },
+  async get(args) {
+    const { code, language = 'unknown', focus = 'all' } = args;
+
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please review this ${language} code with focus on ${focus}:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+          },
+        },
+      ],
+    };
+  },
+});
+```
+
+## Multi-Message Prompts
+
+Return multiple messages to establish conversation context:
+
+```typescript twoslash icon="typescript"
+navigator.modelContext.registerPrompt({
+  name: 'debug-session',
+  description: 'Start an interactive debugging session',
+  argsSchema: {
+    type: 'object',
+    properties: {
+      error: { type: 'string', description: 'The error message' },
+      context: { type: 'string', description: 'Additional context' },
+    },
+    required: ['error'],
+  },
+  async get(args) {
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `I'm encountering this error: ${args.error}`,
+          },
+        },
+        {
+          role: 'assistant',
+          content: {
+            type: 'text',
+            text: 'I understand you\'re facing an error. Let me help you debug it step by step. First, can you tell me what you were trying to do when this occurred?',
+          },
+        },
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: args.context || 'Here\'s the additional context...',
+          },
+        },
+      ],
+    };
+  },
+});
+```
+
+## How AI Agents Use Prompts
+
+When an AI agent wants to use a prompt, it calls `getPrompt()` through the MCP protocol. This invokes your registered `get()` handler:
+
+```typescript twoslash icon="typescript"
+// AI agent calls getPrompt('code-review', { code: '...', language: 'javascript' })
+// Your handler receives the arguments and returns messages
+
+navigator.modelContext.registerPrompt({
+  name: 'code-review',
+  argsSchema: { /* ... */ },
+  async get(args) {
+    // This handler is called when AI requests the prompt
+    console.log('AI requested code review for:', args.language);
+    return {
+      messages: [/* ... */]
+    };
+  },
+});
+```
+
+<Note>
+The `getPrompt()` method is called by AI agents through the MCP protocol, not directly from your application code. Your `get()` handler is invoked automatically when an agent requests the prompt.
+</Note>
+
+## Listing Available Prompts
+
+```typescript twoslash icon="typescript"
+const prompts = navigator.modelContext.listPrompts();
+
+prompts.forEach(prompt => {
+  console.log(`${prompt.name}: ${prompt.description}`);
+  if (prompt.arguments) {
+    console.log('  Arguments:', prompt.arguments);
+  }
+});
+```
+
+## Dynamic vs Static Registration
+
+<Tabs>
+  <Tab title="Dynamic (registerPrompt)">
+    Use `registerPrompt()` for prompts that may be added/removed at runtime:
+
+    ```typescript
+    // Register dynamically
+    const registration = navigator.modelContext.registerPrompt({
+      name: 'dynamic-prompt',
+      // ...
+    });
+
+    // Unregister when no longer needed
+    registration.unregister();
+    ```
+
+    **Use for:**
+    - Context-dependent prompts
+    - Feature-specific interactions
+    - Prompts tied to component lifecycle
+  </Tab>
+  <Tab title="Static (provideContext)">
+    Use `provideContext()` for base prompts that should always be available:
+
+    ```typescript
+    navigator.modelContext.provideContext({
+      prompts: [
+        { name: 'help', /* ... */ },
+        { name: 'feedback', /* ... */ },
+      ],
+    });
+    ```
+
+    **Use for:**
+    - Core application prompts
+    - Always-available interactions
+    - Base prompt set
+  </Tab>
+</Tabs>
+
+## Schema Validation
+
+Prompts support both JSON Schema and Zod for argument validation:
+
+<Tabs>
+  <Tab title="JSON Schema">
+    ```typescript
+    argsSchema: {
+      type: 'object',
+      properties: {
+        topic: {
+          type: 'string',
+          description: 'The topic to discuss',
+          minLength: 1,
+          maxLength: 100
+        },
+        depth: {
+          type: 'string',
+          enum: ['basic', 'intermediate', 'advanced'],
+          default: 'intermediate'
+        }
+      },
+      required: ['topic']
+    }
+    ```
+  </Tab>
+  <Tab title="Zod">
+    ```typescript
+    import { z } from 'zod';
+
+    argsSchema: {
+      topic: z.string()
+        .min(1)
+        .max(100)
+        .describe('The topic to discuss'),
+      depth: z.enum(['basic', 'intermediate', 'advanced'])
+        .default('intermediate')
+        .describe('Discussion depth level')
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive names">
+    Choose prompt names that clearly indicate purpose. Use kebab-case for multi-word names:
+    - `code-review` instead of `codeReview`
+    - `bug-report` instead of `report`
+  </Accordion>
+  <Accordion title="Write clear descriptions">
+    Descriptions help AI agents decide when to use a prompt:
+
+    ```typescript
+    // Good
+    description: 'Request a security-focused code review with vulnerability analysis'
+
+    // Too vague
+    description: 'Review code'
+    ```
+  </Accordion>
+  <Accordion title="Validate all arguments">
+    Always use `argsSchema` for prompts with parameters. Include descriptions for each property to help AI agents provide correct values.
+  </Accordion>
+  <Accordion title="Keep prompts focused">
+    Each prompt should serve a single purpose. Create multiple prompts instead of one complex multi-purpose prompt.
+  </Accordion>
+  <Accordion title="Test with real AI agents">
+    Verify prompts work correctly with actual AI integrations. Check that:
+    - Arguments are passed correctly
+    - Messages are formatted as expected
+    - AI responses are appropriate
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Contextual Prompts
+
+Inject application state into prompts:
+
+```typescript
+navigator.modelContext.registerPrompt({
+  name: 'help-with-current-page',
+  description: 'Get help with the current page content',
+  async get() {
+    const pageTitle = document.title;
+    const pageUrl = window.location.href;
+
+    return {
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `I need help understanding this page: "${pageTitle}" (${pageUrl})`,
+        },
+      }],
+    };
+  },
+});
+```
+
+### Role-Based Templates
+
+Different prompts for different user interactions:
+
+```typescript
+// For developers
+registerPrompt({
+  name: 'explain-technical',
+  description: 'Get a technical explanation',
+  // ... detailed technical response
+});
+
+// For end users
+registerPrompt({
+  name: 'explain-simple',
+  description: 'Get a simple explanation',
+  // ... simplified response
+});
+```
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Live Prompt Examples" icon="play" href="/live-prompt-examples">
+    Interactive prompt demonstrations
+  </Card>
+  <Card title="Resources" icon="database" href="/concepts/resources">
+    Exposing data to AI agents
+  </Card>
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    Executing actions for AI agents
+  </Card>
+  <Card title="Schemas" icon="brackets-curly" href="/concepts/schemas">
+    Schema validation patterns
+  </Card>
+</CardGroup>
