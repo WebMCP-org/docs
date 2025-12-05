@@ -5,6 +5,110 @@ icon: 'clock-rotate-left'
 rss: true
 ---
 
+<Update label="December 2025" description="v1.1.0-beta" tags={["New Features", "Beta Release"]}>
+
+## Major Features
+
+### Prompts & Resources API
+
+Full Web Model Context API support now extends beyond tools to include **prompts** and **resources**:
+
+**New React Hooks:**
+
+- `useWebMCPPrompt()` - Register prompts that AI assistants can invoke
+- `useWebMCPResource()` - Expose resources with URI template support
+
+```tsx
+import { useWebMCPPrompt, useWebMCPResource } from '@mcp-b/react-webmcp';
+
+// Register a prompt
+useWebMCPPrompt({
+  name: 'summarize',
+  description: 'Summarize the current page content',
+  arguments: [{ name: 'format', description: 'Output format' }],
+  handler: async (args) => ({
+    messages: [{ role: 'user', content: `Summarize in ${args.format} format` }]
+  })
+});
+
+// Register a resource
+useWebMCPResource({
+  uri: 'app://current-user',
+  name: 'Current User',
+  description: 'Currently logged in user data',
+  handler: async () => ({
+    contents: [{ uri: 'app://current-user', text: JSON.stringify(userData) }]
+  })
+});
+```
+
+### MCP Iframe Custom Element
+
+New `@mcp-b/mcp-iframe` package introduces the `<mcp-iframe>` web component:
+
+- **Automatic tool namespacing** - Iframe tools are automatically prefixed to avoid collisions
+- **Context propagation** - Exposes iframe tools, prompts, and resources to the parent context
+- **Cross-frame communication** - Seamless MCP communication between parent and child frames
+
+```html
+<mcp-iframe src="https://example.com/mcp-enabled-app"></mcp-iframe>
+```
+
+Tools registered inside the iframe automatically become available to the parent page's MCP context with namespaced names.
+
+### Sampling & Elicitation Support
+
+Corrected architecture for server-to-client requests:
+
+- `createMessage()` - Request the AI to generate a response (sampling)
+- `elicitInput()` - Request user input through the AI interface
+
+```tsx
+import { useMcpClient } from '@mcp-b/react-webmcp';
+
+function MyComponent() {
+  const { createMessage, elicitInput } = useMcpClient();
+
+  const handleSampling = async () => {
+    const response = await createMessage({
+      messages: [{ role: 'user', content: 'Explain this code' }],
+      maxTokens: 1000
+    });
+  };
+
+  const handleElicitation = async () => {
+    const input = await elicitInput({
+      message: 'Please provide your API key',
+      schema: { type: 'string' }
+    });
+  };
+}
+```
+
+### usewebmcp Package Alias
+
+Published `usewebmcp` as a simpler alias for `@mcp-b/react-webmcp`:
+
+```bash
+# Either works
+pnpm add @mcp-b/react-webmcp
+pnpm add usewebmcp
+```
+
+## Bug Fixes
+
+- Fixed race condition where tools registered by hooks were missed before notification handlers initialized
+- Added re-fetching mechanism to catch tools registered during setup gaps
+- Consolidated type imports for consistency across packages
+
+## Infrastructure
+
+- Updated Biome configuration with overrides for generated files
+- Changed react-webmcp test port from 5174 to 8888 to prevent conflicts
+- Comprehensive E2E test coverage for prompts, resources, and iframe routing
+
+</Update>
+
 <Update label="January 2025" description="v1.0.0" tags={["Breaking Changes", "Major Release"]}>
 
 <Warning>
@@ -197,19 +301,19 @@ Version 1.0.0 aligns with the W3C Web Model Context API proposal:
 
 ## Upcoming Features
 
-### Version 1.1.0 (Planned - Q1 2025)
+### Version 1.1.0 Stable (Planned - Q1 2026)
 
+- 🔄 Stable release of prompts & resources API
+- 🔄 Stable release of MCP iframe component
 - 🔄 Firefox extension support
 - 🔄 Enhanced developer tools
-- 🔄 Performance monitoring
-- 🔄 Tool analytics and insights
 
-### Version 1.2.0 (Planned - Q2 2025)
+### Version 1.2.0 (Planned - Q2 2026)
 
 - 🔄 Safari extension support
-- 🔄 Advanced caching strategies
+- 🔄 Performance monitoring and analytics
 - 🔄 Tool versioning support
-- 🔄 Multi-language tool descriptions
+- 🔄 Advanced caching strategies
 
 ---
 
@@ -230,8 +334,9 @@ Version 1.0.0 aligns with the W3C Web Model Context API proposal:
 | Version | Release | Deprecated Features | Removed Features |
 |---------|---------|---------------------|------------------|
 | 1.0.0 | Jan 2025 | Old package names | - |
-| 1.5.0 | Jun 2025 | - | - |
-| 2.0.0 | Sep 2025 | - | Old packages, `useMcpServer()` |
+| 1.1.0-beta | Dec 2025 | - | - |
+| 1.1.0 | Q1 2026 | - | - |
+| 2.0.0 | Q3 2026 | - | Old packages, `useMcpServer()` |
 
 ---
 
