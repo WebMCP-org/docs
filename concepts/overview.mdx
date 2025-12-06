@@ -1,58 +1,47 @@
 ---
-title: 'What is WebMCP?'
-description: 'Understanding the WebMCP standard, its design philosophy, and relationship to the Model Context Protocol'
+title: 'Core Concepts'
+description: 'Key concepts and terminology for understanding WebMCP architecture'
 icon: 'circle-info'
 ---
 
-<Note>
-  **TL;DR:** WebMCP lets you turn JavaScript functions into AI-accessible tools using `navigator.modelContext.registerTool()`. AI agents can then discover and call these tools to help users interact with your website.
-</Note>
+This page explains the core concepts you'll encounter when working with WebMCP. For a high-level introduction, see the [Introduction](/introduction).
 
-## What is WebMCP?
+## The Core API
 
-**WebMCP** (Web Model Context Protocol) is a **W3C web standard** currently being incubated by the [Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/) that defines how websites expose structured tools to AI agents through the browser's `navigator.modelContext` API.
+WebMCP centers around one key method: `navigator.modelContext.registerTool()`. This browser API lets you expose JavaScript functions as structured tools that AI agents can discover and call.
 
-- **W3C Specification**: [github.com/webmachinelearning/webmcp](https://github.com/webmachinelearning/webmcp)
-- **Technical Proposal**: [WebMCP API Proposal](https://github.com/webmachinelearning/webmcp/blob/main/docs/proposal.md)
+```javascript
+navigator.modelContext.registerTool({
+  name: 'add_to_cart',
+  description: 'Add a product to the shopping cart',
+  inputSchema: { /* ... */ },
+  async execute({ productId, quantity }) {
+    // Your existing logic
+  }
+});
+```
 
-### Design Philosophy
+## WebMCP vs MCP
 
-WebMCP is built on a **human-in-the-loop** philosophy where the human web interface remains primary and AI agents augment (rather than replace) user interaction. This means:
+WebMCP is inspired by Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io) but adapted for web browsers:
 
-- Users maintain visibility and control over all agent actions
-- Tools enable collaborative workflows between humans and AI
-- The web page UI remains the primary interaction method
+| Aspect | MCP | WebMCP |
+|--------|-----|--------|
+| **Environment** | Backend servers | Browser |
+| **Use case** | Server-to-agent | Human-in-the-loop |
+| **Authentication** | OAuth 2.1 | Inherits user session |
+| **API** | MCP SDK | `navigator.modelContext` |
 
-## Relationship to MCP
+Both protocols are complementary:
+- **Use MCP** for backend services and server-to-agent communication
+- **Use WebMCP** for browser-based tools where users are present
 
-WebMCP is inspired by Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io) but adapted specifically for web browsers. While WebMCP shares similar concepts with MCP (tools, resources, structured communication), it is evolving as an independent web standard with its own specification path.
+## MCP-B: The Reference Implementation
 
-### Key Architectural Decision: SDK vs Transport
+Since browsers don't yet natively support `navigator.modelContext`, **MCP-B** provides a polyfill that:
 
-The W3C community decided to implement WebMCP as an **SDK/abstraction layer** rather than a pure transport. This architectural choice provides important benefits:
-
-1. **Browser implements WebMCP primitives** - `navigator.modelContext` is a web-native API, not just a message pipe
-2. **Protocol independence** - Browsers can maintain backwards compatibility as MCP evolves without breaking existing implementations
-3. **Platform-specific security** - Web security models (same-origin policy, CSP) are natively enforced at the browser level
-4. **Declarative future** - Enables future declarative APIs (e.g., manifest-based tool registration)
-
-**MCP-B's Role**: The MCP-B packages provide:
-1. **W3C API polyfill** - Implements `navigator.modelContext` for browsers that don't yet support it natively
-2. **Translation layer** - Bridges between WebMCP's web-native API and the MCP protocol
-
-This dual role allows:
-- Tools declared in WebMCP format to work with MCP clients
-- Tools declared in MCP format to work with WebMCP browsers
-- Version independence as both standards evolve
-- Web-specific security features (same-origin policy, CSP)
-
-### Complementary, Not Competing
-
-Both protocols serve different purposes and can work together:
-
-- **Use MCP** for backend services, server-to-agent communication, headless integrations
-- **Use WebMCP** for browser-based tools, user-present workflows, client-side interactions
-- Both protocols can coexist in the same application
+1. **Implements the W3C API** - Adds `navigator.modelContext` to any browser
+2. **Bridges to MCP** - Translates WebMCP tools to MCP format for compatibility with existing AI frameworks
 
 ## Next Steps
 
