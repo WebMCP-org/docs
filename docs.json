@@ -56,11 +56,6 @@
           "href": "https://webmcp.sh"
         },
         {
-          "anchor": "NPM Package",
-          "icon": "npm",
-          "href": "https://www.npmjs.com/package/@mcp-b/transports"
-        },
-        {
           "anchor": "Examples",
           "icon": "code",
           "href": "https://github.com/WebMCP-org/examples"
