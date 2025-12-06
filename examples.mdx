@@ -57,7 +57,7 @@ icon: 'code'
   <Card
     title="create-webmcp-app"
     icon="rocket"
-    href="https://github.com/WebMCP-org/mcp-ui-webmcp/tree/main/create-webmcp-app"
+    href="https://github.com/WebMCP-org/mcp-ui-webmcp/tree/main/apps/create-webmcp-app"
   >
     Interactive CLI to scaffold MCP-UI + WebMCP apps (Vanilla or React)
   </Card>
@@ -65,7 +65,7 @@ icon: 'code'
   <Card
     title="Vanilla Template"
     icon="js"
-    href="https://github.com/WebMCP-org/mcp-ui-webmcp/tree/main/webmcp-template-vanilla"
+    href="https://github.com/WebMCP-org/mcp-ui-webmcp/tree/main/templates/vanilla"
   >
     Pure HTML/CSS/JavaScript template with no build step required
   </Card>
@@ -92,33 +92,17 @@ See the [Building MCP-UI Apps guide](/building-mcp-ui-apps) for complete documen
   <Card
     title="Vanilla TypeScript"
     icon="js"
-    href="https://github.com/WebMCP-org/examples/tree/main/vanilla-ts"
+    href="https://github.com/WebMCP-org/examples/tree/main/vanilla"
   >
     Simple todo app demonstrating core concepts with navigator.modelContext
   </Card>
 
   <Card
-    title="Script Tag"
-    icon="code"
-    href="https://github.com/WebMCP-org/examples/tree/main/script-tag"
+    title="React Task Manager"
+    icon="react"
+    href="https://github.com/WebMCP-org/examples/tree/main/react"
   >
-    No build tools required - just add a script tag for W3C API
-  </Card>
-
-  <Card
-    title="React Flow Voice Agent"
-    icon="microphone"
-    href="https://github.com/WebMCP-org/examples/tree/main/reactFlowVoiceAgent"
-  >
-    Advanced React app with voice input and visual flow
-  </Card>
-
-  <Card
-    title="Login Flow"
-    icon="lock"
-    href="https://github.com/WebMCP-org/examples/tree/main/login"
-  >
-    Authentication and session management with WebMCP
+    Task management app demonstrating React integration via useWebMCP() hook
   </Card>
 </CardGroup>
 
@@ -165,7 +149,7 @@ Add `@mcp-b/global` via unpkg and use `registerTool()` for zero-config setup - n
 
 ```bash
 git clone https://github.com/WebMCP-org/examples.git
-cd examples/vanilla-ts  # or any example
+cd examples/vanilla  # or react
 pnpm install --ignore-workspace
 pnpm dev
 ```
