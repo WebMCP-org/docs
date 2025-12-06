@@ -101,23 +101,6 @@ Before you begin, ensure you have:
   </Tab>
 </Tabs>
 
-## Building Interactive Apps with MCP-UI + WebMCP
-
-Want to build interactive apps that AI agents can control? Use `create-webmcp-app`:
-
-```bash icon="terminal"
-npx create-webmcp-app
-cd your-project
-pnpm dev
-```
-
-This scaffolds a complete system:
-- **MCP Server** (Cloudflare Workers) - Exposes tools to AI
-- **Embedded App** (React or Vanilla) - Runs in iframe, registers tools
-- **Bidirectional Communication** - AI controls your app, your app notifies AI
-
-See the [Building MCP-UI Apps guide](/building-mcp-ui-apps) for the complete walkthrough.
-
 ## Real-World Example
 
 Wrap your existing application logic as tools:
@@ -222,55 +205,16 @@ Wrap your existing application logic as tools:
   </Card>
 </CardGroup>
 
-## Best Practices
+## Quick Tips
 
-<AccordionGroup>
-  <Accordion title="✅ Use registerTool() - it just works!">
-    For 99% of use cases, use `navigator.modelContext.registerTool()`. It's simple, automatic, and handles cleanup for you.
+- **Security**: Only expose tools users can already access via your UI. Tools inherit user authentication.
+- **Naming**: Use descriptive names like `add_to_cart`, `search_products`, `update_profile`
+- **Validation**: Always define input schemas - use Zod (React) or JSON Schema (vanilla)
+- **Feedback**: Update UI state in handlers so users see what's happening
 
-    ```javascript icon="square-js"
-    const registration = navigator.modelContext.registerTool({
-      name: 'my_tool',
-      description: 'What my tool does',
-      inputSchema: { /* ... */ },
-      async execute(args) { /* ... */ }
-    });
-    ```
-  </Accordion>
-
-  <Accordion title="⚛️ React: Use the useWebMCP() hook">
-    React users should use the `useWebMCP()` hook - it handles registration, cleanup, and Zod validation automatically:
-
-    ```tsx icon="react"
-    useWebMCP({
-      name: 'my_tool',
-      description: 'What it does',
-      inputSchema: { amount: z.number() },
-      handler: async ({ amount }) => { /* ... */ }
-    });
-    ```
-  </Accordion>
-
-  <Accordion title="🔒 Security first">
-    - Only expose tools users can already access via your UI
-    - Validate all inputs with schemas
-    - Use `credentials: 'same-origin'` for API calls
-    - Tools inherit the user's authentication and permissions
-  </Accordion>
-
-  <Accordion title="🎨 Tool design tips">
-    - Use descriptive names: `add_to_cart`, `search_products`, `update_profile`
-    - Wrap existing functions - don't duplicate logic
-    - Provide visual feedback when tools execute
-    - Return clear success/error messages
-  </Accordion>
-
-  <Accordion title="⚠️ When to use provideContext()">
-    Only use `provideContext()` for defining base application-level tools. Most developers should stick with `registerTool()`.
-
-    See [Advanced Patterns](/advanced#context-engineering-patterns) for details.
-  </Accordion>
-</AccordionGroup>
+<Info>
+  See [Best Practices](/best-practices) for comprehensive guidance on tool design and security.
+</Info>
 
 ## Next Steps
 

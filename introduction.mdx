@@ -14,9 +14,7 @@ AI assistants are great at conversation, but they can't reliably interact with y
 
 ### The Solution
 
-**WebMCP** is a W3C web standard (currently being incubated by the [Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/)) that lets websites expose structured tools to AI agents through the `navigator.modelContext` API.
-
-With WebMCP, your existing JavaScript functions become discoverable tools. AI assistants can then help users by directly calling your website's functionality - all while respecting authentication and permissions.
+**WebMCP** is a W3C web standard (currently being incubated by the [Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/)) that lets websites expose structured tools to AI agents through the `navigator.modelContext` API. AI assistants can then help users by directly calling your website's functionality - all while respecting authentication and permissions.
 
 ### Design Philosophy
 
@@ -131,178 +129,49 @@ For detailed terminology, see the [Glossary](/concepts/glossary). Key concepts:
   **Want to understand the architecture first?** Check out [Core Concepts](/concepts/overview) for diagrams and detailed explanations of how everything works together.
 </Info>
 
-## Community
-
-<CardGroup cols={3}>
-  <Card
-    title="Discord"
-    icon="discord"
-    href="https://discord.gg/ZnHG4csJRB"
-  >
-    Join our community for support and discussions
-  </Card>
-  <Card
-    title="NPM"
-    icon="npm"
-    href="https://www.npmjs.com/package/@mcp-b/transports"
-  >
-    Install our packages from NPM
-  </Card>
-  <Card
-    title="License"
-    icon="scale-balanced"
-    href="https://github.com/WebMCP-org/npm-packages/blob/main/LICENSE"
-  >
-    MIT License
-  </Card>
-</CardGroup>
-
-## Quick Example
-
-Get started in under 2 minutes:
-
-<Tabs>
-  <Tab title="React">
-    Use the `useWebMCP` hook for automatic tool registration:
-
-    ```tsx
-    import '@mcp-b/global';
-    import { useWebMCP } from '@mcp-b/react-webmcp';
-    import { z } from 'zod';
-
-    function ProductPage({ productId }) {
-      useWebMCP({
-        name: 'add_to_cart',
-        description: 'Add this product to shopping cart',
-        inputSchema: {
-          quantity: z.number().min(1).default(1)
-        },
-        handler: async ({ quantity }) => {
-          await addToCart(productId, quantity);
-          return { success: true, quantity };
-        }
-      });
-
-      return <div>Product Details</div>;
-    }
-    ```
-  </Tab>
-
-  <Tab title="Vanilla JS">
-    Use `registerTool()` to register tools:
-
-    ```javascript
-    import '@mcp-b/global';
-
-    navigator.modelContext.registerTool({
-      name: "get_page_title",
-      description: "Get the current page title",
-      inputSchema: {
-        type: "object",
-        properties: {}
-      },
-      async execute() {
-        return {
-          content: [{
-            type: "text",
-            text: document.title
-          }]
-        };
-      }
-    });
-    ```
-  </Tab>
-
-  <Tab title="Script Tag (No Build)">
-    No bundler needed - just add a script tag:
-
-    ```html
-    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-    <script>
-      navigator.modelContext.registerTool({
-        name: "get_page_title",
-        description: "Get the current page title",
-        inputSchema: { type: "object", properties: {} },
-        async execute() {
-          return {
-            content: [{ type: "text", text: document.title }]
-          };
-        }
-      });
-    </script>
-    ```
-  </Tab>
-</Tabs>
-
-That's it! Your tools are now discoverable by AI agents.
-
 ## Next Steps
 
-<Steps>
-  <Step title="Understand Core Concepts">
-    Learn about [WebMCP architecture and components](/concepts/architecture)
-  </Step>
-  <Step title="Install the Extension">
-    Get the [MCP-B Chrome Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa)
-  </Step>
-  <Step title="Follow the Quickstart">
-    Set up WebMCP on your website in the [Quick Start Guide](/quickstart)
-  </Step>
-  <Step title="Review Security">
-    Understand [security best practices](/security) before deploying
-  </Step>
-  <Step title="Explore Examples">
-    Check out [working examples](/examples) for different frameworks
-  </Step>
-  <Step title="Build Your Integration">
-    Use our [NPM packages](/packages/global) to create custom tools
-  </Step>
-</Steps>
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get WebMCP running on your website in minutes
+  </Card>
+
+  <Card title="Core Concepts" icon="diagram-project" href="/concepts/overview">
+    Understand the architecture and how components work together
+  </Card>
+
+  <Card title="Examples" icon="code" href="/examples">
+    Explore ready-to-use examples for React, Vue, and vanilla JS
+  </Card>
+
+  <Card title="Security Guide" icon="shield-halved" href="/security">
+    Security best practices before deploying
+  </Card>
+</CardGroup>
 
 ## Understanding the Standards
 
 WebMCP builds on the Model Context Protocol (MCP), adapting it for the web platform:
 
 <CardGroup cols={2}>
-  <Card title="WebMCP Specification" icon="w3c" href="https://github.com/webmachinelearning/webmcp">
-    W3C Web Model Context API proposal and technical specification
-  </Card>
-  <Card title="WebMCP Proposal" icon="file-lines" href="https://github.com/webmachinelearning/webmcp/blob/main/docs/proposal.md">
-    Detailed proposal with API design and examples
+  <Card title="WebMCP Specification" icon="globe" href="https://github.com/webmachinelearning/webmcp">
+    W3C Web Model Context API proposal
   </Card>
   <Card title="MCP Documentation" icon="book" href="https://modelcontextprotocol.io">
-    Learn about the original Model Context Protocol specification
-  </Card>
-  <Card title="MCP GitHub" icon="github" href="https://github.com/modelcontextprotocol">
-    Explore Anthropic's official MCP repositories and SDK
+    Original Model Context Protocol specification
   </Card>
 </CardGroup>
 
-
-## Related Resources
+## Community
 
 <CardGroup cols={3}>
-  <Card title="Core Concepts" icon="diagram-project" href="/concepts/overview">
-    Architecture overview and diagrams
+  <Card title="Discord" icon="discord" href="https://discord.gg/ZnHG4csJRB">
+    Get help and discuss ideas
   </Card>
-
-  <Card title="Glossary" icon="book" href="/concepts/glossary">
-    Key terminology reference
+  <Card title="GitHub" icon="github" href="https://github.com/WebMCP-org">
+    Explore the source code
   </Card>
-
-  <Card title="Security Guide" icon="shield-halved" href="/security">
-    Security best practices
-  </Card>
-
-  <Card title="Changelog" icon="clock-rotate-left" href="/changelog">
-    Version history and migrations
-  </Card>
-
-  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
-    Common issues and solutions
-  </Card>
-
-  <Card title="Extension Guide" icon="puzzle-piece" href="/extension/index">
-    MCP-B browser extension docs
+  <Card title="NPM" icon="npm" href="https://www.npmjs.com/package/@mcp-b/global">
+    Install our packages
   </Card>
 </CardGroup>
