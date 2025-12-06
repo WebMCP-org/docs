@@ -1,0 +1,150 @@
+---
+title: "@mcp-b/mcp-iframe"
+description: "Custom element for exposing iframe MCP tools, resources, and prompts to parent pages via the Web Model Context API."
+sidebarTitle: "MCP Iframe Element"
+icon: "window-restore"
+---
+
+The `<mcp-iframe>` custom element wraps an iframe and automatically exposes its [tools](/concepts/tool-registration), [resources](/concepts/resources), and [prompts](/concepts/prompts) to the parent page's `navigator.modelContext`.
+
+## Installation
+
+```bash icon="npm"
+npm install @mcp-b/mcp-iframe @modelcontextprotocol/sdk
+```
+
+Requires [@mcp-b/global](/packages/global) polyfill in both parent and child pages.
+
+## Quick Start
+
+**Parent page** — import to auto-register the element:
+
+```html "parent.html" icon="code"
+<script type="module">
+  import '@mcp-b/mcp-iframe';
+</script>
+
+<mcp-iframe src="./child-app.html" id="my-app"></mcp-iframe>
+
+<script type="module">
+  document.querySelector('mcp-iframe')
+    .addEventListener('mcp-iframe-ready', (e) => {
+      console.log('Tools:', e.detail.tools);
+    });
+</script>
+```
+
+**Child page** — register tools via [@mcp-b/global](/packages/global):
+
+```typescript "child-app.ts" icon="window"
+import '@mcp-b/global';
+
+navigator.modelContext.registerTool({
+  name: 'calculate',
+  description: 'Perform a calculation',
+  inputSchema: { /* ... */ },
+  execute: async (args) => ({ content: [{ type: 'text', text: 'Result' }] })
+});
+```
+
+## Item Prefixing
+
+Items are exposed with the element's `id` as prefix to prevent naming conflicts:
+
+| Child registers | Parent sees |
+|-----------------|-------------|
+| `calculate` | `my-app:calculate` |
+| `config://settings` | `my-app:config://settings` |
+
+## Attributes
+
+Standard iframe attributes (`src`, `width`, `height`, `sandbox`, etc.) are mirrored to the internal iframe.
+
+### MCP-Specific Attributes
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `target-origin` | Auto-detected | Origin for postMessage security |
+| `channel` | `'mcp-iframe'` | Channel identifier |
+| `call-timeout` | `30000` | Tool call timeout (ms) |
+| `prefix-separator` | `':'` | Separator between prefix and name |
+
+## Events
+
+| Event | Detail | Description |
+|-------|--------|-------------|
+| `mcp-iframe-ready` | `{ tools, resources, prompts }` | Connection established |
+| `mcp-iframe-error` | `{ error }` | Connection failed |
+| `mcp-iframe-tools-changed` | `{ tools, resources, prompts }` | Items refreshed |
+
+```typescript icon="code"
+mcpIframe.addEventListener('mcp-iframe-ready', (e) => {
+  console.log('Tools:', e.detail.tools);       // ['my-app:calculate', ...]
+  console.log('Resources:', e.detail.resources);
+  console.log('Prompts:', e.detail.prompts);
+});
+```
+
+## Properties & Methods
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ready` | `boolean` | Connection status |
+| `iframe` | `HTMLIFrameElement` | The wrapped iframe |
+| `exposedTools` | `string[]` | Prefixed tool names |
+| `exposedResources` | `string[]` | Prefixed resource URIs |
+| `exposedPrompts` | `string[]` | Prefixed prompt names |
+| `itemPrefix` | `string` | Current prefix (e.g., `my-app:`) |
+
+| Method | Description |
+|--------|-------------|
+| `refresh()` | Re-fetch items from iframe |
+
+## Multiple Iframes
+
+Each iframe uses its `id` as prefix:
+
+```html icon="code"
+<mcp-iframe src="./calc.html" id="calc"></mcp-iframe>
+<mcp-iframe src="./todos.html" id="todos"></mcp-iframe>
+```
+
+Exposes: `calc:add`, `calc:multiply`, `todos:create`, `todos:list`, etc.
+
+## Cross-Origin
+
+For cross-origin iframes, set `target-origin` explicitly:
+
+```html icon="code"
+<mcp-iframe
+  src="https://other-domain.com/app.html"
+  id="external"
+  target-origin="https://other-domain.com"
+></mcp-iframe>
+```
+
+The child must configure [IframeChildTransport](/packages/transports#iframe-transport-examples) with allowed origins. See [Security Guide](/security) for details.
+
+## Custom Registration
+
+```typescript icon="gear"
+import { registerMCPIframeElement } from '@mcp-b/mcp-iframe';
+registerMCPIframeElement('custom-mcp-frame');
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Transports" icon="arrows-left-right" href="/packages/transports">
+    Underlying IframeParentTransport
+  </Card>
+  <Card title="@mcp-b/global" icon="globe" href="/packages/global">
+    Model Context API polyfill
+  </Card>
+  <Card title="Security" icon="shield" href="/security">
+    Origin validation
+  </Card>
+  <Card title="MCP UI Apps" icon="window" href="/building-mcp-ui-apps">
+    Building embeddable apps
+  </Card>
+</CardGroup>
