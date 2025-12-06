@@ -4,11 +4,20 @@ description: 'Integrate WebMCP tools with Angular using services and lifecycle h
 icon: 'angular'
 ---
 
-<Info>
-**Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For the full API, see [Tool Registration](/concepts/tool-registration).
-</Info>
+<Card title="Full Example" icon="github" href="https://github.com/WebMCP-org/examples/tree/main/angular">
+  Production-ready Angular example with signals and services
+</Card>
 
-## Basic Component Usage
+## Quick start
+
+```bash
+git clone https://github.com/WebMCP-org/examples.git
+cd examples/angular && pnpm install && pnpm dev
+```
+
+## The pattern
+
+Use `ngOnInit`/`ngOnDestroy` for lifecycle management:
 
 ```typescript "my.component.ts"
 import { Component, OnInit, OnDestroy } from '@angular/core';
@@ -45,7 +54,7 @@ export class MyComponent implements OnInit, OnDestroy {
 }
 ```
 
-## SSR-Safe (Angular Universal)
+## Angular Universal (SSR)
 
 Use `isPlatformBrowser` for SSR safety:
 
@@ -54,10 +63,7 @@ import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import '@mcp-b/global';
 
-@Component({
-  selector: 'app-my',
-  template: `<p>Content</p>`
-})
+@Component({ /* ... */ })
 export class MyComponent implements OnInit, OnDestroy {
   private reg: { unregister: () => void } | null = null;
   private isBrowser: boolean;
@@ -68,13 +74,7 @@ export class MyComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     if (!this.isBrowser || !('modelContext' in navigator)) return;
-
-    this.reg = navigator.modelContext.registerTool({
-      name: 'my_tool',
-      description: 'My tool',
-      inputSchema: { type: 'object', properties: {} },
-      execute: async () => ({ content: [{ type: 'text', text: 'Done' }] })
-    });
+    this.reg = navigator.modelContext.registerTool({ /* ... */ });
   }
 
   ngOnDestroy() {
@@ -83,84 +83,15 @@ export class MyComponent implements OnInit, OnDestroy {
 }
 ```
 
-## Creating a Service
-
-For reuse across components:
-
-```typescript "webmcp.service.ts"
-import { Injectable, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import '@mcp-b/global';
-
-@Injectable({ providedIn: 'root' })
-export class WebMCPService implements OnDestroy {
-  private registrations = new Map<string, { unregister: () => void }>();
-  readonly isAvailable: boolean;
-
-  constructor(@Inject(PLATFORM_ID) platformId: object) {
-    this.isAvailable = isPlatformBrowser(platformId) && 'modelContext' in navigator;
-  }
-
-  register(tool: Parameters<typeof navigator.modelContext.registerTool>[0]) {
-    if (!this.isAvailable) return null;
-    const reg = navigator.modelContext.registerTool(tool);
-    this.registrations.set(tool.name, reg);
-    return reg;
-  }
-
-  unregister(name: string) {
-    this.registrations.get(name)?.unregister();
-    this.registrations.delete(name);
-  }
-
-  ngOnDestroy() {
-    this.registrations.forEach(r => r.unregister());
-  }
-}
-```
-
-```typescript "my.component.ts"
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { WebMCPService } from './webmcp.service';
-
-@Component({
-  selector: 'app-my',
-  template: `<p>Content</p>`
-})
-export class MyComponent implements OnInit, OnDestroy {
-  private webmcp = inject(WebMCPService);
-
-  ngOnInit() {
-    this.webmcp.register({
-      name: 'my_tool',
-      description: 'My tool',
-      inputSchema: { type: 'object', properties: {} },
-      execute: async () => ({ content: [{ type: 'text', text: 'Done' }] })
-    });
-  }
-
-  ngOnDestroy() {
-    this.webmcp.unregister('my_tool');
-  }
-}
-```
-
-## Common Gotchas
+## Common issues
 
 <AccordionGroup>
   <Accordion title="'navigator is not defined' with Angular Universal">
-    Use platform checks:
-    ```typescript
-    constructor(@Inject(PLATFORM_ID) platformId: object) {
-      if (isPlatformBrowser(platformId)) {
-        // Safe to use navigator
-      }
-    }
-    ```
+    Use `isPlatformBrowser()` platform check before accessing `navigator`.
   </Accordion>
 
   <Accordion title="Zone.js and async handlers">
-    If you need change detection after tool execution, use `NgZone.run()`:
+    If change detection doesn't trigger after tool execution, wrap in `NgZone.run()`:
     ```typescript
     execute: async (args) => {
       return this.ngZone.run(() => {
@@ -171,3 +102,7 @@ export class MyComponent implements OnInit, OnDestroy {
     ```
   </Accordion>
 </AccordionGroup>
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.
