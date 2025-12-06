@@ -471,88 +471,13 @@ if (rateLimitExceeded) {
 For comprehensive security guidance including authentication, authorization, input validation, prompt injection protection, and multi-website threat models, see the dedicated [Security Guide](/security).
 </Note>
 
-Key security principles for WebMCP tools:
-
-- **Validate user authentication** - Always verify session and permissions
-- **Sanitize inputs** - Use DOMPurify for HTML, parameterized queries for databases
-- **Rate limit operations** - Protect against abuse with request throttling
-- **Limit data exposure** - Only return necessary fields, never expose sensitive data
-- **Use tool annotations** - Mark destructive operations with `destructiveHint: true`
-
 ## Performance Optimization
 
-### Design for Async Operations
+<Note>
+For comprehensive performance guidelines including tool registration patterns, tool limits, lazy registration, timeouts, and memory management, see the [Performance Guidelines](/concepts/performance).
+</Note>
 
-All tool execution should be non-blocking:
-
-```javascript
-// ✅ Async with proper error handling, markdown formatted
-async execute({ query }) {
-  try {
-    const [products, categories, suggestions] = await Promise.all([
-      searchProducts(query),
-      getCategories(),
-      getSuggestions(query)
-    ]);
-
-    return {
-      content: [{
-        type: "text",
-        text: `# Search Results
-
-## Products
-${products.map(p => `- **${p.name}** - $${p.price}`).join('\n')}
-
-## Available Categories
-${categories.join(', ')}
-
-## Did you mean?
-${suggestions.join(', ')}`
-      }]
-    };
-  } catch (error) {
-    return formatError('SERVER_ERROR', error.message);
-  }
-}
-```
-
-### Implement Timeouts
-
-Prevent tools from hanging indefinitely:
-
-```javascript
-const TIMEOUT = 5000; // 5 seconds
-
-async execute({ query }) {
-  try {
-    const results = await Promise.race([
-      performSearch(query),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), TIMEOUT)
-      )
-    ]);
-
-    return {
-      content: [{
-        type: "text",
-        text: `# Search Results for "${query}"
-
-${results.map((r, i) => `${i + 1}. ${r.title}`).join('\n')}`
-      }]
-    };
-  } catch (error) {
-    if (error.message === 'Timeout') {
-      return formatError(
-        'TIMEOUT',
-        'Search took too long. Please try a more specific query.'
-      );
-    }
-    throw error;
-  }
-}
-```
-
-### Use Optimistic Updates for Voice Models
+### Optimistic Updates for Voice Models
 
 Voice models and real-time interactions work best with instant tool responses. Implement optimistic updates by operating on in-app state rather than waiting for async API calls:
 
@@ -633,36 +558,6 @@ ${cartItems.map(item => `- ${item.name} x${item.quantity} - $${item.price * item
 - Update state synchronously before returning from tool
 - Queue background sync operations
 - Handle sync failures gracefully with retry logic
-
-### Limit Response Size
-
-Prevent sending huge payloads:
-
-```javascript
-const MAX_RESULTS = 100;
-const MAX_RESPONSE_SIZE = 1024 * 100; // 100KB
-
-async execute({ query, limit = 10 }) {
-  const safLimit = Math.min(limit, MAX_RESULTS);
-  const results = await search(query, safLimit);
-
-  // Format as markdown
-  const markdown = `# Search Results for "${query}"
-
-Found ${results.length} results:
-
-${results.map((r, i) => `${i + 1}. **${r.title}**\n   ${r.description}`).join('\n\n')}`;
-
-  if (markdown.length > MAX_RESPONSE_SIZE) {
-    return formatError(
-      'RESPONSE_TOO_LARGE',
-      `Response exceeds maximum size. Try reducing limit (current: ${safLimit}).`
-    );
-  }
-
-  return { content: [{ type: "text", text: markdown }] };
-}
-```
 
 ## Testing & Quality Assurance
 
