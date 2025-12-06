@@ -1,139 +1,55 @@
 ---
 title: 'Tool Design Quick Reference'
-description: 'Quick reference for WebMCP tool design patterns. For detailed guidance, see Best Practices.'
+description: 'Quick reference checklist for WebMCP tool design. For detailed guidance with code examples, see Best Practices.'
 icon: 'lightbulb'
 ---
 
 <Note>
-This is a quick reference. For comprehensive guidance with code examples, see [Best Practices for Creating Tools](/best-practices).
+This is a quick reference checklist. For comprehensive guidance with code examples, see [Best Practices for Creating Tools](/best-practices).
 </Note>
 
-## Naming Conventions
+## Design Checklist
 
-Use `domain_verb_noun` pattern with clear, descriptive names:
+| Aspect | Guideline | Details |
+|--------|-----------|---------|
+| **Name** | `domain_verb_noun` pattern | `products_search`, `cart_add_item`, `user_get_profile` |
+| **Description** | Detailed, includes when to use | What it does, return format, prerequisites, if it changes tool list |
+| **Parameters** | Minimal required, clear names | Use `.describe()` on every parameter, use enums for fixed choices |
+| **Response** | Markdown format | Easier for AI to parse and present than JSON |
+| **Errors** | Structured with error codes | `**Error (CODE):** message` format with `isError: true` |
+| **Annotations** | Mark behavior hints | `destructiveHint`, `idempotentHint`, `readOnlyHint` |
+| **Scope** | User workflows, not internal architecture | Balance granularity - not too fine, not too coarse |
 
-```javascript
-// ✅ Good
-"products_search"
-"cart_add_item"
-"user_get_profile"
+## Naming Examples
 
-// ❌ Avoid
-"doStuff"
-"action1"
-"helper"
-```
+| ✅ Good | ❌ Avoid |
+|---------|----------|
+| `products_search` | `doStuff` |
+| `cart_add_item` | `action1` |
+| `user_get_profile` | `helper` |
+| `orders_list_recent` | `processData` |
 
-## Descriptions
+## Tool Scope Guide
 
-Tool descriptions go directly to the AI model's context. Include:
+| Level | Example | Assessment |
+|-------|---------|------------|
+| Too granular | `user_set_first_name`, `user_set_last_name` | Too many tools |
+| Just right | `user_update_profile` | Reasonable grouping |
+| Too coarse | `manage_everything` | Does too much |
 
-- What the tool does and when to use it
-- What data it returns and in what format
-- Prerequisites or dependencies on other tools
-- If execution changes the available tool list
+## Annotations Reference
 
-## Input Schema
-
-<AccordionGroup>
-  <Accordion title="Clear parameter names">
-    Use self-documenting names: `productId`, `quantity`, `addGiftWrap` instead of `id`, `n`, `flag`
-  </Accordion>
-
-  <Accordion title="Minimal required parameters">
-    Only require what's absolutely necessary. Use defaults for optional parameters.
-  </Accordion>
-
-  <Accordion title="Use enums for fixed choices">
-    ```javascript
-    status: { type: "string", enum: ["pending", "approved", "rejected"] }
-    ```
-  </Accordion>
-
-  <Accordion title="Include examples in descriptions">
-    ```javascript
-    dateRange: {
-      type: "string",
-      description: "Format: YYYY-MM-DD/YYYY-MM-DD (e.g., 2024-01-01/2024-01-31)"
-    }
-    ```
-  </Accordion>
-</AccordionGroup>
-
-## Response Format
-
-Return markdown instead of JSON for better AI comprehension:
-
-```javascript
-// ✅ Markdown - easier for AI to present
-return {
-  content: [{
-    type: "text",
-    text: `# Search Results\n\nFound ${count} products:\n\n${items.map(p => `- **${p.name}** - $${p.price}`).join('\n')}`
-  }]
-};
-
-// ❌ JSON - harder for AI to parse and present
-return {
-  content: [{
-    type: "text",
-    text: JSON.stringify({ success: true, products: items })
-  }]
-};
-```
-
-## Tool Annotations
-
-Mark tool behavior for AI agents:
-
-```javascript
-annotations: {
-  destructiveHint: true,    // Irreversible action (delete, purchase)
-  idempotentHint: true,     // Safe to call multiple times
-  readOnlyHint: true        // Only reads data, no modifications
-}
-```
-
-## Error Handling
-
-Always return structured errors with clear messages:
-
-```javascript
-if (!user) {
-  return {
-    content: [{
-      type: "text",
-      text: "**Error (USER_NOT_FOUND):** No user found with that ID"
-    }],
-    isError: true
-  };
-}
-```
-
-## Tool Scope
-
-Design tools around user workflows, not internal architecture. Balance between:
-
-- **Too granular**: `user_set_first_name`, `user_set_last_name` (too many tools)
-- **Just right**: `user_update_profile` (reasonable grouping)
-- **Too coarse**: `manage_everything` (does too much)
-
-## Quick Checklist
-
-| Aspect | Guideline |
-|--------|-----------|
-| **Name** | `domain_verb_noun` pattern |
-| **Description** | Detailed, includes when to use |
-| **Parameters** | Minimal required, clear names, use `.describe()` |
-| **Response** | Markdown format, include context |
-| **Errors** | Structured with error codes |
-| **Annotations** | Mark destructive/readonly operations |
+| Annotation | Use When |
+|------------|----------|
+| `destructiveHint: true` | Irreversible actions (delete, purchase) |
+| `idempotentHint: true` | Safe to call multiple times with same result |
+| `readOnlyHint: true` | Only reads data, no modifications |
 
 ## Related Topics
 
 <CardGroup cols={2}>
   <Card title="Best Practices" icon="star" href="/best-practices">
-    Complete guide with detailed examples
+    Complete guide with detailed code examples
   </Card>
 
   <Card title="Tool Schemas" icon="file-contract" href="/concepts/schemas">

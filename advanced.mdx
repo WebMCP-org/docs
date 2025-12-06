@@ -60,33 +60,10 @@ function ProductPage({ productId }) {
 }
 ```
 
-### Component Lifecycle Tool Scoping
-
-Tools automatically register when mounted and unregister when unmounted:
-
-```tsx
-function CartTools({ cartId, items }) {
-  useWebMCP({
-    name: 'checkout',
-    description: 'Proceed to checkout',
-    inputSchema: { paymentMethod: z.enum(['credit', 'debit', 'paypal']) },
-    handler: async ({ paymentMethod }) => {
-      const order = await checkoutService.processCart(cartId, paymentMethod);
-      return { orderId: order.id };
-    },
-    enabled: items.length > 0 // Only available when cart has items
-  });
-
-  return null;
-}
-```
-
-This creates a **UI for LLMs** - instead of showing all tools at once, you progressively reveal capabilities based on context.
-
-## Context Engineering Patterns
+## Context Engineering
 
 <Note>
-For comprehensive context engineering patterns including URL-based scoping, progressive disclosure, role-based tools, and feature flags, see the dedicated [Context Engineering](/concepts/context-engineering) concept guide.
+For comprehensive context engineering patterns including URL-based scoping, progressive disclosure, role-based tools, component lifecycle scoping, and feature flags, see the dedicated [Context Engineering](/concepts/context-engineering) guide.
 </Note>
 
 The key principle: limit tool availability based on application state to reduce AI model confusion and improve decision quality. Use the `enabled` prop on `useWebMCP` to conditionally register tools.
