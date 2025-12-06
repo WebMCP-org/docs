@@ -96,6 +96,7 @@
             "pages": [
               "packages/global",
               "packages/transports",
+              "packages/mcp-iframe",
               "packages/react-webmcp",
               "packages/chrome-devtools-mcp",
               "packages/extension-tools",
