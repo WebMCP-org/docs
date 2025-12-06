@@ -97,6 +97,7 @@
               "packages/global",
               "packages/transports",
               "packages/react-webmcp",
+              "packages/chrome-devtools-mcp",
               "packages/extension-tools",
               "packages/webmcp-ts-sdk",
               "packages/smart-dom-reader"

@@ -322,35 +322,49 @@ Jason's WebMCP is an independent implementation, separate from the MCP-B project
 - Users who prefer not to use browser extensions
 - Custom MCP client integrations
 
-#### Method 3: Chrome DevTools Protocol (Coming Soon)
+#### Method 3: Chrome DevTools MCP
 
-The MCP-B team is developing a custom Chrome DevTools Protocol (CDP) transport for connecting MCP clients directly to the browser.
+`@mcp-b/chrome-devtools-mcp` connects MCP clients directly to Chrome using the Chrome DevTools Protocol, with full WebMCP integration.
 
-<Warning>
-**Status:** In development, not yet available for production use
-</Warning>
+<Card title="Chrome DevTools MCP" icon="chrome" href="/packages/chrome-devtools-mcp">
+  Complete setup guide and documentation
+</Card>
 
-**How it will work:**
+**How it works:**
 ```mermaid
 graph LR
-    A[MCP Client] -->|CDP Transport| B[Chrome Browser]
-    B -->|DevTools Protocol| C[Website Tools]
+    A[MCP Client] -->|Chrome DevTools Protocol| B[Chrome Browser]
+    B -->|WebMCP Bridge| C[Website Tools]
 ```
 
-**Advantages when available:**
-- Direct browser connection without extension
-- Access to browser debugging APIs
-- Lower latency than HTTP bridge
-- More granular control over browser state
+**Quick setup:**
 
-**Use cases:**
-- Advanced automation scenarios
+<Steps>
+  <Step title="Add to your MCP client">
+    ```bash
+    claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
+    ```
+  </Step>
+
+  <Step title="Test the connection">
+    Ask your AI agent:
+    ```
+    Navigate to http://localhost:3000 and list available WebMCP tools
+    ```
+  </Step>
+</Steps>
+
+**Key features:**
+- Direct browser connection - no extension required
+- Access to 28 browser automation tools
+- WebMCP integration via `list_webmcp_tools` and `call_webmcp_tool`
+- AI-driven development workflow for building and testing tools
+
+**Best for:**
+- AI-driven tool development (build-test loop)
+- Advanced browser automation scenarios
 - Testing and debugging workflows
-- Direct browser control from MCP clients
-
-<Info>
-Watch the [WebMCP GitHub repository](https://github.com/WebMCP-org/npm-packages) for updates on CDP transport availability.
-</Info>
+- Direct browser control from Claude Code, Cursor, Copilot, etc.
 
 ## Choosing the Right Method
 
@@ -415,7 +429,7 @@ Use this guide to select the best connection method for your use case:
 | **MCP-B Extension** | Low | Any website + built-in agents | Yes | No |
 | **Native Server (MCP-B)** | Low | Multiple tabs + extension agents | Yes (MCP-B) | No |
 | **Jason's WebMCP** | Medium | Direct site-to-client | No | Yes (widget script) |
-| **CDP Transport** | TBD | Advanced automation | TBD | No |
+| **Chrome DevTools MCP** | Low | AI-driven development, automation | No | No |
 
 ## Security Considerations
 
@@ -492,6 +506,14 @@ Ready to connect your agent? Follow these quick start guides:
     href="/tools/claude-code"
   >
     Use WebMCP tools with Claude Code
+  </Card>
+
+  <Card
+    title="Chrome DevTools MCP"
+    icon="chrome"
+    href="/packages/chrome-devtools-mcp"
+  >
+    AI-driven development and browser automation
   </Card>
 </CardGroup>
 
