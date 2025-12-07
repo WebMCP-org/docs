@@ -87,6 +87,18 @@
             ]
           },
           {
+            "group": "Framework Guides",
+            "pages": [
+              "frameworks/index",
+              "frameworks/vue",
+              "frameworks/nuxt",
+              "frameworks/svelte",
+              "frameworks/angular",
+              "frameworks/rails",
+              "frameworks/phoenix-liveview"
+            ]
+          },
+          {
             "group": "NPM Packages",
             "pages": [
               "packages/global",
@@ -105,6 +117,27 @@
               "changelog",
               "troubleshooting",
               "tools/claude-code"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Calling Tools",
+        "icon": "bolt",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "calling-tools/index"
+            ]
+          },
+          {
+            "group": "Connection Methods",
+            "pages": [
+              "calling-tools/embedded-agent",
+              "calling-tools/ai-browsers",
+              "calling-tools/extension",
+              "calling-tools/devtools-mcp"
             ]
           }
         ]
@@ -186,62 +219,6 @@
             "pages": [
               "concepts/extension",
               "packages/extension-tools"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "AI Frameworks",
-        "icon": "wand-magic-sparkles",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "ai-frameworks/index"
-            ]
-          },
-          {
-            "group": "AI UI Libraries",
-            "pages": [
-              "ai-frameworks/assistant-ui",
-              "ai-frameworks/ag-ui",
-              "ai-frameworks/custom-runtime"
-            ]
-          },
-          {
-            "group": "Integration Guides",
-            "pages": [
-              "ai-frameworks/setup",
-              "ai-frameworks/best-practices",
-              "ai-frameworks/framework-gotchas"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Frameworks",
-        "icon": "grid-2",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "frameworks/index"
-            ]
-          },
-          {
-            "group": "JavaScript Frameworks",
-            "pages": [
-              "frameworks/vue",
-              "frameworks/nuxt",
-              "frameworks/svelte",
-              "frameworks/angular"
-            ]
-          },
-          {
-            "group": "Backend Frameworks",
-            "pages": [
-              "frameworks/rails",
-              "frameworks/phoenix-liveview"
             ]
           }
         ]

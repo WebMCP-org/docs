@@ -74,13 +74,21 @@ mintlify build
 │   ├── mcp-ui-integration.mdx     # MCP UI integration
 │   └── glossary.mdx               # Terminology reference
 │
-├── ai-frameworks/                 # AI framework integration
+├── calling-tools/                 # How agents call WebMCP tools
+│   ├── index.mdx                  # Overview of connection methods
+│   ├── embedded-agent.mdx         # Drop-in AI assistant component
+│   ├── ai-browsers.mdx            # AI browsers (Chrome AI, Perplexity, etc.)
+│   ├── extension.mdx              # MCP-B browser extension
+│   └── devtools-mcp.mdx           # Chrome DevTools MCP integration
+│
+├── frameworks/                    # Framework-specific guides
 │   ├── index.mdx                  # Frameworks overview
-│   ├── setup.mdx                  # Framework setup
-│   ├── assistant-ui.mdx           # Assistant UI integration
-│   ├── ag-ui.mdx                  # AG UI integration
-│   ├── custom-runtime.mdx         # Custom runtime setup
-│   └── best-practices.mdx         # Framework best practices
+│   ├── vue.mdx                    # Vue.js integration
+│   ├── nuxt.mdx                   # Nuxt integration
+│   ├── svelte.mdx                 # Svelte integration
+│   ├── angular.mdx                # Angular integration
+│   ├── rails.mdx                  # Rails/Stimulus integration
+│   └── phoenix-liveview.mdx       # Phoenix LiveView integration
 │
 ├── extension/                     # Browser extension documentation
 │   ├── index.mdx                  # Extension overview

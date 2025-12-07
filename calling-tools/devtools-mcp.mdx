@@ -1,0 +1,126 @@
+---
+title: 'Chrome DevTools MCP'
+description: 'Connect MCP clients directly to Chrome for development, testing, and browser automation.'
+icon: 'chrome'
+---
+
+`@mcp-b/chrome-devtools-mcp` connects MCP clients (Claude Code, Cursor, etc.) directly to Chrome using the Chrome DevTools Protocol. It provides browser automation tools plus WebMCP integration for testing your tools.
+
+## Quick Setup
+
+<Steps>
+  <Step title="Add to your MCP client">
+    ```bash
+    claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
+    ```
+  </Step>
+
+  <Step title="Start Chrome with debugging">
+    The server will prompt you to enable remote debugging if needed.
+  </Step>
+
+  <Step title="Test the connection">
+    Ask your AI:
+    ```
+    Navigate to http://localhost:3000 and list available WebMCP tools
+    ```
+  </Step>
+</Steps>
+
+## WebMCP Integration
+
+The server provides two key tools for WebMCP:
+
+| Tool | Description |
+|------|-------------|
+| `list_webmcp_tools` | Discover all tools registered on the current page |
+| `call_webmcp_tool` | Execute a WebMCP tool with arguments |
+
+### Example Workflow
+
+```mermaid
+flowchart LR
+    A[AI writes tool] --> B[Dev server hot-reloads]
+    B --> C[AI navigates to page]
+    C --> D[list_webmcp_tools]
+    D --> E[call_webmcp_tool]
+    E --> F{Works?}
+    F -->|No| A
+    F -->|Yes| G[Done]
+```
+
+This creates a tight feedback loop for AI-driven development:
+
+1. AI writes tool code
+2. Your dev server hot-reloads
+3. AI navigates to the page
+4. AI discovers tools with `list_webmcp_tools`
+5. AI tests with `call_webmcp_tool`
+6. AI iterates until working
+
+<Info>
+This is **TDD for AI** - agents build and verify their own tools in real-time.
+</Info>
+
+## Browser Automation Tools
+
+Beyond WebMCP, you get 28 browser automation tools:
+
+<Tabs>
+  <Tab title="Navigation">
+    - `navigate` - Go to URL
+    - `go_back` / `go_forward` - Browser history
+    - `refresh` - Reload page
+  </Tab>
+
+  <Tab title="Interaction">
+    - `click` - Click elements
+    - `type` - Enter text
+    - `scroll` - Scroll page
+    - `hover` - Mouse hover
+  </Tab>
+
+  <Tab title="Inspection">
+    - `screenshot` - Capture page
+    - `get_page_content` - Get HTML/text
+    - `evaluate` - Run JavaScript
+  </Tab>
+
+  <Tab title="Tabs">
+    - `list_tabs` - See open tabs
+    - `switch_tab` - Change active tab
+    - `new_tab` / `close_tab` - Manage tabs
+  </Tab>
+</Tabs>
+
+## Development Workflow
+
+Use Chrome DevTools MCP during development to let your AI:
+
+1. **Build tools** - Write WebMCP tool code
+2. **Test immediately** - Navigate and call tools
+3. **Debug issues** - Inspect results, check console
+4. **Iterate quickly** - Fix and re-test in seconds
+
+```bash
+# Start your dev server
+pnpm dev
+
+# AI can now navigate, discover tools, and test them
+```
+
+## Best For
+
+- AI-driven tool development
+- Automated testing of WebMCP tools
+- Browser automation scripts
+- Development and debugging
+
+## Not Ideal For
+
+- Production tool consumption (use [Embedded Agent](/calling-tools/embedded-agent))
+- End-user interactions (use [MCP-B Extension](/calling-tools/extension))
+
+<Card title="Chrome DevTools MCP Package" icon="npm" href="/packages/chrome-devtools-mcp">
+  Complete API reference and configuration options
+</Card>
