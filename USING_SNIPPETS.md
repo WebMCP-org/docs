@@ -642,7 +642,8 @@ import ReactImports from '/snippets/imports/react-imports.mdx';
 │   └── templates/      # Complete examples
 ├── concepts/           # Concept documentation
 ├── packages/           # Package reference docs
-├── ai-frameworks/      # AI framework integration docs
+├── calling-tools/      # How agents call WebMCP tools
+├── frameworks/         # Framework integration guides
 ├── extension/          # Extension documentation
 └── [page].mdx          # Documentation pages (import snippets here)
 ```

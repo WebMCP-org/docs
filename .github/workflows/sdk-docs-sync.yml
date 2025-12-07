@@ -97,7 +97,8 @@ jobs:
               - Root-level pages: introduction.mdx, quickstart.mdx, development.mdx, best-practices.mdx, security.mdx, troubleshooting.mdx, advanced.mdx
               - /concepts/: Core concepts (architecture, tool design, schemas, security, performance, glossary)
               - /packages/: NPM package reference (react-webmcp, transports, smart-dom-reader, etc.)
-              - /ai-frameworks/: AI framework integrations (assistant-ui, ag-ui, custom runtime)
+              - /calling-tools/: How agents call WebMCP tools (embedded agent, AI browsers, extension, devtools)
+              - /frameworks/: Framework integration guides (Vue, Svelte, Angular, Rails, etc.)
               - /extension/: Browser extension documentation (agents, userscripts)
               - /tools/: Tools documentation (claude-code integration)
               - /snippets/: Reusable code snippets (NOT for direct documentation - these are reusable fragments)

@@ -15,7 +15,8 @@ Core documentation pages live in the repository root:
 Specialized content is organized into directories:
 - **`/concepts/`**: Core concepts (architecture, tool design, schemas, security, performance, glossary)
 - **`/packages/`**: NPM package reference (react-webmcp, transports, smart-dom-reader, etc.)
-- **`/ai-frameworks/`**: AI framework integrations (assistant-ui, ag-ui, custom runtime)
+- **`/calling-tools/`**: How agents call WebMCP tools (embedded agent, AI browsers, extension, devtools)
+- **`/frameworks/`**: Framework-specific integration guides (Vue, Svelte, Angular, Rails, etc.)
 - **`/extension/`**: Browser extension documentation (agents, userscripts)
 - **`/tools/`**: Tools documentation (claude-code integration)
 - **`/snippets/`**: Reusable code snippets organized by category (core, templates, validation, imports, patterns, clients)
