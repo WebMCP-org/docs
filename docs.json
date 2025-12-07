@@ -240,7 +240,8 @@
           {
             "group": "Backend Frameworks",
             "pages": [
-              "frameworks/rails"
+              "frameworks/rails",
+              "frameworks/phoenix-liveview"
             ]
           }
         ]

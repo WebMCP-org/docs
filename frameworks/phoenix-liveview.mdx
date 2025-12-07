@@ -1,0 +1,132 @@
+---
+title: 'Phoenix LiveView Integration'
+description: 'Integrate WebMCP tools with Phoenix LiveView using JavaScript hooks.'
+icon: 'fire'
+---
+
+<Card title="Full Example" icon="github" href="https://github.com/WebMCP-org/examples/tree/main/phoenix-liveview">
+  Production-ready Phoenix LiveView example with real-time sync
+</Card>
+
+## Quick start
+
+```bash
+git clone https://github.com/WebMCP-org/examples.git
+cd examples/phoenix-liveview && mix deps.get && mix phx.server
+```
+
+## Why Phoenix LiveView?
+
+Phoenix LiveView's server-side state management creates a powerful pattern for WebMCP:
+
+- **Server-authoritative state** - Tools call into LiveView, which manages all state
+- **Real-time sync** - Changes push to all connected clients instantly
+- **No client state bugs** - AI tool calls and manual interactions stay in sync
+
+## The pattern
+
+Use LiveView JavaScript hooks with `mounted`/`destroyed` lifecycle:
+
+```javascript "assets/js/hooks/webmcp.js"
+import "@mcp-b/global"
+
+export const WebMCPHook = {
+  mounted() {
+    if (!('modelContext' in navigator)) return
+
+    this.registration = navigator.modelContext.registerTool({
+      name: 'increment',
+      description: 'Increment the counter',
+      inputSchema: {
+        type: 'object',
+        properties: { amount: { type: 'number' } }
+      },
+      execute: async ({ amount = 1 }) => {
+        // Push event to LiveView server
+        this.pushEvent('increment', { amount })
+        return { content: [{ type: 'text', text: 'Incremented' }] }
+      }
+    })
+  },
+
+  destroyed() {
+    this.registration?.unregister()
+  }
+}
+```
+
+```javascript "assets/js/app.js"
+import { WebMCPHook } from "./hooks/webmcp"
+
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: { WebMCPHook }
+})
+```
+
+```elixir "lib/app_web/live/counter_live.ex"
+defmodule AppWeb.CounterLive do
+  use AppWeb, :live_view
+
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, count: 0)}
+  end
+
+  def handle_event("increment", %{"amount" => amount}, socket) do
+    {:noreply, update(socket, :count, &(&1 + amount))}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div phx-hook="WebMCPHook" id="counter">
+      <p>Count: <%= @count %></p>
+    </div>
+    """
+  end
+end
+```
+
+## Installation
+
+Add `@mcp-b/global` to your JavaScript dependencies:
+
+```bash
+cd assets && npm install @mcp-b/global
+```
+
+## Bidirectional communication
+
+The power of LiveView + WebMCP is bidirectional:
+
+1. **AI → Server**: Tool calls push events to LiveView via `this.pushEvent()`
+2. **Server → Client**: LiveView pushes updates to all connected clients
+3. **Client → AI**: Updated DOM state is visible to AI on next tool call
+
+```javascript
+execute: async ({ item_name }) => {
+  // Push to server, get response via callback
+  this.pushEvent('add_item', { name: item_name }, (reply) => {
+    console.log('Server responded:', reply)
+  })
+  return { content: [{ type: 'text', text: `Added ${item_name}` }] }
+}
+```
+
+## Common issues
+
+<AccordionGroup>
+  <Accordion title="Hook not mounting">
+    Ensure the hook is registered in `app.js` and the element has both `phx-hook` and a unique `id` attribute.
+  </Accordion>
+
+  <Accordion title="Tool calls not reaching server">
+    Check that `this.pushEvent()` is being called. LiveView hooks must use `this.pushEvent()`, not regular fetch calls.
+  </Accordion>
+
+  <Accordion title="State out of sync">
+    LiveView handles this automatically - tool calls go to server, server broadcasts to all clients.
+  </Accordion>
+</AccordionGroup>
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.

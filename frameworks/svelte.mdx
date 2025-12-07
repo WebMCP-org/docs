@@ -4,11 +4,20 @@ description: 'Integrate WebMCP tools with Svelte and SvelteKit.'
 icon: 'code'
 ---
 
-<Info>
-**Prerequisites**: Install `@mcp-b/global` per the [Global Package docs](/packages/global). For the full API, see [Tool Registration](/concepts/tool-registration).
-</Info>
+<Card title="Full Example" icon="github" href="https://github.com/WebMCP-org/examples/tree/main/svelte">
+  Production-ready Svelte example with runes and actions
+</Card>
 
-## Basic Usage (Svelte 5)
+## Quick start
+
+```bash
+git clone https://github.com/WebMCP-org/examples.git
+cd examples/svelte && pnpm install && pnpm dev
+```
+
+## The pattern
+
+Use `onMount`/`onDestroy` for lifecycle management:
 
 ```svelte
 <script lang="ts">
@@ -24,9 +33,7 @@ icon: 'code'
       description: 'Increment the counter',
       inputSchema: {
         type: 'object',
-        properties: {
-          amount: { type: 'number' }
-        }
+        properties: { amount: { type: 'number' } }
       },
       async execute({ amount = 1 }) {
         count += amount as number;
@@ -41,9 +48,9 @@ icon: 'code'
 <p>Count: {count}</p>
 ```
 
-## SvelteKit (SSR-Safe)
+## SvelteKit SSR
 
-Use the `browser` check for SvelteKit:
+Add the `browser` check to avoid SSR errors:
 
 ```svelte "+page.svelte"
 <script lang="ts">
@@ -51,36 +58,20 @@ Use the `browser` check for SvelteKit:
   import { onMount, onDestroy } from 'svelte';
   import '@mcp-b/global';
 
-  export let data;
   let reg: { unregister: () => void } | null = null;
 
   onMount(() => {
     if (!browser) return;
-
-    reg = navigator.modelContext.registerTool({
-      name: 'search',
-      description: 'Search loaded data',
-      inputSchema: {
-        type: 'object',
-        properties: { query: { type: 'string' } },
-        required: ['query']
-      },
-      async execute({ query }) {
-        const results = data.items.filter(i =>
-          i.name.toLowerCase().includes((query as string).toLowerCase())
-        );
-        return { content: [{ type: 'text', text: JSON.stringify(results) }] };
-      }
-    });
+    reg = navigator.modelContext.registerTool({ /* ... */ });
   });
 
   onDestroy(() => reg?.unregister());
 </script>
 ```
 
-## Using Actions
+## Using actions
 
-Svelte actions can encapsulate tool registration:
+Svelte actions encapsulate tool registration cleanly:
 
 ```typescript "lib/actions/webmcp.ts"
 import '@mcp-b/global';
@@ -92,68 +83,23 @@ export function webmcp(node: HTMLElement, tool: Parameters<typeof navigator.mode
 ```
 
 ```svelte
-<script lang="ts">
-  import { webmcp } from '$lib/actions/webmcp';
-</script>
-
-<div use:webmcp={{
-  name: 'my_tool',
-  description: 'My tool',
-  inputSchema: { type: 'object', properties: {} },
-  async execute() {
-    return { content: [{ type: 'text', text: 'Done' }] };
-  }
-}}>
+<div use:webmcp={{ name: 'my_tool', description: 'My tool', ... }}>
   Content
 </div>
 ```
 
-## Layout-Level Tools
-
-Register in `+layout.svelte` for persistence across routes:
-
-```svelte "+layout.svelte"
-<script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { goto } from '$app/navigation';
-  import '@mcp-b/global';
-
-  let reg: { unregister: () => void } | null = null;
-
-  onMount(() => {
-    reg = navigator.modelContext.registerTool({
-      name: 'navigate',
-      description: 'Navigate to a page',
-      inputSchema: {
-        type: 'object',
-        properties: { path: { type: 'string' } },
-        required: ['path']
-      },
-      async execute({ path }) {
-        await goto(path as string);
-        return { content: [{ type: 'text', text: `Navigated to ${path}` }] };
-      }
-    });
-  });
-
-  onDestroy(() => reg?.unregister());
-</script>
-
-<slot />
-```
-
-## Common Gotchas
+## Common issues
 
 <AccordionGroup>
   <Accordion title="'navigator is not defined' during SSR">
-    Use the `browser` check:
-    ```typescript
-    import { browser } from '$app/environment';
-    if (browser) { /* safe to use navigator */ }
-    ```
+    Use the `browser` check from `$app/environment` in SvelteKit.
   </Accordion>
 
   <Accordion title="Tools disappear after navigation">
-    Move registration to `+layout.svelte` for persistence.
+    Move registration to `+layout.svelte` for persistence across routes.
   </Accordion>
 </AccordionGroup>
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.

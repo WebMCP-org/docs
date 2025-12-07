@@ -4,9 +4,16 @@ description: 'Integrate WebMCP tools with Ruby on Rails using Stimulus controlle
 icon: 'gem'
 ---
 
-<Info>
-**Prerequisites**: For the full API, see [Global Package](/packages/global) and [Tool Registration](/concepts/tool-registration).
-</Info>
+<Card title="Full Example" icon="github" href="https://github.com/WebMCP-org/examples/tree/main/rails">
+  Production-ready Rails example with Stimulus controllers
+</Card>
+
+## Quick start
+
+```bash
+git clone https://github.com/WebMCP-org/examples.git
+cd examples/rails && bundle install && bin/rails server
+```
 
 ## Installation
 
@@ -20,7 +27,9 @@ bin/importmap pin @mcp-b/global
 npm install @mcp-b/global
 ```
 
-## Basic Stimulus Controller
+## The pattern
+
+Use Stimulus `connect`/`disconnect` for lifecycle management:
 
 ```javascript "app/javascript/controllers/webmcp_controller.js"
 import { Controller } from "@hotwired/stimulus"
@@ -28,7 +37,6 @@ import "@mcp-b/global"
 
 export default class extends Controller {
   static values = { name: String, description: String }
-
   #registration = null
 
   connect() {
@@ -58,53 +66,9 @@ export default class extends Controller {
 </div>
 ```
 
-## With Backend API
+## Turbo persistence
 
-```javascript "app/javascript/controllers/cart_controller.js"
-import { Controller } from "@hotwired/stimulus"
-import "@mcp-b/global"
-
-export default class extends Controller {
-  #registration = null
-
-  connect() {
-    if (!('modelContext' in navigator)) return
-
-    this.#registration = navigator.modelContext.registerTool({
-      name: 'add_to_cart',
-      description: 'Add a product to the cart',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          productId: { type: 'string' },
-          quantity: { type: 'number' }
-        },
-        required: ['productId']
-      },
-      execute: async ({ productId, quantity = 1 }) => {
-        const response = await fetch('/cart/items', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-          },
-          body: JSON.stringify({ product_id: productId, quantity })
-        })
-        const result = await response.json()
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] }
-      }
-    })
-  }
-
-  disconnect() {
-    this.#registration?.unregister()
-  }
-}
-```
-
-## Global Tools
-
-Attach to `<body>` for persistence across Turbo navigations:
+Attach controllers to `<body>` for persistence across Turbo navigations:
 
 ```erb
 <%# app/views/layouts/application.html.erb %>
@@ -113,42 +77,11 @@ Attach to `<body>` for persistence across Turbo navigations:
 </body>
 ```
 
-```javascript "app/javascript/controllers/global_tools_controller.js"
-import { Controller } from "@hotwired/stimulus"
-import "@mcp-b/global"
-
-export default class extends Controller {
-  #registration = null
-
-  connect() {
-    if (!('modelContext' in navigator)) return
-
-    this.#registration = navigator.modelContext.registerTool({
-      name: 'navigate',
-      description: 'Navigate to a page',
-      inputSchema: {
-        type: 'object',
-        properties: { path: { type: 'string' } },
-        required: ['path']
-      },
-      execute: async ({ path }) => {
-        Turbo.visit(path)
-        return { content: [{ type: 'text', text: `Navigating to ${path}` }] }
-      }
-    })
-  }
-
-  disconnect() {
-    this.#registration?.unregister()
-  }
-}
-```
-
-## Common Gotchas
+## Common issues
 
 <AccordionGroup>
   <Accordion title="CSRF token issues">
-    Include the CSRF token in requests:
+    Include the CSRF token in fetch requests:
     ```javascript
     headers: {
       'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
@@ -157,18 +90,14 @@ export default class extends Controller {
   </Accordion>
 
   <Accordion title="Tools not registering after Turbo navigation">
-    Place controllers on `<body>` so they persist, or use `turbo:load` event:
-    ```javascript
-    document.addEventListener('turbo:load', () => {
-      // Re-register if needed
-    })
-    ```
+    Place controllers on `<body>` so they persist, or handle `turbo:load` event.
   </Accordion>
 
   <Accordion title="importmap not finding @mcp-b/global">
-    Pin the package:
-    ```bash
-    bin/importmap pin @mcp-b/global
-    ```
+    Pin the package: `bin/importmap pin @mcp-b/global`
   </Accordion>
 </AccordionGroup>
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.
