@@ -5,18 +5,45 @@ sidebarTitle: Chrome DevTools MCP
 icon: chrome
 ---
 
-MCP server that lets AI agents control Chrome browsers via the Chrome DevTools Protocol, with WebMCP integration for calling tools registered on webpages.
+Fork of Google's official [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) that adds **WebMCP integration** for calling tools registered on webpages.
 
-<Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/@mcp-b/chrome-devtools-mcp">
-  @mcp-b/chrome-devtools-mcp
-</Card>
+<CardGroup cols={2}>
+  <Card title="NPM Package" icon="npm" href="https://www.npmjs.com/package/@mcp-b/chrome-devtools-mcp">
+    @mcp-b/chrome-devtools-mcp
+  </Card>
+  <Card title="Upstream Repository" icon="github" href="https://github.com/ChromeDevTools/chrome-devtools-mcp">
+    Original by Google Chrome team
+  </Card>
+</CardGroup>
 
 ## Key features
 
-- **28 browser automation tools** - navigation, input, screenshots, performance, debugging
-- **WebMCP integration** - call tools registered via [@mcp-b/global](/packages/global)
+- **28 browser automation tools** - navigation, input, screenshots, performance, debugging (from upstream)
+- **WebMCP integration** - call tools registered via [@mcp-b/global](/packages/global) (**added in this fork**)
 - **AI-driven development** - build and test WebMCP tools in a tight feedback loop
 - **Works with all MCP clients** - Claude Code, Cursor, VS Code, Gemini CLI, Windsurf
+
+## Prerequisite: Website polyfill
+
+For `list_webmcp_tools` and `call_webmcp_tool` to work, your website must have the [@mcp-b/global](/packages/global) polyfill installed:
+
+```html
+<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+```
+
+Or via NPM:
+
+```bash
+npm install @mcp-b/global
+```
+
+```javascript
+import '@mcp-b/global';
+```
+
+<Warning>
+Without the polyfill, `list_webmcp_tools` returns an empty list. The polyfill adds `navigator.modelContext` which the DevTools MCP server queries.
+</Warning>
 
 ## AI-driven development workflow
 
@@ -150,5 +177,11 @@ This server exposes browser content to MCP clients. Avoid sensitive data.
   </Card>
   <Card title="Tool Registration" icon="screwdriver-wrench" href="/concepts/tool-registration">
     How to write WebMCP tools
+  </Card>
+  <Card title="Chrome DevTools MCP (Upstream)" icon="chrome" href="https://github.com/ChromeDevTools/chrome-devtools-mcp">
+    Original project by Google Chrome team
+  </Card>
+  <Card title="Quick Start Guide" icon="rocket" href="/calling-tools/devtools-mcp">
+    Step-by-step setup guide
   </Card>
 </CardGroup>

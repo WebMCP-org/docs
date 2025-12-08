@@ -1,28 +1,86 @@
 ---
 title: 'Chrome DevTools MCP'
-description: 'Connect MCP clients directly to Chrome for development, testing, and browser automation.'
+description: 'Build and test WebMCP websites with AI-driven development using Chrome DevTools Protocol.'
 icon: 'chrome'
 ---
 
-`@mcp-b/chrome-devtools-mcp` connects MCP clients (Claude Code, Cursor, etc.) directly to Chrome using the Chrome DevTools Protocol. It provides browser automation tools plus WebMCP integration for testing your tools.
+`@mcp-b/chrome-devtools-mcp` is a fork of Google's official [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) server that adds **WebMCP integration**. It connects MCP clients (Claude Code, Cursor, etc.) directly to Chrome using the Chrome DevTools Protocol.
+
+<Info>
+**Fork of Official Chrome DevTools MCP**
+
+This package extends the [official Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) by Google with two additional tools: `list_webmcp_tools` and `call_webmcp_tool`. All 28 browser automation tools from the original are included.
+</Info>
+
+## Prerequisite: Add the WebMCP Polyfill
+
+For AI agents to call your WebMCP tools, your website must have the `@mcp-b/global` polyfill installed. This adds `navigator.modelContext` to your page.
+
+<Tabs>
+  <Tab title="Script Tag (Easiest)">
+    Add to your HTML `<head>`:
+
+    ```html
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    ```
+
+    That's it! The polyfill auto-initializes and is ready immediately.
+  </Tab>
+
+  <Tab title="ESM Import">
+    ```javascript
+    import 'https://unpkg.com/@mcp-b/global@latest/dist/index.esm.js';
+    ```
+  </Tab>
+
+  <Tab title="NPM">
+    ```bash
+    npm install @mcp-b/global
+    ```
+
+    ```javascript
+    import '@mcp-b/global';
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+Without the polyfill, `list_webmcp_tools` will return an empty list and `call_webmcp_tool` will fail.
+</Warning>
 
 ## Quick Setup
 
 <Steps>
-  <Step title="Add to your MCP client">
+  <Step title="Add polyfill to your website">
+    Add to your HTML `<head>`:
+    ```html
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    ```
+  </Step>
+
+  <Step title="Register a tool">
+    ```javascript
+    navigator.modelContext.registerTool({
+      name: "hello",
+      description: "Say hello",
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        return { content: [{ type: "text", text: "Hello from WebMCP!" }] };
+      }
+    });
+    ```
+  </Step>
+
+  <Step title="Add MCP server to your AI client">
     ```bash
     claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
     ```
   </Step>
 
-  <Step title="Start Chrome with debugging">
-    The server will prompt you to enable remote debugging if needed.
-  </Step>
-
   <Step title="Test the connection">
     Ask your AI:
     ```
-    Navigate to http://localhost:3000 and list available WebMCP tools
+    Navigate to http://localhost:3000, list available WebMCP tools, and call the hello tool
     ```
   </Step>
 </Steps>
