@@ -94,6 +94,8 @@
               "frameworks/nuxt",
               "frameworks/svelte",
               "frameworks/angular",
+              "frameworks/tanstack-start",
+              "frameworks/remix",
               "frameworks/rails",
               "frameworks/phoenix-liveview"
             ]

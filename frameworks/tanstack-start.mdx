@@ -1,0 +1,153 @@
+---
+title: 'TanStack Start Integration'
+description: 'Integrate WebMCP tools with TanStack Start, handling SSR safely.'
+icon: 'layer-group'
+---
+
+TanStack Start uses SSR by default, so WebMCP code must only run on the client.
+
+## Basic Usage
+
+Use the `useEffect` hook to ensure registration only happens on the client:
+
+```tsx "routes/index.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import '@mcp-b/global';
+
+export const Route = createFileRoute('/')({
+  component: Home,
+});
+
+function Home() {
+  useEffect(() => {
+    const reg = navigator.modelContext.registerTool({
+      name: 'get_page',
+      description: 'Get current page info',
+      inputSchema: { type: 'object', properties: {} },
+      async execute() {
+        return { content: [{ type: 'text', text: window.location.pathname }] };
+      },
+    });
+
+    return () => reg.unregister();
+  }, []);
+
+  return <div>Home</div>;
+}
+```
+
+## Using react-webmcp
+
+For a cleaner API with Zod validation, use [`@mcp-b/react-webmcp`](/packages/react-webmcp):
+
+```tsx "routes/index.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export const Route = createFileRoute('/')({
+  component: Home,
+});
+
+function Home() {
+  useWebMCP({
+    name: 'greet',
+    description: 'Greet a user',
+    schema: z.object({
+      name: z.string().describe('Name to greet'),
+    }),
+    handler: async ({ name }) => {
+      return `Hello, ${name}!`;
+    },
+  });
+
+  return <div>Home</div>;
+}
+```
+
+<Note>
+`useWebMCP` handles SSR safety internally - it only registers on the client.
+</Note>
+
+## With Loader Data
+
+Access server-loaded data in your tools:
+
+```tsx "routes/products/$productId.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export const Route = createFileRoute('/products/$productId')({
+  loader: async ({ params }) => {
+    const product = await fetchProduct(params.productId);
+    return { product };
+  },
+  component: ProductPage,
+});
+
+function ProductPage() {
+  const { product } = Route.useLoaderData();
+
+  useWebMCP({
+    name: 'get_product',
+    description: 'Get current product details',
+    schema: z.object({}),
+    handler: async () => {
+      return JSON.stringify(product);
+    },
+  });
+
+  return <div>{product.name}</div>;
+}
+```
+
+## App-Wide Tools
+
+Register tools in your root route for persistence across navigation:
+
+```tsx "routes/__root.tsx"
+import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export const Route = createRootRoute({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  useWebMCP({
+    name: 'navigate',
+    description: 'Navigate to a page',
+    schema: z.object({
+      path: z.string().describe('Path to navigate to'),
+    }),
+    handler: async ({ path }) => {
+      window.location.href = path;
+      return `Navigating to ${path}`;
+    },
+  });
+
+  return <Outlet />;
+}
+```
+
+## Common Gotchas
+
+<AccordionGroup>
+  <Accordion title="'navigator is not defined' error">
+    Code is running during SSR. Solutions:
+    - Use `useWebMCP` from `@mcp-b/react-webmcp` (handles this automatically)
+    - Wrap registration in `useEffect`
+    - Check `typeof window !== 'undefined'` before accessing `navigator`
+  </Accordion>
+
+  <Accordion title="Tools disappear after navigation">
+    Register tools in `__root.tsx` so they persist across route changes.
+  </Accordion>
+</AccordionGroup>
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.
