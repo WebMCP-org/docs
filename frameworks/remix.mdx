@@ -1,17 +1,51 @@
 ---
 title: 'Remix'
-description: 'WebMCP works out of the box with Remix.'
+description: 'Integrate WebMCP with Remix using client-only patterns for SSR safety.'
 sidebarTitle: 'Remix'
 icon: 'rotate'
 ---
 
-Remix just works with [`@mcp-b/react-webmcp`](/packages/react-webmcp). The `useWebMCP` hook handles SSR safety internally—no special configuration needed.
+WebMCP relies on browser APIs (`navigator.modelContext`) that don't exist on the server. Remix renders components on both server and client during SSR, so you must ensure WebMCP code only runs in the browser.
+
+## The challenge
+
+Remix components run during both SSR and client-side hydration by default. This means:
+
+- `@mcp-b/global` polyfill cannot be imported at module level in routes
+- `useWebMCP` hooks will fail during SSR if not guarded
+- You need explicit client-only patterns
+
+## Client-only tool registration
+
+Use `ClientOnly` from `remix-utils` (recommended) or lazy imports to ensure tools only register on the client:
+
+### Using ClientOnly (recommended)
+
+```bash
+pnpm add remix-utils
+```
 
 ```tsx "app/routes/_index.tsx"
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { z } from 'zod';
+import { ClientOnly } from 'remix-utils/client-only';
 
 export default function Index() {
+  return (
+    <div>
+      <h1>Home</h1>
+      <ClientOnly fallback={null}>
+        {() => <HomeTools />}
+      </ClientOnly>
+    </div>
+  );
+}
+
+// Separate component ensures imports happen client-side
+function HomeTools() {
+  // These imports only execute on the client
+  require('@mcp-b/global');
+  const { useWebMCP } = require('@mcp-b/react-webmcp');
+  const { z } = require('zod');
+
   useWebMCP({
     name: 'greet',
     description: 'Greet a user',
@@ -19,10 +53,124 @@ export default function Index() {
     handler: async ({ name }) => `Hello, ${name}!`,
   });
 
-  return <div>Home</div>;
+  return null;
 }
 ```
 
-For tools that persist across navigation, register them in `root.tsx`.
+### Using lazy imports
 
-For complex SSR patterns (nested layouts, context providers, embedded agents), see the [Next.js guide](/frameworks/react) which covers React SSR in depth.
+```tsx "app/routes/_index.tsx"
+import { lazy, Suspense } from 'react';
+
+// Lazy load the tools component - only runs on client
+const HomeTools = lazy(() => import('~/components/home-tools'));
+
+export default function Index() {
+  return (
+    <div>
+      <h1>Home</h1>
+      <Suspense fallback={null}>
+        <HomeTools />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+```tsx "app/components/home-tools.tsx"
+import '@mcp-b/global'; // Safe - only imported when this module loads on client
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export default function HomeTools() {
+  useWebMCP({
+    name: 'greet',
+    description: 'Greet a user',
+    inputSchema: { name: z.string() },
+    handler: async ({ name }) => `Hello, ${name}!`,
+  });
+
+  return null; // Tools component renders nothing
+}
+```
+
+<Warning>
+**Don't import `@mcp-b/global` in route files directly.** Route files are bundled for SSR and will fail when the polyfill tries to access `navigator`. Always import it in lazily-loaded client components or inside `ClientOnly`.
+</Warning>
+
+## Tools that persist across navigation
+
+For tools that should remain registered across route changes, place them in `root.tsx` using the same client-only pattern:
+
+```tsx "app/root.tsx"
+import { ClientOnly } from 'remix-utils/client-only';
+import {
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+} from '@remix-run/react';
+
+export default function App() {
+  return (
+    <html lang="en">
+      <head>
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <ClientOnly fallback={null}>
+          {() => <GlobalTools />}
+        </ClientOnly>
+        <Outlet />
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+function GlobalTools() {
+  require('@mcp-b/global');
+  const { useWebMCP } = require('@mcp-b/react-webmcp');
+
+  useWebMCP({
+    name: 'navigate',
+    description: 'Navigate to a page',
+    inputSchema: { path: require('zod').z.string() },
+    handler: async ({ path }) => {
+      window.location.href = path;
+      return { navigatedTo: path };
+    },
+  });
+
+  return null;
+}
+```
+
+## Common errors
+
+<AccordionGroup>
+  <Accordion title="'navigator is not defined' or 'navigator.modelContext is undefined'">
+    **Cause:** `@mcp-b/global` is being imported during SSR
+
+    **Solution:** Use `ClientOnly` from remix-utils or lazy imports to ensure the polyfill only loads on the client.
+  </Accordion>
+
+  <Accordion title="Tools not appearing after navigation">
+    **Cause:** Tools are registered in page components that unmount on navigation
+
+    **Solution:** Move persistent tools to `root.tsx` using the client-only pattern above.
+  </Accordion>
+
+  <Accordion title="Hydration mismatch errors">
+    **Cause:** Server HTML doesn't match client HTML because tools render differently
+
+    **Solution:** Ensure tool components return `null` and use `ClientOnly fallback={null}` for consistent server/client output.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+For complex patterns (nested layouts, context providers, embedded agents), see the [Next.js guide](/frameworks/react) which covers React SSR patterns in depth—the concepts apply to Remix as well.

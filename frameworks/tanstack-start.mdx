@@ -1,22 +1,53 @@
 ---
 title: 'TanStack Start'
-description: 'WebMCP works out of the box with TanStack Start.'
+description: 'Integrate WebMCP with TanStack Start using client-only patterns for SSR safety.'
 sidebarTitle: 'TanStack Start'
 icon: 'layer-group'
 ---
 
-TanStack Start just works with [`@mcp-b/react-webmcp`](/packages/react-webmcp). The `useWebMCP` hook handles SSR safety internally—no special configuration needed.
+WebMCP relies on browser APIs (`navigator.modelContext`) that don't exist on the server. TanStack Start renders components on both server and client during SSR, so you must ensure WebMCP code only runs in the browser.
 
-```tsx "routes/index.tsx"
+## The challenge
+
+Unlike Next.js which has explicit `'use client'` directives, TanStack Start components run during both SSR and client-side hydration by default. This means:
+
+- `@mcp-b/global` polyfill cannot be imported at module level
+- `useWebMCP` hooks will fail during SSR if not guarded
+- You need explicit client-only patterns
+
+## Client-only tool registration
+
+Wrap your WebMCP tools in a client-only component using dynamic imports:
+
+```tsx "routes/index.tsx" twoslash
 import { createFileRoute } from '@tanstack/react-router';
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { z } from 'zod';
+import { lazy, Suspense } from 'react';
+
+// Lazy load the tools component - only runs on client
+const HomeTools = lazy(() => import('../components/home-tools'));
 
 export const Route = createFileRoute('/')({
   component: Home,
 });
 
 function Home() {
+  return (
+    <div>
+      <h1>Home</h1>
+      <Suspense fallback={null}>
+        <HomeTools />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+```tsx "components/home-tools.tsx" twoslash
+import '@mcp-b/global'; // Safe - only imported when this module loads on client
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export default function HomeTools() {
   useWebMCP({
     name: 'greet',
     description: 'Greet a user',
@@ -24,10 +55,124 @@ function Home() {
     handler: async ({ name }) => `Hello, ${name}!`,
   });
 
-  return <div>Home</div>;
+  return null; // Tools component renders nothing
 }
 ```
 
-For tools that persist across navigation, register them in `__root.tsx`.
+<Warning>
+**Don't import `@mcp-b/global` in route files directly.** Route files are bundled for SSR and will fail when the polyfill tries to access `navigator`. Always import it in lazily-loaded client components.
+</Warning>
 
-For complex SSR patterns (nested layouts, context providers, embedded agents), see the [Next.js guide](/frameworks/react) which covers React SSR in depth.
+## Alternative: Environment check
+
+If you prefer keeping tools in the same file, guard with an environment check:
+
+```tsx "routes/index.tsx"
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+
+export const Route = createFileRoute('/')({
+  component: Home,
+});
+
+function Home() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  return (
+    <div>
+      <h1>Home</h1>
+      {isClient && <HomeTools />}
+    </div>
+  );
+}
+
+// Separate component that only mounts on client
+function HomeTools() {
+  // Dynamic import ensures this only loads on client
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    import('@mcp-b/global').then(() => {
+      setReady(true);
+    });
+  }, []);
+
+  if (!ready) return null;
+
+  return <ToolsInner />;
+}
+
+function ToolsInner() {
+  const { useWebMCP } = require('@mcp-b/react-webmcp');
+  const { z } = require('zod');
+
+  useWebMCP({
+    name: 'greet',
+    description: 'Greet a user',
+    inputSchema: { name: z.string() },
+    handler: async ({ name }) => `Hello, ${name}!`,
+  });
+
+  return null;
+}
+```
+
+<Info>
+The lazy import pattern (first example) is cleaner and recommended. The environment check pattern is useful when you can't easily split into separate files.
+</Info>
+
+## Tools that persist across navigation
+
+For tools that should remain registered across route changes, place them in `__root.tsx` using the same client-only pattern:
+
+```tsx "routes/__root.tsx"
+import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { lazy, Suspense } from 'react';
+
+const GlobalTools = lazy(() => import('../components/global-tools'));
+
+export const Route = createRootRoute({
+  component: Root,
+});
+
+function Root() {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <GlobalTools />
+      </Suspense>
+      <Outlet />
+    </>
+  );
+}
+```
+
+## Common errors
+
+<AccordionGroup>
+  <Accordion title="'navigator is not defined' or 'navigator.modelContext is undefined'">
+    **Cause:** `@mcp-b/global` is being imported during SSR
+
+    **Solution:** Use lazy imports or dynamic `import()` to ensure the polyfill only loads on the client.
+  </Accordion>
+
+  <Accordion title="Tools not appearing after navigation">
+    **Cause:** Tools are registered in page components that unmount on navigation
+
+    **Solution:** Move persistent tools to `__root.tsx` using the client-only pattern above.
+  </Accordion>
+
+  <Accordion title="Hydration mismatch errors">
+    **Cause:** Server HTML doesn't match client HTML because tools render differently
+
+    **Solution:** Ensure tool components return `null` and use `Suspense` with `fallback={null}` for consistent server/client output.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+For complex patterns (nested layouts, context providers, embedded agents), see the [Next.js guide](/frameworks/react) which covers React SSR patterns in depth—the concepts apply to TanStack Start as well.
