@@ -1,0 +1,370 @@
+---
+title: 'React & Next.js Integration'
+description: 'Integrate WebMCP tools with React and Next.js, handling SSR safely with best practices for App Router.'
+icon: 'react'
+---
+
+<Card title="Full Example" icon="github" href="https://github.com/WebMCP-org/examples/tree/main/react">
+  Production-ready React example with useWebMCP() hooks
+</Card>
+
+React users should use [`@mcp-b/react-webmcp`](/packages/react-webmcp) instead of `@mcp-b/global` directly—it handles lifecycle automatically and provides Zod validation. This guide covers **SSR-specific challenges** when using WebMCP with Next.js App Router.
+
+## The fundamental challenge
+
+WebMCP relies on browser APIs (`navigator.modelContext`, `postMessage`, DOM access) that **do not exist on the server**. Next.js App Router defaults to Server Components, which means:
+
+- Tools **cannot** be registered in Server Components
+- The `@mcp-b/global` polyfill **must** run on the client
+- Any component using `useWebMCP` or `useWebMCPPrompt` **must** be a Client Component
+
+## Polyfill placement
+
+The `@mcp-b/global` polyfill must be imported in a Client Component **before** any tools are registered. Import it at the highest layout that contains your tools—but **not necessarily at the root**.
+
+<Warning>
+**Don't make your root layout a Client Component** unless you need to. This disables SSR for your entire application. Instead, import the polyfill in the feature layout(s) where tools are used.
+</Warning>
+
+```tsx "src/app/(dashboard)/layout.tsx"
+'use client';
+
+import '@mcp-b/global';  // Import FIRST, before other components
+import { DashboardTools } from '@/components/dashboard-tools';
+
+export default function DashboardLayout({ children }) {
+  return (
+    <>
+      <DashboardTools />
+      {children}
+    </>
+  );
+}
+```
+
+If you have tools in multiple unrelated sections, import the polyfill in each feature layout:
+
+```
+src/app/layout.tsx              # Server Component - keeps SSR benefits
+src/app/(dashboard)/layout.tsx  # 'use client' + @mcp-b/global
+src/app/(settings)/layout.tsx   # 'use client' + @mcp-b/global
+```
+
+The polyfill is small and idempotent—importing it multiple times is fine.
+
+<Info>
+If the polyfill isn't working, you'll see:
+- `navigator.modelContext is undefined`
+- Tools don't appear in the MCP inspector
+- No errors, but tools simply don't register
+</Info>
+
+## Client components are required
+
+Every WebMCP hook needs `'use client'`:
+
+```tsx
+// Server Component (default in App Router)
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+export function MyTools() {
+  useWebMCP({ ... });  // [!code --]
+  // Will fail - hooks can't run on server
+  return null;
+}
+```
+
+```tsx
+// Client Component
+'use client';  // [!code ++]
+
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+export function MyTools() {
+  useWebMCP({ ... });  // [!code ++]
+  // Works - runs in browser
+  return null;
+}
+```
+
+Hooks that require Client Components:
+- `useWebMCP()` - tool registration
+- `useWebMCPPrompt()` - prompt registration
+- `useWebMCPResource()` - resource registration
+- `useWebMCPContext()` - context registration
+- `useMcpClient()` - MCP client access
+
+## Embedded agent setup
+
+The embedded agent uses browser APIs and must be loaded client-side only using dynamic import:
+
+```tsx "src/components/embedded-agent.tsx"
+'use client';
+
+import dynamic from 'next/dynamic';
+
+const EmbeddedAgent = dynamic(
+  () => import('@mcp-b/embedded-agent/web-component').then(mod => mod.EmbeddedAgent),
+  { ssr: false }  // Critical - prevents server-side rendering
+);
+
+export function MyEmbeddedAgent() {
+  return (
+    <EmbeddedAgent
+      appId="your-app-id"
+      devMode={{
+        anthropicApiKey: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '',
+      }}
+    />
+  );
+}
+```
+
+<Info>
+`ssr: false` is required because the embedded agent accesses `window`, `document`, and other browser APIs. Server-side rendering will crash with "window is not defined".
+</Info>
+
+## Avoiding duplicate components
+
+Next.js App Router supports nested layouts. If you add the embedded agent to multiple layouts, it will render multiple times:
+
+```
+src/app/(calendar)/layout.tsx → Has <EmbeddedAgent />
+src/app/(calendar)/week/layout.tsx → Also has <EmbeddedAgent />
+
+Result: TWO embedded agents on the page!
+```
+
+**Place the agent in ONE feature layout** that wraps all pages needing AI access:
+
+```tsx "src/app/(calendar)/layout.tsx"
+'use client';
+
+import '@mcp-b/global';
+import { CalendarProvider } from '@/contexts/calendar';
+import { CalendarTools } from '@/components/calendar-tools';
+import { MyEmbeddedAgent } from '@/components/embedded-agent';
+
+export default function CalendarLayout({ children }) {
+  return (
+    <CalendarProvider>
+      <CalendarTools />
+      <MyEmbeddedAgent />
+      {children}
+    </CalendarProvider>
+  );
+}
+```
+
+This keeps your root layout as a Server Component while giving tools access to the context they need.
+
+## Tool registration with context
+
+WebMCP tools frequently need access to application state. This creates a dependency chain:
+
+```
+Context Provider → Tools Component → Tools can access state
+```
+
+```tsx "src/app/(feature)/layout.tsx"
+'use client';
+
+import '@mcp-b/global';
+import { FeatureProvider } from '@/contexts/feature';
+import { FeatureTools } from '@/components/feature-tools';
+
+export default function FeatureLayout({ children }) {
+  return (
+    <FeatureProvider>        {/* 1. Provider wraps everything */}
+      <FeatureTools />       {/* 2. Tools inside provider */}
+      {children}
+    </FeatureProvider>
+  );
+}
+```
+
+```tsx "src/components/feature-tools.tsx"
+'use client';
+
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { useFeature } from '@/contexts/feature';
+import { z } from 'zod';
+
+export function FeatureTools() {
+  const { data, setData } = useFeature();
+
+  useWebMCP({
+    name: 'get_data',
+    description: 'Get current feature data',
+    handler: async () => data,
+  });
+
+  useWebMCP({
+    name: 'update_data',
+    description: 'Update feature data',
+    inputSchema: { value: z.string() },
+    handler: async (input) => {
+      setData(input.value);
+      return { success: true };
+    },
+  });
+
+  return null;  // Tools component renders nothing
+}
+```
+
+<Warning>
+Tools placed **outside** the provider can't access context:
+```tsx
+// Tools can't access context here
+export default function Layout({ children }) {
+  return (
+    <>
+      <FeatureTools />      {/* Outside provider - useFeature() fails */}
+      <FeatureProvider>
+        {children}
+      </FeatureProvider>
+    </>
+  );
+}
+```
+</Warning>
+
+## Navigation tools
+
+Tools can navigate using Next.js router:
+
+```tsx
+'use client';
+
+import { useRouter, usePathname } from 'next/navigation';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export function NavigationTools() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useWebMCP({
+    name: 'navigate_to_page',
+    description: 'Navigate to a specific page',
+    inputSchema: {
+      path: z.enum(['/dashboard', '/settings', '/profile']),
+    },
+    handler: async ({ path }) => {
+      if (pathname !== path) {
+        router.push(path);
+      }
+      return { navigatedTo: path };
+    },
+  });
+
+  return null;
+}
+```
+
+<Info>
+In Next.js App Router, the root layout persists across navigations. Tools registered in root layout stay registered, while tools in page components unmount/remount on navigation.
+</Info>
+
+## Common errors
+
+<AccordionGroup>
+  <Accordion title="'navigator.modelContext is undefined'">
+    **Cause:** Polyfill not loaded or running on server
+
+    **Solution:**
+    1. Ensure `import '@mcp-b/global'` is in a Client Component
+    2. Import it at the very top, before other imports
+    3. Make sure the component has `'use client'` directive
+  </Accordion>
+
+  <Accordion title="'window is not defined'">
+    **Cause:** Browser-only code running during SSR
+
+    **Solution:**
+    ```tsx
+    // Use dynamic import with ssr: false
+    const Component = dynamic(() => import('./Component'), { ssr: false });
+
+    // Or check for browser environment
+    if (typeof window !== 'undefined') {
+      // Browser-only code
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="'Cannot read properties of undefined (reading registerTool)'">
+    **Cause:** Polyfill hasn't initialized yet
+
+    **Solution:**
+    ```tsx
+    // Ensure polyfill is imported before any tool registration
+    import '@mcp-b/global';  // FIRST
+    import { useWebMCP } from '@mcp-b/react-webmcp';  // AFTER
+    ```
+  </Accordion>
+
+  <Accordion title="Tools not appearing">
+    **Possible Causes:**
+    1. Component using `useWebMCP` isn't mounted
+    2. Component is a Server Component (missing `'use client'`)
+    3. Tool registration is conditional and condition is false
+    4. Polyfill loaded after tools tried to register
+
+    **Debug:**
+    ```tsx
+    const { state } = useWebMCP({
+      name: 'my_tool',
+      // ...
+    });
+
+    console.log('Tool registered, state:', state);
+    ```
+  </Accordion>
+
+  <Accordion title="Duplicate tools or agents">
+    **Cause:** Component mounted multiple times (e.g., in nested layouts)
+
+    **Solution:** Only render WebMCP components in ONE layout. Use React DevTools to check component tree for duplicates.
+  </Accordion>
+</AccordionGroup>
+
+## Deployment checklist
+
+Before deploying your WebMCP + Next.js app:
+
+- [ ] Root layout is a **Server Component** (no `'use client'`) to preserve SSR
+- [ ] Feature layout(s) have `'use client'` and import `@mcp-b/global`
+- [ ] All components using WebMCP hooks have `'use client'`
+- [ ] Embedded agent uses `dynamic()` with `{ ssr: false }`
+- [ ] Embedded agent is rendered in only ONE layout
+- [ ] Tools that need context are inside their Provider
+- [ ] Environment variables use `NEXT_PUBLIC_` prefix for client access
+
+## Recommended architecture
+
+```
+src/
+├── app/
+│   ├── layout.tsx          # Server Component - keeps SSR benefits
+│   └── (feature)/
+│       ├── layout.tsx      # 'use client' + @mcp-b/global + provider + tools + agent
+│       └── page.tsx        # Can be Server Component for data fetching
+├── components/
+│   ├── embedded-agent.tsx  # Dynamic import, ssr: false
+│   └── feature-tools.tsx   # 'use client', useWebMCP hooks
+└── contexts/
+    └── feature.tsx         # 'use client', React context
+```
+
+This structure ensures:
+1. Root layout stays a Server Component (SSR preserved)
+2. Polyfill loads in feature layouts where tools are used
+3. Tools have access to context (feature layout)
+4. Agent renders once (feature layout only)
+5. Pages can still use Server Components for data fetching
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.

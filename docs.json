@@ -90,12 +90,19 @@
             "group": "Framework Guides",
             "pages": [
               "frameworks/index",
+              {
+                "group": "React",
+                "icon": "react",
+                "pages": [
+                  "frameworks/react",
+                  "frameworks/tanstack-start",
+                  "frameworks/remix"
+                ]
+              },
               "frameworks/vue",
               "frameworks/nuxt",
               "frameworks/svelte",
               "frameworks/angular",
-              "frameworks/tanstack-start",
-              "frameworks/remix",
               "frameworks/rails",
               "frameworks/phoenix-liveview"
             ]
