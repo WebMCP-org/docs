@@ -20,29 +20,44 @@ WebMCP relies on browser APIs (`navigator.modelContext`, `postMessage`, DOM acce
 
 ## Polyfill placement
 
-The `@mcp-b/global` polyfill must be imported at the **top level** of your application, **before** any tools are registered.
+The `@mcp-b/global` polyfill must be imported in a Client Component **before** any tools are registered. Import it at the highest layout that contains your tools—but **not necessarily at the root**.
 
-```tsx "src/app/layout.tsx"
-'use client'  // Required - layout must be client component
+<Warning>
+**Don't make your root layout a Client Component** unless you need to. This disables SSR for your entire application. Instead, import the polyfill in the feature layout(s) where tools are used.
+</Warning>
+
+```tsx "src/app/(dashboard)/layout.tsx"
+'use client';
 
 import '@mcp-b/global';  // Import FIRST, before other components
-import './globals.css';
+import { DashboardTools } from '@/components/dashboard-tools';
 
-export default function RootLayout({ children }) {
+export default function DashboardLayout({ children }) {
   return (
-    <html>
-      <body>{children}</body>
-    </html>
+    <>
+      <DashboardTools />
+      {children}
+    </>
   );
 }
 ```
 
-<Warning>
+If you have tools in multiple unrelated sections, import the polyfill in each feature layout:
+
+```
+src/app/layout.tsx              # Server Component - keeps SSR benefits
+src/app/(dashboard)/layout.tsx  # 'use client' + @mcp-b/global
+src/app/(settings)/layout.tsx   # 'use client' + @mcp-b/global
+```
+
+The polyfill is small and idempotent—importing it multiple times is fine.
+
+<Info>
 If the polyfill isn't working, you'll see:
 - `navigator.modelContext is undefined`
 - Tools don't appear in the MCP inspector
 - No errors, but tools simply don't register
-</Warning>
+</Info>
 
 ## Client components are required
 
@@ -114,53 +129,34 @@ export function MyEmbeddedAgent() {
 Next.js App Router supports nested layouts. If you add the embedded agent to multiple layouts, it will render multiple times:
 
 ```
-src/app/layout.tsx          → Has <EmbeddedAgent />
-src/app/(calendar)/layout.tsx → Also has <EmbeddedAgent />
+src/app/(calendar)/layout.tsx → Has <EmbeddedAgent />
+src/app/(calendar)/week/layout.tsx → Also has <EmbeddedAgent />
 
 Result: TWO embedded agents on the page!
 ```
 
-**Choose ONE location:**
+**Place the agent in ONE feature layout** that wraps all pages needing AI access:
 
-<Tabs>
-  <Tab title="Root layout">
-    Use when the agent doesn't need feature-specific context:
-    ```tsx "src/app/layout.tsx"
-    'use client';
-    import { MyEmbeddedAgent } from '@/components/embedded-agent';
+```tsx "src/app/(calendar)/layout.tsx"
+'use client';
 
-    export default function RootLayout({ children }) {
-      return (
-        <html>
-          <body>
-            {children}
-            <MyEmbeddedAgent />  {/* Only here */}
-          </body>
-        </html>
-      );
-    }
-    ```
-  </Tab>
-  <Tab title="Feature layout">
-    Use when the agent needs specific context:
-    ```tsx "src/app/(calendar)/layout.tsx"
-    'use client';
-    import { CalendarProvider } from '@/contexts/calendar';
-    import { CalendarTools } from '@/components/calendar-tools';
-    import { MyEmbeddedAgent } from '@/components/embedded-agent';
+import '@mcp-b/global';
+import { CalendarProvider } from '@/contexts/calendar';
+import { CalendarTools } from '@/components/calendar-tools';
+import { MyEmbeddedAgent } from '@/components/embedded-agent';
 
-    export default function CalendarLayout({ children }) {
-      return (
-        <CalendarProvider>
-          <CalendarTools />      {/* Tools need context */}
-          <MyEmbeddedAgent />    {/* Agent here, NOT in root */}
-          {children}
-        </CalendarProvider>
-      );
-    }
-    ```
-  </Tab>
-</Tabs>
+export default function CalendarLayout({ children }) {
+  return (
+    <CalendarProvider>
+      <CalendarTools />
+      <MyEmbeddedAgent />
+      {children}
+    </CalendarProvider>
+  );
+}
+```
+
+This keeps your root layout as a Server Component while giving tools access to the context they need.
 
 ## Tool registration with context
 
@@ -173,6 +169,7 @@ Context Provider → Tools Component → Tools can access state
 ```tsx "src/app/(feature)/layout.tsx"
 'use client';
 
+import '@mcp-b/global';
 import { FeatureProvider } from '@/contexts/feature';
 import { FeatureTools } from '@/components/feature-tools';
 
@@ -337,8 +334,8 @@ In Next.js App Router, the root layout persists across navigations. Tools regist
 
 Before deploying your WebMCP + Next.js app:
 
-- [ ] Root layout has `'use client'` directive
-- [ ] `@mcp-b/global` is imported at the top of root layout
+- [ ] Root layout is a **Server Component** (no `'use client'`) to preserve SSR
+- [ ] Feature layout(s) have `'use client'` and import `@mcp-b/global`
 - [ ] All components using WebMCP hooks have `'use client'`
 - [ ] Embedded agent uses `dynamic()` with `{ ssr: false }`
 - [ ] Embedded agent is rendered in only ONE layout
@@ -350,10 +347,10 @@ Before deploying your WebMCP + Next.js app:
 ```
 src/
 ├── app/
-│   ├── layout.tsx          # 'use client', imports @mcp-b/global
+│   ├── layout.tsx          # Server Component - keeps SSR benefits
 │   └── (feature)/
-│       ├── layout.tsx      # Feature provider + tools + embedded agent
-│       └── page.tsx        # Can be Server Component
+│       ├── layout.tsx      # 'use client' + @mcp-b/global + provider + tools + agent
+│       └── page.tsx        # Can be Server Component for data fetching
 ├── components/
 │   ├── embedded-agent.tsx  # Dynamic import, ssr: false
 │   └── feature-tools.tsx   # 'use client', useWebMCP hooks
@@ -362,10 +359,11 @@ src/
 ```
 
 This structure ensures:
-1. Polyfill loads first (root layout)
-2. Tools have access to context (feature layout)
-3. Agent renders once (feature layout only)
-4. Pages can still use Server Components for data fetching
+1. Root layout stays a Server Component (SSR preserved)
+2. Polyfill loads in feature layouts where tools are used
+3. Tools have access to context (feature layout)
+4. Agent renders once (feature layout only)
+5. Pages can still use Server Components for data fetching
 
 ## Development
 
