@@ -1,0 +1,165 @@
+---
+title: 'Remix Integration'
+description: 'Integrate WebMCP tools with Remix, handling SSR safely.'
+icon: 'rotate'
+---
+
+Remix uses SSR by default, so WebMCP code must only run on the client.
+
+## Basic Usage
+
+Use the `useEffect` hook to ensure registration only happens on the client:
+
+```tsx "app/routes/_index.tsx"
+import { useEffect } from 'react';
+import '@mcp-b/global';
+
+export default function Index() {
+  useEffect(() => {
+    const reg = navigator.modelContext.registerTool({
+      name: 'get_page',
+      description: 'Get current page info',
+      inputSchema: { type: 'object', properties: {} },
+      async execute() {
+        return { content: [{ type: 'text', text: window.location.pathname }] };
+      },
+    });
+
+    return () => reg.unregister();
+  }, []);
+
+  return <div>Home</div>;
+}
+```
+
+## Using react-webmcp
+
+For a cleaner API with Zod validation, use [`@mcp-b/react-webmcp`](/packages/react-webmcp):
+
+```tsx "app/routes/_index.tsx"
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export default function Index() {
+  useWebMCP({
+    name: 'greet',
+    description: 'Greet a user',
+    schema: z.object({
+      name: z.string().describe('Name to greet'),
+    }),
+    handler: async ({ name }) => {
+      return `Hello, ${name}!`;
+    },
+  });
+
+  return <div>Home</div>;
+}
+```
+
+<Note>
+`useWebMCP` handles SSR safety internally - it only registers on the client.
+</Note>
+
+## With Loader Data
+
+Access server-loaded data in your tools:
+
+```tsx "app/routes/products.$productId.tsx"
+import { useLoaderData } from '@remix-run/react';
+import { json } from '@remix-run/node';
+import type { LoaderFunctionArgs } from '@remix-run/node';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export async function loader({ params }: LoaderFunctionArgs) {
+  const product = await fetchProduct(params.productId);
+  return json({ product });
+}
+
+export default function ProductPage() {
+  const { product } = useLoaderData<typeof loader>();
+
+  useWebMCP({
+    name: 'get_product',
+    description: 'Get current product details',
+    schema: z.object({}),
+    handler: async () => {
+      return JSON.stringify(product);
+    },
+  });
+
+  return <div>{product.name}</div>;
+}
+```
+
+## App-Wide Tools
+
+Register tools in your root route for persistence across navigation:
+
+```tsx "app/root.tsx"
+import { Outlet } from '@remix-run/react';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export default function App() {
+  useWebMCP({
+    name: 'navigate',
+    description: 'Navigate to a page',
+    schema: z.object({
+      path: z.string().describe('Path to navigate to'),
+    }),
+    handler: async ({ path }) => {
+      window.location.href = path;
+      return `Navigating to ${path}`;
+    },
+  });
+
+  return <Outlet />;
+}
+```
+
+## ClientOnly Component
+
+For components that should never render on the server:
+
+```tsx "app/components/ClientOnly.tsx"
+import { useEffect, useState, type ReactNode } from 'react';
+
+export function ClientOnly({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? <>{children}</> : null;
+}
+```
+
+```tsx "app/routes/_index.tsx"
+import { ClientOnly } from '~/components/ClientOnly';
+import { ToolRegistration } from '~/components/ToolRegistration';
+
+export default function Index() {
+  return (
+    <ClientOnly>
+      <ToolRegistration />
+    </ClientOnly>
+  );
+}
+```
+
+## Common Gotchas
+
+<AccordionGroup>
+  <Accordion title="'navigator is not defined' error">
+    Code is running during SSR. Solutions:
+    - Use `useWebMCP` from `@mcp-b/react-webmcp` (handles this automatically)
+    - Wrap registration in `useEffect`
+    - Use a `ClientOnly` wrapper component
+  </Accordion>
+
+  <Accordion title="Tools disappear after navigation">
+    Register tools in `root.tsx` so they persist across route changes.
+  </Accordion>
+</AccordionGroup>
+
+## Development
+
+Use [Chrome DevTools MCP](/packages/chrome-devtools-mcp) for AI-driven development - your AI can write, discover, and test tools in real-time.
