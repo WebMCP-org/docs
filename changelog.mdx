@@ -20,14 +20,20 @@ Full Web Model Context API support now extends beyond tools to include **prompts
 
 ```tsx
 import { useWebMCPPrompt, useWebMCPResource } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
 
 // Register a prompt
 useWebMCPPrompt({
   name: 'summarize',
   description: 'Summarize the current page content',
-  arguments: [{ name: 'format', description: 'Output format' }],
-  handler: async (args) => ({
-    messages: [{ role: 'user', content: `Summarize in ${args.format} format` }]
+  argsSchema: {
+    format: z.string().describe('Output format'),
+  },
+  get: async (args) => ({
+    messages: [{
+      role: 'user',
+      content: { type: 'text', text: `Summarize in ${args.format} format` }
+    }]
   })
 });
 
