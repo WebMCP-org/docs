@@ -33,136 +33,29 @@ Before you begin, ensure you have:
 
 <Tabs>
   <Tab title="React (Recommended)">
-    ```bash icon="react"
+    ```bash icon="npm"
     pnpm add @mcp-b/react-webmcp @mcp-b/global zod
     ```
 
-    ```tsx "MyComponent.tsx" twoslash lines icon="react" highlight={5-17}
-    import '@mcp-b/global';
-    import { useWebMCP } from '@mcp-b/react-webmcp';
-    import { z } from 'zod';
-
-    function MyComponent() {
-      useWebMCP({
-        name: 'get_page_info',
-        description: 'Get current page information',
-        inputSchema: {
-          includeUrl: z.boolean().optional()
-        },
-        handler: async ({ includeUrl }) => {
-          return {
-            title: document.title,
-            ...(includeUrl && { url: window.location.href })
-          };
-        }
-      });
-
-      return <div>My Component</div>;
-    }
-    ```
+    See the interactive example above or explore the [webmcp.sh source code](https://github.com/WebMCP-org/webmcp-sh) for a production React implementation.
   </Tab>
 
   <Tab title="Vanilla JS">
-    ```bash icon="node"
+    ```bash icon="npm"
     pnpm add @mcp-b/global
     ```
 
-    ```javascript "tool-registration.js" lines icon="square-js" highlight={4-12}
-    import '@mcp-b/global';
-
-    // Register individual tools (recommended)
-    const registration = navigator.modelContext.registerTool({
-      name: "get_page_title",
-      description: "Get current page title",
-      inputSchema: { type: "object", properties: {} },
-      async execute() {
-        return {
-          content: [{ type: "text", text: document.title }]
-        };
-      }
-    });
-
-    // Later, unregister if needed
-    // registration.unregister();
-    ```
+    See the interactive example above or explore the [Vanilla TypeScript example](https://github.com/WebMCP-org/examples/tree/main/vanilla-ts).
   </Tab>
 
   <Tab title="Script Tag">
-    ```html "index.html" lines icon="code" highlight={3-10}
+    No installation required - add this script to your HTML:
+
+    ```html icon="code"
     <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-    <script>
-      // Register tools using the standard API
-      navigator.modelContext.registerTool({
-        name: "get_page_title",
-        description: "Get current page title",
-        inputSchema: { type: "object", properties: {} },
-        async execute() {
-          return { content: [{ type: "text", text: document.title }] };
-        }
-      });
-    </script>
     ```
-  </Tab>
-</Tabs>
 
-## Real-World Example
-
-Wrap your existing application logic as tools:
-
-<Tabs>
-  <Tab title="React">
-    ```tsx "ProductPage.tsx" twoslash lines icon="react" highlight={5-18}
-    import { useWebMCP } from '@mcp-b/react-webmcp';
-    import { z } from 'zod';
-
-    function ProductPage() {
-      useWebMCP({
-        name: "add_to_cart",
-        description: "Add item to shopping cart",
-        inputSchema: {
-          productId: z.string(),
-          quantity: z.number().min(1)
-        },
-        handler: async ({ productId, quantity }) => {
-          await fetch('/api/cart/add', {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: JSON.stringify({ productId, quantity })
-          });
-          return { success: true, quantity };
-        }
-      });
-
-      return <div>Product Page</div>;
-    }
-    ```
-  </Tab>
-
-  <Tab title="Vanilla JS">
-    ```javascript "cart-tool.js" lines icon="square-js" highlight={1-23}
-    navigator.modelContext.registerTool({
-      name: "add_to_cart",
-      description: "Add item to shopping cart",
-      inputSchema: {
-        type: "object",
-        properties: {
-          productId: { type: "string" },
-          quantity: { type: "number", minimum: 1 }
-        },
-        required: ["productId", "quantity"]
-      },
-      async execute({ productId, quantity }) {
-        await fetch('/api/cart/add', {
-          method: 'POST',
-          credentials: 'same-origin',
-          body: JSON.stringify({ productId, quantity })
-        });
-        return {
-          content: [{ type: "text", text: `Added ${quantity} items` }]
-        };
-      }
-    });
-    ```
+    See the [Script Tag example](https://github.com/WebMCP-org/examples/tree/main/script-tag) for a complete working demo.
   </Tab>
 </Tabs>
 
