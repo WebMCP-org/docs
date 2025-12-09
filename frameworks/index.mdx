@@ -94,8 +94,6 @@ All frameworks follow the same approach:
 | [Nuxt 3](/frameworks/nuxt) | `onMounted` + `import.meta.client` | `onUnmounted` | [Community](https://github.com/mikechao/nuxt3-mcp-b-demo) |
 | [Svelte](/frameworks/svelte) | `onMount` | `onDestroy` | [View](https://github.com/WebMCP-org/examples/tree/main/svelte) |
 | [Angular](/frameworks/angular) | `ngOnInit` | `ngOnDestroy` | [View](https://github.com/WebMCP-org/examples/tree/main/angular) |
-| [TanStack Start](/frameworks/tanstack-start) | `useEffect` or `useWebMCP` | cleanup function | - |
-| [Remix](/frameworks/remix) | `useEffect` or `useWebMCP` | cleanup function | - |
 | [Rails/Stimulus](/frameworks/rails) | `connect` | `disconnect` | [View](https://github.com/WebMCP-org/examples/tree/main/rails) |
 | [Phoenix LiveView](/frameworks/phoenix-liveview) | `mounted` | `destroyed` | [View](https://github.com/WebMCP-org/examples/tree/main/phoenix-liveview) |
 
@@ -113,11 +111,25 @@ SSR frameworks like **Next.js**, **Nuxt**, **TanStack Start**, **Remix**, and **
 
 ## Framework-specific guides
 
+### React
+
 <CardGroup cols={2}>
-  <Card title="React & Next.js" icon="react" href="/frameworks/react">
+  <Card title="Next.js" icon="react" href="/frameworks/react">
     SSR-safe patterns with App Router and Client Components
   </Card>
 
+  <Card title="TanStack Start" icon="layer-group" href="/frameworks/tanstack-start">
+    Just works with useWebMCP
+  </Card>
+
+  <Card title="Remix" icon="rotate" href="/frameworks/remix">
+    Just works with useWebMCP
+  </Card>
+</CardGroup>
+
+### Other frameworks
+
+<CardGroup cols={2}>
   <Card title="Vue.js" icon="vuejs" href="/frameworks/vue">
     Composition API patterns and SSR considerations
   </Card>
@@ -132,14 +144,6 @@ SSR frameworks like **Next.js**, **Nuxt**, **TanStack Start**, **Remix**, and **
 
   <Card title="Angular" icon="angular" href="/frameworks/angular">
     Services, DI, and Angular Universal
-  </Card>
-
-  <Card title="TanStack Start" icon="layer-group" href="/frameworks/tanstack-start">
-    SSR-safe patterns with loader data
-  </Card>
-
-  <Card title="Remix" icon="rotate" href="/frameworks/remix">
-    SSR-safe patterns with loader data
   </Card>
 
   <Card title="Rails" icon="gem" href="/frameworks/rails">
