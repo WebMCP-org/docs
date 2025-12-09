@@ -108,14 +108,14 @@ See the [Building MCP-UI Apps guide](/building-mcp-ui-apps) for complete documen
 
 ## Quick Reference
 
-### React Hooks (Recommended)
-Use `useWebMCP()` from `@mcp-b/react-webmcp` for automatic lifecycle management, Zod validation, and execution state tracking.
+### Script Tag Integration
+Add `@mcp-b/global` via unpkg and use `registerTool()` for zero-config setup - no build tools required.
 
 ### Vanilla TypeScript
 Use `navigator.modelContext.registerTool()` to register individual tools. Perfect for adding WebMCP to existing sites without frameworks.
 
-### Script Tag Integration
-Add `@mcp-b/global` via unpkg and use `registerTool()` for zero-config setup - no build tools required.
+### React Hooks
+Use `useWebMCP()` from `@mcp-b/react-webmcp` for automatic lifecycle management, Zod validation, and execution state tracking.
 
 ## Community Examples
 

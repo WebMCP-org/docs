@@ -32,7 +32,49 @@ Before you begin, ensure you have:
 ## Installation
 
 <Tabs>
-  <Tab title="React (Recommended)">
+  <Tab title="Script Tag">
+    ```html "index.html" lines icon="code" highlight={3-10}
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    <script>
+      // Register tools using the standard API
+      navigator.modelContext.registerTool({
+        name: "get_page_title",
+        description: "Get current page title",
+        inputSchema: { type: "object", properties: {} },
+        async execute() {
+          return { content: [{ type: "text", text: document.title }] };
+        }
+      });
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="Vanilla JS">
+    ```bash icon="node"
+    pnpm add @mcp-b/global
+    ```
+
+    ```javascript "tool-registration.js" lines icon="square-js" highlight={4-12}
+    import '@mcp-b/global';
+
+    // Register individual tools
+    const registration = navigator.modelContext.registerTool({
+      name: "get_page_title",
+      description: "Get current page title",
+      inputSchema: { type: "object", properties: {} },
+      async execute() {
+        return {
+          content: [{ type: "text", text: document.title }]
+        };
+      }
+    });
+
+    // Later, unregister if needed
+    // registration.unregister();
+    ```
+  </Tab>
+
+  <Tab title="React">
     ```bash icon="react"
     pnpm add @mcp-b/react-webmcp @mcp-b/global zod
     ```
@@ -61,48 +103,6 @@ Before you begin, ensure you have:
     }
     ```
   </Tab>
-
-  <Tab title="Vanilla JS">
-    ```bash icon="node"
-    pnpm add @mcp-b/global
-    ```
-
-    ```javascript "tool-registration.js" lines icon="square-js" highlight={4-12}
-    import '@mcp-b/global';
-
-    // Register individual tools (recommended)
-    const registration = navigator.modelContext.registerTool({
-      name: "get_page_title",
-      description: "Get current page title",
-      inputSchema: { type: "object", properties: {} },
-      async execute() {
-        return {
-          content: [{ type: "text", text: document.title }]
-        };
-      }
-    });
-
-    // Later, unregister if needed
-    // registration.unregister();
-    ```
-  </Tab>
-
-  <Tab title="Script Tag">
-    ```html "index.html" lines icon="code" highlight={3-10}
-    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-    <script>
-      // Register tools using the standard API
-      navigator.modelContext.registerTool({
-        name: "get_page_title",
-        description: "Get current page title",
-        inputSchema: { type: "object", properties: {} },
-        async execute() {
-          return { content: [{ type: "text", text: document.title }] };
-        }
-      });
-    </script>
-    ```
-  </Tab>
 </Tabs>
 
 ## Real-World Example
@@ -110,6 +110,33 @@ Before you begin, ensure you have:
 Wrap your existing application logic as tools:
 
 <Tabs>
+  <Tab title="Vanilla JS">
+    ```javascript "cart-tool.js" lines icon="square-js" highlight={1-23}
+    navigator.modelContext.registerTool({
+      name: "add_to_cart",
+      description: "Add item to shopping cart",
+      inputSchema: {
+        type: "object",
+        properties: {
+          productId: { type: "string" },
+          quantity: { type: "number", minimum: 1 }
+        },
+        required: ["productId", "quantity"]
+      },
+      async execute({ productId, quantity }) {
+        await fetch('/api/cart/add', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: JSON.stringify({ productId, quantity })
+        });
+        return {
+          content: [{ type: "text", text: `Added ${quantity} items` }]
+        };
+      }
+    });
+    ```
+  </Tab>
+
   <Tab title="React">
     ```tsx "ProductPage.tsx" twoslash lines icon="react" highlight={5-18}
     import { useWebMCP } from '@mcp-b/react-webmcp';
@@ -135,33 +162,6 @@ Wrap your existing application logic as tools:
 
       return <div>Product Page</div>;
     }
-    ```
-  </Tab>
-
-  <Tab title="Vanilla JS">
-    ```javascript "cart-tool.js" lines icon="square-js" highlight={1-23}
-    navigator.modelContext.registerTool({
-      name: "add_to_cart",
-      description: "Add item to shopping cart",
-      inputSchema: {
-        type: "object",
-        properties: {
-          productId: { type: "string" },
-          quantity: { type: "number", minimum: 1 }
-        },
-        required: ["productId", "quantity"]
-      },
-      async execute({ productId, quantity }) {
-        await fetch('/api/cart/add', {
-          method: 'POST',
-          credentials: 'same-origin',
-          body: JSON.stringify({ productId, quantity })
-        });
-        return {
-          content: [{ type: "text", text: `Added ${quantity} items` }]
-        };
-      }
-    });
     ```
   </Tab>
 </Tabs>
