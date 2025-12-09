@@ -89,7 +89,7 @@ All frameworks follow the same approach:
 
 | Framework | Mount | Unmount | Example |
 |-----------|-------|---------|---------|
-| [React](/packages/react-webmcp) | `useWebMCP()` hook | automatic | [View](https://github.com/WebMCP-org/examples/tree/main/react) |
+| [React](/frameworks/react) | `useWebMCP()` hook | automatic | [View](https://github.com/WebMCP-org/examples/tree/main/react) |
 | [Vue 3](/frameworks/vue) | `onMounted` | `onUnmounted` | [Community](https://github.com/bestian/vue-MCP-B-demo) |
 | [Nuxt 3](/frameworks/nuxt) | `onMounted` + `import.meta.client` | `onUnmounted` | [Community](https://github.com/mikechao/nuxt3-mcp-b-demo) |
 | [Svelte](/frameworks/svelte) | `onMount` | `onDestroy` | [View](https://github.com/WebMCP-org/examples/tree/main/svelte) |
@@ -114,6 +114,10 @@ SSR frameworks like **Next.js**, **Nuxt**, **TanStack Start**, **Remix**, and **
 ## Framework-specific guides
 
 <CardGroup cols={2}>
+  <Card title="React & Next.js" icon="react" href="/frameworks/react">
+    SSR-safe patterns with App Router and Client Components
+  </Card>
+
   <Card title="Vue.js" icon="vuejs" href="/frameworks/vue">
     Composition API patterns and SSR considerations
   </Card>

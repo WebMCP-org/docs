@@ -90,6 +90,7 @@
             "group": "Framework Guides",
             "pages": [
               "frameworks/index",
+              "frameworks/react",
               "frameworks/vue",
               "frameworks/nuxt",
               "frameworks/svelte",
