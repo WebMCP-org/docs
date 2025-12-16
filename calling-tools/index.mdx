@@ -1,39 +1,45 @@
 ---
 title: 'Calling WebMCP Tools'
-description: 'Connect AI agents to your website tools. Choose from embedded agents, AI browsers, extensions, or developer tools.'
+description: 'Connect AI agents to your website tools. Choose the right approach for your use case.'
 icon: 'bolt'
 ---
 
-WebMCP lets websites expose tools that AI agents can discover and call. This section covers the different ways agents can connect to your tools.
+WebMCP lets websites expose tools that AI agents can discover and call. This section covers the different ways to connect agents to your tools.
 
-## Connection Options
+## Where to Start
 
 <CardGroup cols={2}>
-  <Card title="Embedded Agent" icon="robot" href="/calling-tools/embedded-agent">
-    **Recommended** - Drop-in AI assistant for your website
+  <Card title="New to WebMCP?" icon="graduation-cap" href="/calling-tools/tutorial">
+    **Start with the tutorial** — Build a working AI assistant step-by-step and learn how tools and agents work together.
   </Card>
 
-  <Card title="AI Browsers" icon="browser" href="/calling-tools/ai-browsers">
-    Native browser AI (Chrome AI, Perplexity, etc.)
+  <Card title="Know what you need?" icon="rocket" href="/calling-tools/embedded-agent">
+    **Jump to setup** — Get the embedded agent running on your site with the how-to guide.
   </Card>
 
-  <Card title="MCP-B Extension" icon="puzzle-piece" href="/calling-tools/extension">
-    Browser extension for any website
+  <Card title="Not sure which method?" icon="compass" href="/calling-tools/choosing-a-method">
+    **Compare options** — Understand the trade-offs between the four connection methods.
   </Card>
 
-  <Card title="Chrome DevTools MCP" icon="chrome" href="/calling-tools/devtools-mcp">
-    Development and testing via DevTools Protocol
+  <Card title="Need API details?" icon="book" href="/calling-tools/embedded-agent-reference">
+    **Check the reference** — Full documentation of attributes, events, and methods.
   </Card>
 </CardGroup>
 
-## Comparison
+## Connection Methods
 
-| Method | Setup | Best For | Requirements |
-|--------|-------|----------|--------------|
-| **Embedded Agent** | Add `<webmcp-agent>` element | Production websites | App ID |
-| **AI Browsers** | None | Future-proof integration | AI-enabled browser |
-| **MCP-B Extension** | Install extension | Testing, any website | Chrome extension |
-| **Chrome DevTools MCP** | MCP client config | Development, automation | Chrome + MCP client |
+Four ways to connect AI agents to your tools:
+
+| Method | Best For | Setup |
+|--------|----------|-------|
+| [**Embedded Agent**](/calling-tools/embedded-agent) | Production websites | Add `<webmcp-agent>` element |
+| [**AI Browsers**](/calling-tools/ai-browsers) | Future-proof integration | Just register tools |
+| [**MCP-B Extension**](/calling-tools/extension) | Power users, local clients | Install extension |
+| [**Chrome DevTools MCP**](/calling-tools/devtools-mcp) | Development, testing | Configure MCP client |
+
+<Card title="Choosing a Method" icon="compass" href="/calling-tools/choosing-a-method">
+  Detailed comparison with decision framework
+</Card>
 
 ## How It Works
 
@@ -58,22 +64,37 @@ sequenceDiagram
 3. When needed, the agent calls tools with arguments
 4. Tools execute in the browser and return results
 
-## Quick Start
+The connection method determines *how* the agent connects, but your tools work the same way regardless.
 
-The fastest way to get started is with the Embedded Agent:
+## Quick Example
 
-```html
-<script type="module">
-  import 'https://unpkg.com/@mcp-b/global@latest/dist/index.esm.js';
-  import 'https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.esm.js';
-</script>
+Register a tool:
 
-<webmcp-agent
-  app-id="your-app-id"
-  api-base="https://your-api-endpoint"
-/>
+```javascript
+navigator.modelContext.registerTool({
+  name: 'search_products',
+  description: 'Search the product catalog',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search query' }
+    }
+  },
+  async execute({ query }) {
+    const results = await searchProducts(query);
+    return { content: [{ type: 'text', text: JSON.stringify(results) }] };
+  }
+});
 ```
 
-<Card title="Get Started with Embedded Agent" icon="rocket" href="/calling-tools/embedded-agent">
-  Complete setup guide and configuration options
+Add the agent:
+
+```html
+<webmcp-agent app-id="your-app" api-base="https://your-api.com" />
+```
+
+That's it. The agent discovers your tool and can call it when users ask to search products.
+
+<Card title="Build Your First AI Assistant" icon="graduation-cap" href="/calling-tools/tutorial">
+  Full tutorial with step-by-step instructions
 </Card>

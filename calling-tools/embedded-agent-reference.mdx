@@ -1,0 +1,457 @@
+---
+title: 'Embedded Agent Reference'
+description: 'Complete API reference for the <webmcp-agent> custom element.'
+sidebarTitle: 'Agent Reference'
+icon: 'book'
+---
+
+This page documents all attributes, events, methods, and CSS custom properties for the `<webmcp-agent>` custom element.
+
+## Installation
+
+<Tabs>
+  <Tab title="NPM">
+    ```bash
+    npm install @mcp-b/global @mcp-b/embedded-agent
+    ```
+
+    ```javascript
+    import '@mcp-b/global';
+    import '@mcp-b/embedded-agent/web-component';
+    ```
+  </Tab>
+
+  <Tab title="CDN (ESM)">
+    ```html
+    <script type="module">
+      import 'https://unpkg.com/@mcp-b/global@latest/dist/index.esm.js';
+      import 'https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.esm.js';
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="CDN (IIFE)">
+    ```html
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    <script src="https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.iife.js"></script>
+    ```
+  </Tab>
+</Tabs>
+
+## Basic Usage
+
+```html
+<webmcp-agent
+  app-id="your-app-id"
+  api-base="https://your-api-endpoint"
+/>
+```
+
+---
+
+## Attributes
+
+### Required Attributes
+
+#### `app-id`
+
+**Type:** `string` | **Required**
+
+Your application identifier for authentication with the API backend.
+
+```html
+<webmcp-agent app-id="my-ecommerce-app" ... />
+```
+
+#### `api-base`
+
+**Type:** `string` (URL) | **Required**
+
+The base URL of your API endpoint that handles AI requests.
+
+```html
+<webmcp-agent api-base="https://api.example.com" ... />
+```
+
+<Warning>
+Must be HTTPS in production. HTTP is only allowed for `localhost` during development.
+</Warning>
+
+---
+
+### Optional Attributes
+
+#### `view-mode`
+
+**Type:** `"pill" | "panel" | "fullscreen"` | **Default:** `"pill"`
+
+Controls how the agent UI appears on the page.
+
+| Value | Description |
+|-------|-------------|
+| `pill` | Compact floating button that expands to chat. Minimal UI footprint. |
+| `panel` | Slide-out panel anchored to screen edge. Good for extended interactions. |
+| `fullscreen` | Takes over entire viewport. For dedicated AI experiences. |
+
+```html
+<webmcp-agent view-mode="panel" ... />
+```
+
+#### `position`
+
+**Type:** `"bottom-right" | "bottom-left" | "top-right" | "top-left"` | **Default:** `"bottom-right"`
+
+Where the agent appears on screen. Only applies to `pill` and `panel` view modes.
+
+```html
+<webmcp-agent position="bottom-left" ... />
+```
+
+#### `theme`
+
+**Type:** `"light" | "dark" | "auto"` | **Default:** `"auto"`
+
+Color theme for the agent UI. `auto` follows the user's system preference.
+
+```html
+<webmcp-agent theme="dark" ... />
+```
+
+#### `placeholder`
+
+**Type:** `string` | **Default:** `"Ask me anything..."`
+
+Placeholder text shown in the chat input field.
+
+```html
+<webmcp-agent placeholder="How can I help you today?" ... />
+```
+
+#### `welcome-message`
+
+**Type:** `string` | **Default:** none
+
+Initial message shown when the chat opens. If not set, the chat starts empty.
+
+```html
+<webmcp-agent welcome-message="Hi! I can help you find products." ... />
+```
+
+#### `disable-markdown`
+
+**Type:** `boolean` | **Default:** `false`
+
+When present, disables markdown rendering in responses.
+
+```html
+<webmcp-agent disable-markdown ... />
+```
+
+---
+
+### Development Attributes
+
+<Warning>
+These attributes are for local development only. Never expose API keys in production code.
+</Warning>
+
+#### `openai-api-key`
+
+**Type:** `string`
+
+OpenAI API key for direct API access during development.
+
+```html
+<webmcp-agent openai-api-key="sk-..." ... />
+```
+
+#### `anthropic-api-key`
+
+**Type:** `string`
+
+Anthropic API key for direct API access during development.
+
+```html
+<webmcp-agent anthropic-api-key="sk-ant-..." ... />
+```
+
+#### `model`
+
+**Type:** `string`
+
+Override the default model when using development API keys.
+
+```html
+<webmcp-agent model="gpt-4o" openai-api-key="sk-..." ... />
+```
+
+---
+
+## Events
+
+The `<webmcp-agent>` element dispatches custom events you can listen for.
+
+### `agent-open`
+
+Fired when the chat interface opens.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('agent-open', () => {
+  console.log('Chat opened');
+});
+```
+
+### `agent-close`
+
+Fired when the chat interface closes.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('agent-close', () => {
+  console.log('Chat closed');
+});
+```
+
+### `message-sent`
+
+Fired when the user sends a message.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('message-sent', (e) => {
+  console.log('User said:', e.detail.message);
+});
+```
+
+**Event detail:**
+```typescript
+{
+  message: string;
+  timestamp: Date;
+}
+```
+
+### `message-received`
+
+Fired when the agent responds.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('message-received', (e) => {
+  console.log('Agent said:', e.detail.message);
+});
+```
+
+**Event detail:**
+```typescript
+{
+  message: string;
+  timestamp: Date;
+}
+```
+
+### `tool-call`
+
+Fired when the agent calls a tool.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('tool-call', (e) => {
+  console.log(`Calling ${e.detail.name} with`, e.detail.arguments);
+});
+```
+
+**Event detail:**
+```typescript
+{
+  name: string;
+  arguments: Record<string, unknown>;
+}
+```
+
+### `tool-result`
+
+Fired when a tool returns a result.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('tool-result', (e) => {
+  console.log(`${e.detail.name} returned:`, e.detail.result);
+});
+```
+
+**Event detail:**
+```typescript
+{
+  name: string;
+  result: ToolResult;
+  duration: number; // milliseconds
+}
+```
+
+### `error`
+
+Fired when an error occurs.
+
+```javascript
+document.querySelector('webmcp-agent').addEventListener('error', (e) => {
+  console.error('Agent error:', e.detail.error);
+});
+```
+
+**Event detail:**
+```typescript
+{
+  error: Error;
+  context: 'api' | 'tool' | 'network';
+}
+```
+
+---
+
+## Methods
+
+Access methods via the DOM element.
+
+### `open()`
+
+Opens the chat interface programmatically.
+
+```javascript
+document.querySelector('webmcp-agent').open();
+```
+
+### `close()`
+
+Closes the chat interface.
+
+```javascript
+document.querySelector('webmcp-agent').close();
+```
+
+### `toggle()`
+
+Toggles the chat interface open/closed.
+
+```javascript
+document.querySelector('webmcp-agent').toggle();
+```
+
+### `sendMessage(text: string)`
+
+Sends a message programmatically, as if the user typed it.
+
+```javascript
+document.querySelector('webmcp-agent').sendMessage('What products do you have?');
+```
+
+### `clearHistory()`
+
+Clears the conversation history.
+
+```javascript
+document.querySelector('webmcp-agent').clearHistory();
+```
+
+---
+
+## CSS Custom Properties
+
+Customize the agent's appearance using CSS custom properties.
+
+### Colors
+
+```css
+webmcp-agent {
+  --agent-primary-color: #1F5EFF;
+  --agent-primary-hover: #1449CC;
+  --agent-background: #ffffff;
+  --agent-surface: #f5f5f5;
+  --agent-text: #1a1a1a;
+  --agent-text-secondary: #666666;
+  --agent-border: #e0e0e0;
+  --agent-error: #dc2626;
+  --agent-success: #16a34a;
+}
+```
+
+### Sizing
+
+```css
+webmcp-agent {
+  --agent-pill-size: 56px;
+  --agent-panel-width: 400px;
+  --agent-panel-height: 600px;
+  --agent-border-radius: 12px;
+  --agent-font-size: 14px;
+}
+```
+
+### Shadows
+
+```css
+webmcp-agent {
+  --agent-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --agent-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+```
+
+### Z-Index
+
+```css
+webmcp-agent {
+  --agent-z-index: 9999;
+}
+```
+
+### Full Example
+
+```css
+webmcp-agent {
+  --agent-primary-color: #8b5cf6;
+  --agent-background: #1a1a2e;
+  --agent-surface: #16213e;
+  --agent-text: #eaeaea;
+  --agent-border: #2a2a4a;
+  --agent-panel-width: 450px;
+}
+```
+
+---
+
+## TypeScript Types
+
+If using TypeScript, you can import types:
+
+```typescript
+import type { WebMCPAgentElement } from '@mcp-b/embedded-agent';
+
+const agent = document.querySelector('webmcp-agent') as WebMCPAgentElement;
+agent.sendMessage('Hello');
+```
+
+---
+
+## Browser Support
+
+The embedded agent supports all modern browsers:
+
+| Browser | Minimum Version |
+|---------|----------------|
+| Chrome | 88+ |
+| Firefox | 78+ |
+| Safari | 14+ |
+| Edge | 88+ |
+
+<Info>
+The agent uses Web Components (Custom Elements v1), which are supported in all modern browsers.
+</Info>
+
+---
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="rocket" href="/calling-tools/embedded-agent">
+    Step-by-step setup instructions
+  </Card>
+
+  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
+    How to create tools the agent can use
+  </Card>
+</CardGroup>

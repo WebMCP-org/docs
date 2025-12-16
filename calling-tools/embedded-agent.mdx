@@ -1,78 +1,100 @@
 ---
-title: 'Embedded Agent'
-description: 'Add an AI agent to your website with a single custom element. The easiest way to let users interact with your WebMCP tools.'
+title: 'Set Up Embedded Agent'
+description: 'Add an AI assistant to your website. This guide covers installation, configuration, and connecting to your tools.'
+sidebarTitle: 'Embedded Agent'
 icon: 'robot'
 ---
 
-The WebMCP Embedded Agent is a drop-in AI assistant for any website. Add a custom element to your HTML, and users can interact with all the tools your site exposes via `navigator.modelContext`.
+This guide walks you through adding the WebMCP Embedded Agent to your website. By the end, you'll have a working AI assistant that can interact with your tools.
 
-## Quick Start
+<Info>
+**New to WebMCP?** Start with the [tutorial](/calling-tools/tutorial) for a hands-on introduction.
+</Info>
 
-<Steps>
-  <Step title="Install the packages">
+## Prerequisites
+
+- A website or web application
+- Tools registered via `navigator.modelContext` (or you'll add them)
+- An API endpoint for AI requests (or use development mode)
+
+## Installation
+
+Choose your installation method:
+
+<Tabs>
+  <Tab title="NPM (Recommended)">
+    Install the packages:
+
     ```bash
     npm install @mcp-b/global @mcp-b/embedded-agent
     ```
-  </Step>
 
-  <Step title="Initialize in your app entry">
-    ```typescript "main.tsx"
+    Import in your app entry point:
+
+    ```typescript "main.ts"
     import '@mcp-b/global';
     import '@mcp-b/embedded-agent/web-component';
     ```
-  </Step>
 
-  <Step title="Add the custom element">
+    Add the element to your HTML:
+
     ```html "index.html"
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-      <webmcp-agent
-        app-id="your-app-id"
-        api-base="https://your-api-endpoint"
-        view-mode="pill"
-      />
-    </body>
+    <webmcp-agent
+      app-id="your-app-id"
+      api-base="https://your-api-endpoint"
+    />
     ```
-  </Step>
-</Steps>
+  </Tab>
 
-## How It Works
+  <Tab title="CDN">
+    Add script tags to your HTML:
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Agent as Embedded Agent
-    participant Tools as Your WebMCP Tools
+    ```html "index.html"
+    <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+    <script src="https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.iife.js"></script>
 
-    User->>Agent: "Add item to cart"
-    Agent->>Tools: Discovers registered tools
-    Agent->>Tools: callTool('add_to_cart', {...})
-    Tools->>Tools: Execute in browser
-    Tools-->>Agent: Tool result
-    Agent-->>User: "Item added!"
-```
+    <webmcp-agent
+      app-id="your-app-id"
+      api-base="https://your-api-endpoint"
+    />
+    ```
 
-Your website registers tools using `navigator.modelContext`, and the embedded agent can discover and call them automatically.
+    Or with ES modules:
+
+    ```html
+    <script type="module">
+      import 'https://unpkg.com/@mcp-b/global@latest/dist/index.esm.js';
+      import 'https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.esm.js';
+    </script>
+    ```
+  </Tab>
+</Tabs>
 
 ## Configuration
 
-### Required Attributes
+Set the required attributes on the `<webmcp-agent>` element:
 
 | Attribute | Description |
 |-----------|-------------|
 | `app-id` | Your application identifier |
 | `api-base` | Your API endpoint URL |
+| `view-mode` | Optional: `"pill"` (default), `"panel"`, or `"fullscreen"` |
 
-### Optional Attributes
+```html
+<webmcp-agent
+  app-id="my-app"
+  api-base="https://api.example.com"
+  view-mode="pill"
+/>
+```
 
-| Attribute | Default | Description |
-|-----------|---------|-------------|
-| `view-mode` | `"pill"` | Display mode: `"pill"`, `"panel"`, or `"fullscreen"` |
+<Card title="Full API Reference" icon="book" href="/calling-tools/embedded-agent-reference">
+  See all attributes, events, methods, and styling options
+</Card>
 
 ## Development Mode
 
-During development, you can use your own API keys to test without cost:
+During development, you can use your own API keys to test without a backend:
 
 ```html
 <webmcp-agent
@@ -90,138 +112,153 @@ Never expose API keys in production. Development keys are for local testing only
 
 ## Registering Tools
 
-The embedded agent automatically discovers tools registered on your page:
-
-```tsx "ProductPage.tsx" twoslash
-import { useWebMCP } from '@mcp-b/react-webmcp';
-import { z } from 'zod';
-
-export function ProductPage() {
-  useWebMCP({
-    name: 'add_to_cart',
-    description: 'Add a product to the shopping cart',
-    inputSchema: {
-      productId: z.string().describe('Product ID to add'),
-      quantity: z.number().min(1).describe('Quantity to add')
-    },
-    handler: async ({ productId, quantity }) => {
-      await addToCart(productId, quantity);
-      return { success: true, message: `Added ${quantity} item(s)` };
-    }
-  });
-
-  return <div>...</div>;
-}
-```
-
-For vanilla JavaScript:
-
-```javascript "app.js"
-import '@mcp-b/global';
-
-navigator.modelContext.registerTool({
-  name: 'search_products',
-  description: 'Search the product catalog',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: 'Search query' }
-    },
-    required: ['query']
-  },
-  async execute({ query }) {
-    const results = await searchProducts(query);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(results) }]
-    };
-  }
-});
-```
-
-## Loading via CDN
-
-You can also load the embedded agent without a build step:
-
-### ESM
-
-```html
-<script type="module">
-  import 'https://unpkg.com/@mcp-b/global@latest/dist/index.esm.js';
-  import 'https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.esm.js';
-</script>
-
-<webmcp-agent app-id="your-app-id" api-base="https://api.example.com" />
-```
-
-### IIFE (No Module Support)
-
-```html
-<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
-<script src="https://unpkg.com/@mcp-b/embedded-agent@latest/dist/web-component.iife.js"></script>
-
-<webmcp-agent app-id="your-app-id" api-base="https://api.example.com" />
-```
-
-## View Modes
-
-The agent supports three display modes:
+The agent automatically discovers tools registered on your page. Here's how to register them:
 
 <Tabs>
-  <Tab title="Pill">
-    A compact floating button that expands into a chat interface. Best for minimal UI impact.
+  <Tab title="React">
+    Use the `useWebMCP` hook:
 
-    ```html
-    <webmcp-agent view-mode="pill" ... />
+    ```tsx "ProductPage.tsx"
+    import { useWebMCP } from '@mcp-b/react-webmcp';
+    import { z } from 'zod';
+
+    export function ProductPage() {
+      useWebMCP({
+        name: 'add_to_cart',
+        description: 'Add a product to the shopping cart',
+        inputSchema: {
+          productId: z.string().describe('Product ID'),
+          quantity: z.number().min(1).describe('Quantity')
+        },
+        handler: async ({ productId, quantity }) => {
+          await addToCart(productId, quantity);
+          return { success: true, message: `Added ${quantity} item(s)` };
+        }
+      });
+
+      return <div>...</div>;
+    }
     ```
+
+    <Card title="React Integration" icon="react" href="/packages/react-webmcp">
+      Full documentation for the React hook
+    </Card>
   </Tab>
 
-  <Tab title="Panel">
-    A slide-out panel anchored to the side of the screen. Good for extended interactions.
+  <Tab title="Vanilla JavaScript">
+    Use the `navigator.modelContext` API directly:
 
-    ```html
-    <webmcp-agent view-mode="panel" ... />
-    ```
-  </Tab>
+    ```javascript "app.js"
+    import '@mcp-b/global';
 
-  <Tab title="Fullscreen">
-    Takes over the entire viewport. Ideal for dedicated AI experiences.
-
-    ```html
-    <webmcp-agent view-mode="fullscreen" ... />
+    navigator.modelContext.registerTool({
+      name: 'search_products',
+      description: 'Search the product catalog',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' }
+        },
+        required: ['query']
+      },
+      async execute({ query }) {
+        const results = await searchProducts(query);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(results) }]
+        };
+      }
+    });
     ```
   </Tab>
 </Tabs>
 
-## Security
+## View Modes
 
-<Info>
-The embedded agent runs in your page's context and has access to the same tools your users can access. All tool executions happen client-side.
-</Info>
+Choose how the agent appears on your site:
 
-- Tools inherit your website's permissions and origin policies
-- User authentication is handled through your `app-id` configuration
-- API keys are never exposed in production builds
+<Tabs>
+  <Tab title="Pill (Default)">
+    A compact floating button that expands into a chat interface.
+
+    ```html
+    <webmcp-agent view-mode="pill" ... />
+    ```
+
+    Best for: Minimal UI impact, optional AI assistance
+  </Tab>
+
+  <Tab title="Panel">
+    A slide-out panel anchored to the side of the screen.
+
+    ```html
+    <webmcp-agent view-mode="panel" ... />
+    ```
+
+    Best for: Extended conversations, documentation sites
+  </Tab>
+
+  <Tab title="Fullscreen">
+    Takes over the entire viewport.
+
+    ```html
+    <webmcp-agent view-mode="fullscreen" ... />
+    ```
+
+    Best for: Dedicated AI experiences, chat-first interfaces
+  </Tab>
+</Tabs>
+
+## Security Notes
+
+- The agent runs in your page's context with user permissions
+- Tools can access localStorage, cookies, and make authenticated requests
+- API keys should never be in production code
+- Validate all tool inputs server-side when possible
 
 <Card title="Security Best Practices" icon="shield-halved" href="/security">
-  Review comprehensive security guidelines for WebMCP implementations
+  Comprehensive security guidelines
+</Card>
+
+## Troubleshooting
+
+### Agent not appearing
+
+1. Check that both scripts are loaded (`@mcp-b/global` and `@mcp-b/embedded-agent`)
+2. Verify no JavaScript errors in the console
+3. Ensure the element is in the DOM
+
+### Tools not discovered
+
+1. Confirm `navigator.modelContext` exists (check console)
+2. Register tools before the agent initializes
+3. Call `navigator.modelContext.listTools()` to verify registration
+
+### API errors
+
+1. Check `api-base` URL is correct and accessible
+2. Verify CORS is configured on your backend
+3. Confirm `app-id` matches your backend configuration
+
+<Card title="Troubleshooting Guide" icon="wrench" href="/troubleshooting">
+  More troubleshooting tips
 </Card>
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Tool Registration" icon="wrench" href="/concepts/tool-registration">
-    Learn how to create powerful tools for the agent to use
+  <Card title="API Reference" icon="book" href="/calling-tools/embedded-agent-reference">
+    All attributes, events, and methods
   </Card>
 
-  <Card title="React Integration" icon="react" href="/packages/react-webmcp">
-    Use the `useWebMCP` hook for easier tool registration
+  <Card title="Tool Design" icon="lightbulb" href="/concepts/tool-design">
+    Best practices for effective tools
   </Card>
 
   <Card title="Best Practices" icon="stars" href="/best-practices">
-    Patterns for building effective AI-powered features
+    Patterns for AI-powered features
   </Card>
 
   <Card title="Examples" icon="code" href="/examples">
-    See complete working implementations
+    Complete working implementations
   </Card>
 </CardGroup>

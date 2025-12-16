@@ -135,18 +135,26 @@
         "icon": "bolt",
         "groups": [
           {
-            "group": "Overview",
+            "group": "Getting Started",
             "pages": [
-              "calling-tools/index"
+              "calling-tools/index",
+              "calling-tools/tutorial",
+              "calling-tools/choosing-a-method"
             ]
           },
           {
-            "group": "Connection Methods",
+            "group": "Setup Guides",
             "pages": [
               "calling-tools/embedded-agent",
               "calling-tools/ai-browsers",
               "calling-tools/extension",
               "calling-tools/devtools-mcp"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "calling-tools/embedded-agent-reference"
             ]
           }
         ]
