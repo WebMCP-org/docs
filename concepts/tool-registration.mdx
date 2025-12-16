@@ -1,10 +1,28 @@
 ---
 title: 'Tool Registration'
-description: 'How to register, manage, and lifecycle tools using navigator.modelContext with registerTool() and provideContext() methods for dynamic tool management.'
+description: 'Understand how tools are registered, discovered, and managed throughout their lifecycle in WebMCP applications.'
 icon: 'screwdriver-wrench'
 ---
 
-## The Simple Way: `registerTool()`
+<Info>
+**This is an Explanation page** with code examples. It explains *why* tool registration works the way it does. For a hands-on tutorial, see [Your First Tool](/concepts/your-first-tool). For API details, see [@mcp-b/global](/packages/global).
+</Info>
+
+## The Registration Model
+
+WebMCP uses a **dynamic registration model** where tools can be added and removed at any time. This differs from static APIs where endpoints are fixed at deployment.
+
+Why dynamic? Because web applications are dynamic:
+- Components mount and unmount
+- Users navigate between pages
+- Features are enabled by roles or flags
+- State changes what actions are possible
+
+The registration API reflects this reality.
+
+## Two Registration Methods
+
+### `registerTool()` - The Default Choice
 
 For most use cases, use `registerTool()` to add tools one at a time:
 
@@ -175,19 +193,19 @@ interface ToolDefinition {
 ## Related Topics
 
 <CardGroup cols={2}>
+  <Card title="Your First Tool" icon="graduation-cap" href="/concepts/your-first-tool">
+    **Tutorial**: Build a working tool step-by-step
+  </Card>
+
   <Card title="Tool Schemas" icon="file-contract" href="/concepts/schemas">
-    Learn about input validation and schema definition
+    **Reference**: Input validation and schema definition
   </Card>
 
-  <Card title="Tool Design Patterns" icon="lightbulb" href="/concepts/tool-design">
-    Best practices for designing effective tools
+  <Card title="Context Engineering" icon="filter" href="/concepts/context-engineering">
+    **Explanation**: Why dynamic tool scoping matters
   </Card>
 
-  <Card title="React WebMCP" icon="react" href="/packages/react-webmcp">
-    React hooks for WebMCP tool registration
-  </Card>
-
-  <Card title="Performance" icon="gauge-high" href="/concepts/performance">
-    Performance considerations for tool registration
+  <Card title="@mcp-b/global" icon="npm" href="/packages/global">
+    **Reference**: Full API documentation
   </Card>
 </CardGroup>

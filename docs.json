@@ -156,10 +156,17 @@
         "icon": "lightbulb",
         "groups": [
           {
+            "group": "Start Here",
+            "icon": "graduation-cap",
+            "pages": [
+              "concepts/overview",
+              "concepts/your-first-tool"
+            ]
+          },
+          {
             "group": "Understanding WebMCP",
             "icon": "compass",
             "pages": [
-              "concepts/overview",
               "concepts/why-webmcp",
               "concepts/architecture"
             ]

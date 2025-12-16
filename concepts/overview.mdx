@@ -1,64 +1,127 @@
 ---
 title: 'Core Concepts'
-description: 'Key concepts and terminology for understanding WebMCP architecture'
+description: 'Understand the key mental models and concepts behind WebMCP - how websites expose capabilities to AI agents'
 icon: 'circle-info'
 ---
 
-This page explains the core concepts you'll encounter when working with WebMCP. For a high-level introduction, see the [Introduction](/introduction).
+<Info>
+**This is an Explanation page** - it helps you build a mental model of WebMCP. For hands-on learning, start with the [Your First Tool tutorial](/concepts/your-first-tool). For implementation details, see the [Quick Start](/quickstart).
+</Info>
 
-## The Core API
+## The Core Idea
 
-WebMCP centers around one key method: `navigator.modelContext.registerTool()`. This browser API lets you expose JavaScript functions as structured tools that AI agents can discover and call.
+WebMCP answers a simple question: **How can AI agents interact with websites reliably?**
 
-```javascript
-navigator.modelContext.registerTool({
-  name: 'add_to_cart',
-  description: 'Add a product to the shopping cart',
-  inputSchema: { /* ... */ },
-  async execute({ productId, quantity }) {
-    // Your existing logic
-  }
-});
+The answer is equally simple: **Websites tell AI agents what they can do.**
+
+Instead of AI trying to figure out how to click buttons and fill forms (fragile, slow, error-prone), websites explicitly expose their capabilities as structured **tools** that AI can discover and call directly.
+
+## Three Key Concepts
+
+### 1. Tools Are Functions with Contracts
+
+A tool is a JavaScript function that AI agents can call. But unlike regular functions, tools come with:
+
+- **A name** - How AI identifies the tool (`add_to_cart`, `search_products`)
+- **A description** - When AI should use it ("Add a product to the shopping cart")
+- **An input schema** - What parameters it accepts (product ID, quantity)
+- **Predictable output** - Structured responses AI can understand
+
+This contract means AI doesn't guess—it knows exactly what's available and how to use it.
+
+### 2. The Browser is the Bridge
+
+WebMCP runs in the browser, which provides unique advantages:
+
+| Advantage | Why It Matters |
+|-----------|----------------|
+| **User session** | Tools inherit authentication—no OAuth needed |
+| **User presence** | Humans see what AI is doing in real-time |
+| **Existing UI** | Tools can update the page as they run |
+| **Security** | Same-origin policy and browser sandbox apply |
+
+The browser isn't just where tools run—it's where humans and AI collaborate.
+
+### 3. Context is Dynamic
+
+Unlike static APIs, WebMCP tools can appear and disappear based on application state:
+
+- **Page-scoped**: Product page shows `add_to_cart`, checkout page shows `complete_purchase`
+- **Role-scoped**: Admins see management tools, users see standard tools
+- **State-scoped**: Empty cart hides checkout, filled cart shows it
+
+This dynamic nature means AI only sees tools relevant to the current context—reducing confusion and errors.
+
+## How WebMCP Fits In
+
+### WebMCP vs MCP
+
+WebMCP is inspired by Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io) but designed specifically for browsers:
+
+| | MCP | WebMCP |
+|--|-----|--------|
+| **Runs in** | Backend servers | Browser |
+| **Designed for** | Server-to-agent communication | Human-in-the-loop workflows |
+| **Authentication** | OAuth 2.1 | Inherits user session |
+| **Visibility** | Logs, monitoring | User sees everything |
+
+Both protocols are **complementary**:
+- Use **MCP** for backend services, databases, and autonomous workflows
+- Use **WebMCP** for browser-based interactions where users are present
+
+### The MCP-B Implementation
+
+Since browsers don't natively support `navigator.modelContext` yet, **MCP-B** provides:
+
+1. **A polyfill** - Adds `navigator.modelContext` to any browser
+2. **A bridge** - Translates WebMCP tools to MCP format for compatibility
+3. **An extension** - Aggregates tools from tabs and connects to AI agents
+
+When native browser support arrives, the polyfill becomes unnecessary—but your tools keep working.
+
+## The Mental Model
+
+Think of WebMCP as giving your website a **voice** that AI can understand:
+
+```
+Without WebMCP:
+  AI: "I need to add this to cart... let me scan the page...
+       is that the button? Maybe click there? Did it work?"
+
+With WebMCP:
+  AI: "I'll call add_to_cart with product_id='abc' and quantity=2"
+  Tool: "Done. Cart now has 3 items totaling $45.99"
 ```
 
-## WebMCP vs MCP
+The website stops being a maze AI navigates and becomes a **collaborator** AI works with.
 
-WebMCP is inspired by Anthropic's [Model Context Protocol (MCP)](https://modelcontextprotocol.io) but adapted for web browsers:
+## Key Terminology
 
-| Aspect | MCP | WebMCP |
-|--------|-----|--------|
-| **Environment** | Backend servers | Browser |
-| **Use case** | Server-to-agent | Human-in-the-loop |
-| **Authentication** | OAuth 2.1 | Inherits user session |
-| **API** | MCP SDK | `navigator.modelContext` |
+| Term | Meaning |
+|------|---------|
+| **Tool** | A function AI can call, defined by name, description, schema, and handler |
+| **`navigator.modelContext`** | The browser API for registering tools (W3C standard, polyfilled by MCP-B) |
+| **Transport** | How tools communicate between browser contexts (tabs, extension, iframes) |
+| **MCP-B Extension** | Browser extension that aggregates tools and connects to AI agents |
 
-Both protocols are complementary:
-- **Use MCP** for backend services and server-to-agent communication
-- **Use WebMCP** for browser-based tools where users are present
-
-## MCP-B: The Reference Implementation
-
-Since browsers don't yet natively support `navigator.modelContext`, **MCP-B** provides a polyfill that:
-
-1. **Implements the W3C API** - Adds `navigator.modelContext` to any browser
-2. **Bridges to MCP** - Translates WebMCP tools to MCP format for compatibility with existing AI frameworks
+For complete definitions, see the [Glossary](/concepts/glossary).
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
-    Explore the technical architecture and component interactions
+  <Card title="Your First Tool" icon="graduation-cap" href="/concepts/your-first-tool">
+    **Tutorial**: Build a working tool in 15 minutes
   </Card>
 
-  <Card title="Tool Registration" icon="screwdriver-wrench" href="/concepts/tool-registration">
-    Learn how to register tools with navigator.modelContext
+  <Card title="Why WebMCP?" icon="lightbulb" href="/concepts/why-webmcp">
+    **Explanation**: Compare approaches to browser AI
+  </Card>
+
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    **Explanation**: How the components work together
   </Card>
 
   <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Get started with WebMCP in minutes
-  </Card>
-
-  <Card title="Glossary" icon="book" href="/concepts/glossary">
-    Key terminology and definitions
+    **How-to**: Add WebMCP to your project
   </Card>
 </CardGroup>

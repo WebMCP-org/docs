@@ -1,0 +1,457 @@
+---
+title: 'Tutorial: Your First Tool'
+description: 'A hands-on tutorial to build your first WebMCP tool in 15 minutes. Learn by doing - no prior WebMCP experience required.'
+sidebarTitle: 'Your First Tool'
+icon: 'graduation-cap'
+---
+
+<Info>
+**This is a Tutorial** - a hands-on learning experience. You'll build a working tool from scratch in about 15 minutes. No prior WebMCP knowledge required.
+</Info>
+
+## What You'll Build
+
+By the end of this tutorial, you'll have created a **calculator tool** that AI agents can discover and use to perform math operations. Along the way, you'll learn:
+
+- How to register a tool with `navigator.modelContext`
+- How to define input schemas
+- How to return results to AI agents
+- How tools appear in the MCP-B Extension
+
+<Note>
+**Prerequisites**: Basic JavaScript knowledge. A code editor and browser. That's it.
+</Note>
+
+## Step 1: Set Up Your HTML File
+
+Create a new file called `calculator.html`:
+
+```html "calculator.html"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My First WebMCP Tool</title>
+</head>
+<body>
+  <h1>Calculator with AI Tools</h1>
+  <p>This page exposes a calculator tool that AI agents can use.</p>
+
+  <!-- We'll add our script here -->
+</body>
+</html>
+```
+
+Open this file in your browser. You should see a simple heading.
+
+<Check>
+**Checkpoint**: You have a basic HTML page open in your browser.
+</Check>
+
+## Step 2: Add the WebMCP Polyfill
+
+The `navigator.modelContext` API isn't built into browsers yet, so we need to add the MCP-B polyfill. Add this script tag before the closing `</body>` tag:
+
+```html "calculator.html"
+<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+```
+
+This script adds `navigator.modelContext` to your browser, enabling WebMCP functionality.
+
+<Check>
+**Checkpoint**: Refresh the page. Open your browser's developer console (F12) and type `navigator.modelContext`. You should see an object, not `undefined`.
+</Check>
+
+## Step 3: Register Your First Tool
+
+Now for the exciting part - registering a tool! Add another script tag after the polyfill:
+
+```html "calculator.html"
+<script>
+  // Wait for the polyfill to initialize
+  if (navigator.modelContext) {
+    navigator.modelContext.registerTool({
+      name: 'calculator_add',
+      description: 'Add two numbers together',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          a: { type: 'number', description: 'First number' },
+          b: { type: 'number', description: 'Second number' }
+        },
+        required: ['a', 'b']
+      },
+      async execute({ a, b }) {
+        const result = a + b;
+        return {
+          content: [{ type: 'text', text: `${a} + ${b} = ${result}` }]
+        };
+      }
+    });
+
+    console.log('Calculator tool registered!');
+  }
+</script>
+```
+
+Let's break down what each part does:
+
+| Property | Purpose |
+|----------|---------|
+| `name` | Unique identifier AI agents use to call your tool |
+| `description` | Helps AI understand when to use this tool |
+| `inputSchema` | Defines what parameters the tool accepts |
+| `execute` | The function that runs when the tool is called |
+
+<Check>
+**Checkpoint**: Refresh the page. You should see "Calculator tool registered!" in the console.
+</Check>
+
+## Step 4: See Your Tool in Action
+
+To see your tool working, install the [MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa).
+
+Once installed:
+
+<Steps>
+  <Step title="Open the extension">
+    Click the MCP-B icon in your browser toolbar
+  </Step>
+
+  <Step title="Find your tool">
+    Look for "calculator_add" in the tools list. It should show up with your description.
+  </Step>
+
+  <Step title="Test it">
+    If the extension has a "Test" feature, try calling your tool with `a: 5` and `b: 3`. You should see "5 + 3 = 8".
+  </Step>
+</Steps>
+
+<Check>
+**Checkpoint**: Your tool appears in the MCP-B Extension and can be called.
+</Check>
+
+## Step 5: Add More Operations
+
+One tool is great, but let's make a complete calculator. Replace your script with:
+
+```html "calculator.html"
+<script>
+  if (navigator.modelContext) {
+    // Addition
+    navigator.modelContext.registerTool({
+      name: 'calculator_add',
+      description: 'Add two numbers together',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          a: { type: 'number', description: 'First number' },
+          b: { type: 'number', description: 'Second number' }
+        },
+        required: ['a', 'b']
+      },
+      async execute({ a, b }) {
+        return {
+          content: [{ type: 'text', text: `${a} + ${b} = ${a + b}` }]
+        };
+      }
+    });
+
+    // Subtraction
+    navigator.modelContext.registerTool({
+      name: 'calculator_subtract',
+      description: 'Subtract the second number from the first',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          a: { type: 'number', description: 'Number to subtract from' },
+          b: { type: 'number', description: 'Number to subtract' }
+        },
+        required: ['a', 'b']
+      },
+      async execute({ a, b }) {
+        return {
+          content: [{ type: 'text', text: `${a} - ${b} = ${a - b}` }]
+        };
+      }
+    });
+
+    // Multiplication
+    navigator.modelContext.registerTool({
+      name: 'calculator_multiply',
+      description: 'Multiply two numbers',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          a: { type: 'number', description: 'First number' },
+          b: { type: 'number', description: 'Second number' }
+        },
+        required: ['a', 'b']
+      },
+      async execute({ a, b }) {
+        return {
+          content: [{ type: 'text', text: `${a} × ${b} = ${a * b}` }]
+        };
+      }
+    });
+
+    // Division (with error handling!)
+    navigator.modelContext.registerTool({
+      name: 'calculator_divide',
+      description: 'Divide the first number by the second',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          a: { type: 'number', description: 'Dividend (number to divide)' },
+          b: { type: 'number', description: 'Divisor (number to divide by)' }
+        },
+        required: ['a', 'b']
+      },
+      async execute({ a, b }) {
+        if (b === 0) {
+          return {
+            content: [{ type: 'text', text: 'Error: Cannot divide by zero' }],
+            isError: true
+          };
+        }
+        return {
+          content: [{ type: 'text', text: `${a} ÷ ${b} = ${a / b}` }]
+        };
+      }
+    });
+
+    console.log('All calculator tools registered!');
+  }
+</script>
+```
+
+Notice the division tool includes **error handling** - it returns `isError: true` when dividing by zero. This tells AI agents that something went wrong.
+
+<Check>
+**Checkpoint**: Refresh and verify all four tools appear in the extension.
+</Check>
+
+## Step 6: Add Visual Feedback
+
+Let's make the page show when tools are called. Update your HTML body:
+
+```html "calculator.html"
+<body>
+  <h1>Calculator with AI Tools</h1>
+  <p>This page exposes calculator tools that AI agents can use.</p>
+
+  <h2>Recent Calculations</h2>
+  <ul id="history"></ul>
+
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+  <script>
+    const history = document.getElementById('history');
+
+    function logCalculation(expression, result) {
+      const li = document.createElement('li');
+      li.textContent = `${expression} = ${result}`;
+      history.prepend(li);
+    }
+
+    if (navigator.modelContext) {
+      navigator.modelContext.registerTool({
+        name: 'calculator_add',
+        description: 'Add two numbers together',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            a: { type: 'number', description: 'First number' },
+            b: { type: 'number', description: 'Second number' }
+          },
+          required: ['a', 'b']
+        },
+        async execute({ a, b }) {
+          const result = a + b;
+          logCalculation(`${a} + ${b}`, result);
+          return {
+            content: [{ type: 'text', text: `${a} + ${b} = ${result}` }]
+          };
+        }
+      });
+
+      // ... (add the other tools similarly)
+
+      console.log('Calculator tools registered!');
+    }
+  </script>
+</body>
+```
+
+Now when AI agents call your tools, you'll see the calculations appear on the page in real-time!
+
+<Check>
+**Checkpoint**: Call a tool from the extension. The calculation appears in the "Recent Calculations" list.
+</Check>
+
+## What You've Learned
+
+Congratulations! You've built your first WebMCP integration. You now understand:
+
+<CardGroup cols={2}>
+  <Card title="Tool Registration" icon="screwdriver-wrench">
+    How to use `navigator.modelContext.registerTool()` to expose functions to AI
+  </Card>
+
+  <Card title="Input Schemas" icon="brackets-curly">
+    How JSON Schema defines what parameters tools accept
+  </Card>
+
+  <Card title="Tool Responses" icon="reply">
+    How to return results (and errors) to AI agents
+  </Card>
+
+  <Card title="Visual Feedback" icon="eye">
+    How tool execution can update your UI in real-time
+  </Card>
+</CardGroup>
+
+## Complete Code
+
+Here's the final `calculator.html` file:
+
+<Accordion title="View complete code">
+```html "calculator.html"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My First WebMCP Tool</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { color: #1F5EFF; }
+    #history { list-style: none; padding: 0; }
+    #history li { padding: 0.5rem; background: #f5f5f5; margin: 0.25rem 0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Calculator with AI Tools</h1>
+  <p>This page exposes calculator tools that AI agents can use.</p>
+
+  <h2>Recent Calculations</h2>
+  <ul id="history"></ul>
+
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+  <script>
+    const history = document.getElementById('history');
+
+    function logCalculation(expression, result) {
+      const li = document.createElement('li');
+      li.textContent = `${expression} = ${result}`;
+      history.prepend(li);
+    }
+
+    if (navigator.modelContext) {
+      // Addition
+      navigator.modelContext.registerTool({
+        name: 'calculator_add',
+        description: 'Add two numbers together',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            a: { type: 'number', description: 'First number' },
+            b: { type: 'number', description: 'Second number' }
+          },
+          required: ['a', 'b']
+        },
+        async execute({ a, b }) {
+          const result = a + b;
+          logCalculation(`${a} + ${b}`, result);
+          return { content: [{ type: 'text', text: `${a} + ${b} = ${result}` }] };
+        }
+      });
+
+      // Subtraction
+      navigator.modelContext.registerTool({
+        name: 'calculator_subtract',
+        description: 'Subtract the second number from the first',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            a: { type: 'number', description: 'Number to subtract from' },
+            b: { type: 'number', description: 'Number to subtract' }
+          },
+          required: ['a', 'b']
+        },
+        async execute({ a, b }) {
+          const result = a - b;
+          logCalculation(`${a} - ${b}`, result);
+          return { content: [{ type: 'text', text: `${a} - ${b} = ${result}` }] };
+        }
+      });
+
+      // Multiplication
+      navigator.modelContext.registerTool({
+        name: 'calculator_multiply',
+        description: 'Multiply two numbers',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            a: { type: 'number', description: 'First number' },
+            b: { type: 'number', description: 'Second number' }
+          },
+          required: ['a', 'b']
+        },
+        async execute({ a, b }) {
+          const result = a * b;
+          logCalculation(`${a} × ${b}`, result);
+          return { content: [{ type: 'text', text: `${a} × ${b} = ${result}` }] };
+        }
+      });
+
+      // Division
+      navigator.modelContext.registerTool({
+        name: 'calculator_divide',
+        description: 'Divide the first number by the second',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            a: { type: 'number', description: 'Dividend (number to divide)' },
+            b: { type: 'number', description: 'Divisor (number to divide by)' }
+          },
+          required: ['a', 'b']
+        },
+        async execute({ a, b }) {
+          if (b === 0) {
+            return {
+              content: [{ type: 'text', text: 'Error: Cannot divide by zero' }],
+              isError: true
+            };
+          }
+          const result = a / b;
+          logCalculation(`${a} ÷ ${b}`, result);
+          return { content: [{ type: 'text', text: `${a} ÷ ${b} = ${result}` }] };
+        }
+      });
+
+      console.log('All calculator tools registered!');
+    }
+  </script>
+</body>
+</html>
+```
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Add React" icon="react" href="/frameworks/react">
+    Use the `useWebMCP` hook for React applications
+  </Card>
+
+  <Card title="Understand Architecture" icon="diagram-project" href="/concepts/architecture">
+    Learn how WebMCP components work together
+  </Card>
+
+  <Card title="Design Better Tools" icon="lightbulb" href="/best-practices">
+    Best practices for naming, schemas, and responses
+  </Card>
+
+  <Card title="Explore Examples" icon="code" href="/examples">
+    See real-world WebMCP implementations
+  </Card>
+</CardGroup>
