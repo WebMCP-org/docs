@@ -80,8 +80,8 @@
             "icon": "graduation-cap",
             "pages": [
               "tutorials/index",
-              "tutorials/first-tool-react",
-              "tutorials/first-tool-vanilla"
+              "tutorials/first-tool-vanilla",
+              "tutorials/first-tool-react"
             ]
           },
           {
