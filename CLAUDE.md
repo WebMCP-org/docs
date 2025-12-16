@@ -1,20 +1,63 @@
 # Mintlify documentation
 
+## Diataxis Documentation Framework
+
+This documentation follows the [Diataxis framework](https://diataxis.fr/), which organizes content into four distinct types. **Do not mix content types within a single page.**
+
+### The Four Content Types
+
+| Type | Purpose | User Need | Directory |
+|------|---------|-----------|-----------|
+| **Tutorials** | Learn by doing | "Teach me" | `/tutorials/` |
+| **How-to Guides** | Solve specific problems | "Help me do X" | `/how-to/` |
+| **Reference** | Look up facts | "What are the details?" | `/packages/`, `/concepts/` |
+| **Explanation** | Understand concepts | "Help me understand why" | `/concepts/` |
+
+### Tutorials (`/tutorials/`)
+- Guide users through building a complete project
+- Focus on ONE path - don't present alternatives
+- Don't explain "why" - just teach through doing
+- Include checkpoints where users can verify success
+- Example: "Build your first WebMCP tool with React"
+
+### How-to Guides (`/how-to/`)
+- Solve specific problems or tasks
+- Assume the reader already knows the basics
+- Action-focused: minimal explanation, maximum doing
+- Can be read non-linearly
+- Example: "How to handle errors in tools"
+
+### Reference (`/packages/`, `/concepts/*.mdx`)
+- Technical descriptions and facts
+- Complete, accurate, austere
+- Structure mirrors the thing being described
+- No tutorials or explanations mixed in
+- Example: "registerTool() API parameters"
+
+### Explanation (`/concepts/why-webmcp.mdx`, `/concepts/architecture.mdx`)
+- Help users understand concepts deeply
+- Discuss "why" not "how"
+- Can include opinions and perspectives
+- Designed for reading away from keyboard
+- Example: "Why WebMCP vs browser automation"
+
+### Common Mistakes to Avoid
+- **Don't mix types**: A tutorial that stops to explain "why" breaks flow
+- **Don't add alternatives to tutorials**: Guide ONE path completely
+- **Don't explain in reference docs**: Just state the facts
+- **Don't include procedures in explanations**: Save the "how" for tutorials/guides
+
 ## Documentation structure overview
 
-The WebMCP documentation uses a flat + organized directory structure:
+The WebMCP documentation uses a Diataxis-organized directory structure:
 
-### Root-level pages
-Core documentation pages live in the repository root:
-- **Introduction & Getting Started**: `introduction.mdx`, `quickstart.mdx`, `development.mdx`
-- **Core Guides**: `best-practices.mdx`, `security.mdx`, `troubleshooting.mdx`, `advanced.mdx`
-- **Use Cases**: `building-mcp-ui-apps.mdx`, `connecting-agents.mdx`, `frontend-tools.mdx`
-- **Examples & Reference**: `examples.mdx`, `live-tool-examples.mdx`, `changelog.mdx`
+### Content type directories
+- **`/tutorials/`**: Step-by-step learning content (Diataxis: Tutorials)
+- **`/how-to/`**: Task-focused problem-solving guides (Diataxis: How-to Guides)
+- **`/concepts/`**: Explanations and reference material (Diataxis: Explanation + Reference)
+- **`/packages/`**: NPM package API reference (Diataxis: Reference)
 
-### Organized directories
-Specialized content is organized into directories:
-- **`/concepts/`**: Core concepts (architecture, tool design, schemas, security, performance, glossary)
-- **`/packages/`**: NPM package reference (react-webmcp, transports, smart-dom-reader, etc.)
+### Other directories
 - **`/calling-tools/`**: How agents call WebMCP tools (embedded agent, AI browsers, extension, devtools)
 - **`/frameworks/`**: Framework-specific integration guides (Vue, Svelte, Angular, Rails, etc.)
 - **`/extension/`**: Browser extension documentation (agents, userscripts)

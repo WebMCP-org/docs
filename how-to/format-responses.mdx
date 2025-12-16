@@ -1,0 +1,201 @@
+---
+title: 'How to Format Responses'
+sidebarTitle: 'Format Responses'
+description: 'Return markdown responses that AI agents can present clearly to users.'
+icon: 'file-lines'
+---
+
+This guide shows how to format tool responses so AI agents can present information clearly.
+
+## Use Markdown Instead of JSON
+
+AI models work better with markdown than raw JSON:
+
+<Tabs>
+  <Tab title="Good: Markdown">
+    ```javascript
+    async execute({ query }) {
+      const results = await searchProducts(query);
+
+      const markdown = `# Search Results for "${query}"
+
+Found ${results.length} products:
+
+${results.map((p, i) => `
+${i + 1}. **${p.name}** - $${p.price}
+   - SKU: ${p.sku}
+   - Stock: ${p.inStock ? '✓ In Stock' : '✗ Out of Stock'}
+   - [View Product](${p.url})
+`).join('\n')}
+
+---
+*Showing ${results.length} of ${results.total} total results*`;
+
+      return {
+        content: [{ type: "text", text: markdown }]
+      };
+    }
+    ```
+  </Tab>
+
+  <Tab title="Avoid: JSON">
+    ```javascript
+    // JSON is harder for AI to parse and present
+    async execute({ query }) {
+      const results = await searchProducts(query);
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            success: true,
+            data: results,
+            meta: { total: results.length }
+          }, null, 2)
+        }]
+      };
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits of markdown:**
+- More natural for AI to read and present
+- Better formatting in chat interfaces
+- More human-readable in logs
+
+## Structure Your Responses
+
+Use headers, lists, and formatting:
+
+```javascript
+async execute({ orderId }) {
+  const order = await getOrder(orderId);
+
+  return {
+    content: [{
+      type: "text",
+      text: `# Order #${order.id}
+
+**Status:** ${order.status}
+**Placed:** ${new Date(order.createdAt).toLocaleDateString()}
+**Total:** $${order.total.toFixed(2)}
+
+## Items
+${order.items.map(item => `
+- **${item.name}** x${item.quantity} - $${(item.price * item.quantity).toFixed(2)}
+`).join('')}
+
+## Shipping
+${order.shippingAddress.street}
+${order.shippingAddress.city}, ${order.shippingAddress.state} ${order.shippingAddress.zip}
+
+${order.trackingNumber
+  ? `**Tracking:** ${order.trackingNumber}`
+  : '*Tracking number not yet available*'}
+
+---
+*Order placed on ${new Date(order.createdAt).toLocaleString()}*`
+    }]
+  };
+}
+```
+
+## Format Lists Clearly
+
+```javascript
+// Product list
+const markdown = `Found ${products.length} products:
+
+${products.map((p, i) => `${i + 1}. **${p.name}** - $${p.price}`).join('\n')}`;
+
+// Task list with status
+const markdown = `## Your Tasks
+
+${tasks.map(t => `- [${t.done ? 'x' : ' '}] ${t.title}`).join('\n')}`;
+
+// Numbered steps
+const markdown = `## How to proceed
+
+1. Review your cart
+2. Enter shipping address
+3. Complete payment
+
+Click **Checkout** when ready.`;
+```
+
+## Include Helpful Context
+
+Add metadata that helps the AI understand the response:
+
+```javascript
+async execute({ query, page }) {
+  const results = await search(query, page);
+
+  return {
+    content: [{
+      type: "text",
+      text: `# Search Results
+
+**Query:** "${query}"
+**Page:** ${page} of ${results.totalPages}
+**Showing:** ${results.items.length} of ${results.totalItems} results
+
+${results.items.map(item => `- ${item.title}`).join('\n')}
+
+${page < results.totalPages
+  ? `*Use page ${page + 1} to see more results*`
+  : '*This is the last page of results*'}`
+    }]
+  };
+}
+```
+
+## Format Errors as Markdown
+
+Error messages benefit from formatting too:
+
+```javascript
+return {
+  content: [{
+    type: "text",
+    text: `**Error:** Product not found
+
+The product ID \`${productId}\` does not exist in our catalog.
+
+**What to try:**
+- Check the product ID for typos
+- Search for the product by name using \`products_search\`
+- Browse categories to find similar products`
+  }],
+  isError: true
+};
+```
+
+## Quick Patterns
+
+```javascript
+// Simple success
+return { content: [{ type: "text", text: "Task completed successfully." }] };
+
+// With count
+return { content: [{ type: "text", text: `Added ${count} items to cart.` }] };
+
+// With link
+return { content: [{ type: "text", text: `View order: [Order #${id}](${url})` }] };
+
+// Confirmation
+return { content: [{ type: "text", text: `**Deleted:** ${item.name}` }] };
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="How to Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+    Format error responses
+  </Card>
+
+  <Card title="How to Design Tools" icon="pen-ruler" href="/how-to/design-tools">
+    Write effective descriptions
+  </Card>
+</CardGroup>

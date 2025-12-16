@@ -1,14 +1,145 @@
 ---
-title: Best Practices for Creating Tools
-description: Learn best practices for designing and implementing WebMCP tools on websites you control. Tool design principles, naming conventions, security, and optimal AI integration.
+title: Best Practices
+description: Learn best practices for designing and implementing WebMCP tools. Quick reference to detailed how-to guides.
 icon: list-check
 ---
 
-This guide covers the complete tool development lifecycle: from naming and schema design, through implementation and error handling, to testing and monitoring. Unlike userscripts where you work around existing structures, controlling your entire website lets you design tools from the ground up for optimal AI integration.
+This page provides a quick overview of WebMCP best practices with links to detailed how-to guides.
 
-<Info>
-These practices apply when you own the website and can integrate WebMCP tools directly into your codebase. For userscript development, see [Managing Userscripts](/extension/managing-userscripts).
-</Info>
+<Note>
+**Looking for step-by-step guidance?** See the [How-to Guides](/how-to) for detailed instructions on specific tasks.
+</Note>
+
+## Tool Design
+
+Create tools that AI agents can discover and use effectively.
+
+<CardGroup cols={2}>
+  <Card title="Design Effective Tools" icon="pen-ruler" href="/how-to/design-tools">
+    Naming conventions, descriptions, and consolidating related operations
+  </Card>
+
+  <Card title="Validate Input" icon="shield-check" href="/how-to/validate-input">
+    Use Zod and JSON Schema for robust input validation
+  </Card>
+</CardGroup>
+
+### Quick Tips
+
+- Use `domain_verb_noun` naming pattern (e.g., `cart_add_item`)
+- Write detailed descriptions - it's the only info AI has about your tool
+- Add `.describe()` to every Zod parameter
+- Consolidate related operations into one powerful tool
+
+## Error Handling
+
+Return helpful error messages that AI can use to recover or inform users.
+
+<Card title="Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+  Authentication checks, authorization, network failures, and validation errors
+</Card>
+
+### Quick Tips
+
+- Always use `isError: true` for failures
+- Check authentication before protected operations
+- Provide actionable error messages
+- Use timeouts for network requests
+
+## Response Format
+
+Format responses so AI can present information clearly.
+
+<Card title="Format Responses" icon="file-lines" href="/how-to/format-responses">
+  Use markdown instead of JSON for better AI comprehension
+</Card>
+
+### Quick Tips
+
+- Return markdown strings, not JSON objects
+- Use headers, lists, and formatting
+- Include helpful context and metadata
+
+## Performance
+
+Make tools respond quickly for voice and real-time interactions.
+
+<Card title="Optimize Performance" icon="gauge-high" href="/how-to/optimize-performance">
+  Optimistic updates, caching, and avoiding blocking operations
+</Card>
+
+### Quick Tips
+
+- Update local state before returning (optimistic updates)
+- Sync to backend in background
+- Limit tool count - consolidate related operations
+- Cache expensive operations
+
+## Testing
+
+Verify tools work correctly before deploying.
+
+<Card title="Test Your Tools" icon="flask-vial" href="/how-to/test-tools">
+  Unit testing, React hook testing, and manual testing with MCP-B Extension
+</Card>
+
+### Quick Tips
+
+- Test tool registration configuration
+- Test handlers with valid and invalid inputs
+- Test error scenarios
+- Manual test with MCP-B Extension
+
+## Security
+
+Protect your application and users.
+
+<Card title="Security Guide" icon="shield" href="/security">
+  Authentication, authorization, input sanitization, and threat models
+</Card>
+
+### Quick Tips
+
+- Only expose tools users can already access via UI
+- Validate user authentication and authorization
+- Sanitize all inputs
+- Never expose sensitive data in responses
+
+## All How-to Guides
+
+<CardGroup cols={2}>
+  <Card title="Design Effective Tools" icon="pen-ruler" href="/how-to/design-tools">
+    Tool naming, descriptions, and schemas
+  </Card>
+
+  <Card title="Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+    Error responses and recovery patterns
+  </Card>
+
+  <Card title="Validate Input" icon="shield-check" href="/how-to/validate-input">
+    Zod and JSON Schema validation
+  </Card>
+
+  <Card title="Format Responses" icon="file-lines" href="/how-to/format-responses">
+    Markdown formatting for AI
+  </Card>
+
+  <Card title="Optimize Performance" icon="gauge-high" href="/how-to/optimize-performance">
+    Optimistic updates and caching
+  </Card>
+
+  <Card title="Test Your Tools" icon="flask-vial" href="/how-to/test-tools">
+    Unit and integration testing
+  </Card>
+</CardGroup>
+
+---
+
+## Detailed Reference (Legacy)
+
+The sections below contain the original detailed content. For updated guidance, see the linked how-to guides above.
+
+<Accordion title="Show detailed tool design reference">
 
 ## Tool Design Principles
 
@@ -1260,3 +1391,5 @@ ${results.map(r => `- ${r.title}`).join('\n')}`
     See real-world implementations
   </Card>
 </CardGroup>
+
+</Accordion>

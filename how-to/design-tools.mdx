@@ -1,0 +1,196 @@
+---
+title: 'How to Design Effective Tools'
+sidebarTitle: 'Design Effective Tools'
+description: 'Create WebMCP tools that AI agents can discover and use effectively.'
+icon: 'pen-ruler'
+---
+
+This guide covers how to design tools that AI agents can understand and use effectively. Good tool design makes the difference between an AI that fumbles and one that works smoothly.
+
+## Use Descriptive Names
+
+Follow a consistent naming pattern. Use `domain_verb_noun` or `verb_noun` format:
+
+```javascript
+// Good names
+navigator.modelContext.registerTool({
+  name: 'products_search',    // Clear domain + action
+  name: 'cart_add_item',      // Verb + noun pattern
+  name: 'orders_get_status',  // Descriptive and specific
+});
+
+// Avoid
+navigator.modelContext.registerTool({
+  name: 'search',      // Too generic
+  name: 'doAction',    // Unclear purpose
+  name: 'helper1',     // Meaningless
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Good Names" icon="check">
+    - `products_search`
+    - `cart_add_item`
+    - `user_get_profile`
+    - `orders_list_recent`
+  </Card>
+
+  <Card title="Avoid" icon="xmark">
+    - `doStuff`
+    - `action1`
+    - `helper`
+    - `processData`
+  </Card>
+</CardGroup>
+
+## Write Detailed Descriptions
+
+<Warning>
+Tool names, descriptions, and input schemas are the ONLY information the AI model has about your tools. Make them detailed and informative.
+</Warning>
+
+Include everything the AI needs to know:
+
+```javascript
+// Vague - AI doesn't know when to use this
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: 'Searches for products',
+});
+
+// Better - AI understands exactly how to use it
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: `Search products by name, category, or SKU.
+
+Returns paginated results with title, price, stock status, and product URLs.
+Use this when users ask about product availability or pricing.
+
+If searching by price range, use the minPrice and maxPrice parameters.
+Results are sorted by relevance by default.`,
+});
+```
+
+**Include in your descriptions:**
+- What the tool does and when to use it
+- What data it returns and in what format
+- When to use it vs similar tools
+- Any important limitations or constraints
+- Prerequisites or dependencies on other tools
+
+## Use Parameter Descriptions
+
+Add `.describe()` to every Zod parameter:
+
+```typescript
+inputSchema: {
+  query: z.string()
+    .min(1)
+    .describe('Product name, category, or SKU. Examples: "laptop", "running shoes"'),
+
+  minPrice: z.number()
+    .positive()
+    .optional()
+    .describe('Minimum price filter in USD'),
+
+  limit: z.number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(10)
+    .describe('Results per page (1-100, default: 10)')
+}
+```
+
+## Consolidate Related Operations
+
+Prefer one powerful tool over many single-purpose tools:
+
+<Tabs>
+  <Tab title="Good: Consolidated">
+    ```javascript
+    // One tool handling related operations
+    navigator.modelContext.registerTool({
+      name: 'cart_manager',
+      description: 'Manage cart operations: add, remove, view, clear, update quantity',
+      inputSchema: {
+        action: z.enum(['add', 'remove', 'view', 'clear', 'update'])
+          .describe('The cart operation to perform'),
+        productId: z.string().optional()
+          .describe('Product ID (required for add, remove, update)'),
+        quantity: z.number().positive().optional()
+          .describe('Quantity (required for add and update)')
+      },
+    });
+    ```
+  </Tab>
+
+  <Tab title="Avoid: Too Many Tools">
+    ```javascript
+    // Multiple tools consuming unnecessary context
+    registerTool({ name: 'cart_add_item', ... });
+    registerTool({ name: 'cart_remove_item', ... });
+    registerTool({ name: 'cart_get_contents', ... });
+    registerTool({ name: 'cart_clear', ... });
+    registerTool({ name: 'cart_update_quantity', ... });
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits of consolidated tools:**
+- Reduces context consumption (fewer tool definitions)
+- Fewer tools to maintain and document
+- Simpler tool discovery for AI agents
+
+## Reference Related Tools
+
+Tell the AI when tools work together:
+
+```typescript
+navigator.modelContext.registerTool({
+  name: 'cart_checkout',
+  description: `Proceed to checkout with current cart contents.
+
+Prerequisites:
+- User must be authenticated
+- Cart must contain at least one item (call cart_get_contents to verify)
+- Shipping address must be set (call user_set_shipping_address if needed)
+
+Returns a checkout URL where user can complete payment.`,
+});
+```
+
+## Quick Checklist
+
+<AccordionGroup>
+  <Accordion title="Tool naming">
+    - Use `domain_verb_noun` pattern
+    - Be specific and descriptive
+    - Avoid generic names like "helper" or "action"
+  </Accordion>
+
+  <Accordion title="Descriptions">
+    - Explain what, when, and why
+    - Describe return format
+    - List prerequisites and dependencies
+    - Mention related tools
+  </Accordion>
+
+  <Accordion title="Parameters">
+    - Add `.describe()` to every parameter
+    - Include examples in descriptions
+    - Set sensible defaults
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="How to Validate Input" icon="shield-check" href="/how-to/validate-input">
+    Define robust input schemas
+  </Card>
+
+  <Card title="How to Format Responses" icon="file-lines" href="/how-to/format-responses">
+    Return responses AI can use well
+  </Card>
+</CardGroup>

@@ -76,10 +76,25 @@
             ]
           },
           {
-            "group": "Guides",
+            "group": "Tutorials",
+            "icon": "graduation-cap",
             "pages": [
-              "connecting-agents",
-              "best-practices",
+              "tutorials/index",
+              "tutorials/first-tool-react",
+              "tutorials/first-tool-vanilla"
+            ]
+          },
+          {
+            "group": "How-to Guides",
+            "icon": "wrench",
+            "pages": [
+              "how-to/index",
+              "how-to/design-tools",
+              "how-to/handle-errors",
+              "how-to/validate-input",
+              "how-to/format-responses",
+              "how-to/optimize-performance",
+              "how-to/test-tools",
               "development",
               "advanced",
               "building-mcp-ui-apps",
@@ -108,7 +123,8 @@
             ]
           },
           {
-            "group": "NPM Packages",
+            "group": "API Reference",
+            "icon": "book",
             "pages": [
               "packages/global",
               "packages/transports",
@@ -121,7 +137,7 @@
             ]
           },
           {
-            "group": "Reference",
+            "group": "Resources",
             "pages": [
               "changelog",
               "troubleshooting",
@@ -165,37 +181,31 @@
             ]
           },
           {
-            "group": "Core Features",
+            "group": "Core Concepts",
             "icon": "cubes",
             "pages": [
               "concepts/tool-registration",
               "concepts/prompts",
               "concepts/resources",
-              "concepts/transports",
-              "concepts/context-engineering"
+              "concepts/transports"
             ]
           },
           {
-            "group": "Advanced Topics",
-            "icon": "rocket",
+            "group": "Design & Architecture",
+            "icon": "diagram-project",
             "pages": [
+              "concepts/schemas",
+              "concepts/context-engineering",
               "concepts/mcp-ui-integration",
-              "concepts/extension",
-              "concepts/schemas"
-            ]
-          },
-          {
-            "group": "Best Practices",
-            "icon": "lightbulb-on",
-            "pages": [
-              "concepts/tool-design",
-              "concepts/performance"
+              "concepts/extension"
             ]
           },
           {
             "group": "Reference",
             "icon": "book",
             "pages": [
+              "concepts/tool-design",
+              "concepts/performance",
               "concepts/glossary"
             ]
           }
