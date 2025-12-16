@@ -1,0 +1,202 @@
+---
+title: 'Tutorial: Your First Tool (Vanilla JS)'
+sidebarTitle: 'Your First Tool (Vanilla JS)'
+description: 'Build a working WebMCP tool from scratch using vanilla JavaScript. No frameworks required.'
+icon: 'graduation-cap'
+---
+
+In this tutorial, you'll build a simple counter page with an AI-accessible tool using plain JavaScript. No frameworks needed.
+
+**What you'll build:** A counter page where AI agents can read and modify the count.
+
+**Time:** ~10 minutes
+
+## Prerequisites
+
+You need:
+- A code editor (VS Code recommended)
+- Chrome, Edge, or Brave browser
+- Basic JavaScript knowledge
+
+## Step 1: Create Your HTML File
+
+Create a new file called `index.html`:
+
+```html "index.html"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebMCP Counter</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 400px;
+      margin: 50px auto;
+      text-align: center;
+    }
+    #count {
+      font-size: 48px;
+      margin: 20px 0;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebMCP Counter</h1>
+  <div id="count">0</div>
+  <button onclick="increment()">Increment</button>
+
+  <!-- Load WebMCP polyfill -->
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+
+  <script>
+    // Counter state
+    let count = 0;
+
+    function updateDisplay() {
+      document.getElementById('count').textContent = count;
+    }
+
+    function increment() {
+      count++;
+      updateDisplay();
+    }
+
+    // Register WebMCP tools
+    navigator.modelContext.registerTool({
+      name: 'get_count',
+      description: 'Get the current counter value',
+      inputSchema: {
+        type: 'object',
+        properties: {}
+      },
+      async execute() {
+        return {
+          content: [{
+            type: 'text',
+            text: `The current count is ${count}`
+          }]
+        };
+      }
+    });
+
+    navigator.modelContext.registerTool({
+      name: 'increment_count',
+      description: 'Increment the counter by a specified amount',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          amount: {
+            type: 'number',
+            description: 'Amount to increment by (1-100)',
+            minimum: 1,
+            maximum: 100,
+            default: 1
+          }
+        }
+      },
+      async execute({ amount = 1 }) {
+        count += amount;
+        updateDisplay();
+        return {
+          content: [{
+            type: 'text',
+            text: `Incremented counter by ${amount}. New count: ${count}`
+          }]
+        };
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+Let's understand what this code does:
+
+1. **Script tag** - Loads the WebMCP polyfill from unpkg CDN
+2. **`navigator.modelContext.registerTool()`** - Registers tools for AI agents
+3. **`inputSchema`** - Uses JSON Schema to define parameters
+4. **`execute()`** - The function called when an AI invokes the tool
+
+## Step 2: Install the Browser Extension
+
+Install the MCP-B Extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa).
+
+## Step 3: Open Your Page
+
+Open `index.html` in your browser. You can:
+- Double-click the file to open it directly
+- Or use a local server: `npx serve .`
+
+## Step 4: Test Your Tools
+
+1. Click the MCP-B extension icon in your browser toolbar
+2. Click the **Tools** tab
+3. You should see `get_count` and `increment_count`
+
+Try it out:
+1. Type: "What's the current count?"
+2. Type: "Increment by 10"
+3. Watch your page update automatically!
+
+**Congratulations!** You've built your first WebMCP tool with vanilla JavaScript.
+
+## Step 5: Add a Reset Tool
+
+Add this before the closing `</script>` tag:
+
+```javascript
+navigator.modelContext.registerTool({
+  name: 'reset_count',
+  description: 'Reset the counter back to zero',
+  inputSchema: {
+    type: 'object',
+    properties: {}
+  },
+  async execute() {
+    count = 0;
+    updateDisplay();
+    return {
+      content: [{
+        type: 'text',
+        text: 'Counter has been reset to 0'
+      }]
+    };
+  }
+});
+```
+
+Refresh the page and your new tool is ready.
+
+## What You Learned
+
+- How to add WebMCP to any HTML page with a script tag
+- How to register tools using `navigator.modelContext.registerTool()`
+- How to define input schemas with JSON Schema
+- How to return responses from tools
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Your First Tool (React)" icon="react" href="/tutorials/first-tool-react">
+    Try the React version with hooks
+  </Card>
+
+  <Card title="How-to: Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+    Learn to handle errors gracefully
+  </Card>
+
+  <Card title="How-to: Use with npm" icon="npm" href="/how-to/npm-setup">
+    Set up WebMCP with npm and bundlers
+  </Card>
+
+  <Card title="Tool Registration Reference" icon="book" href="/concepts/tool-registration">
+    Complete API reference
+  </Card>
+</CardGroup>

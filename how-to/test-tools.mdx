@@ -1,0 +1,248 @@
+---
+title: 'How to Test Your Tools'
+sidebarTitle: 'Test Your Tools'
+description: 'Unit test tool registration and execution, and test with real AI agents.'
+icon: 'flask-vial'
+---
+
+This guide shows how to test WebMCP tools to ensure they work correctly.
+
+## Test Tool Registration
+
+Verify tools register with the correct configuration:
+
+```typescript
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+describe('Product Search Tool', () => {
+  beforeEach(() => {
+    // Mock navigator.modelContext
+    global.navigator = {
+      modelContext: {
+        registerTool: vi.fn()
+      }
+    } as any;
+  });
+
+  it('should register with correct schema', () => {
+    registerProductSearchTool();
+
+    expect(navigator.modelContext.registerTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'products_search',
+        description: expect.any(String),
+        inputSchema: expect.any(Object)
+      })
+    );
+  });
+
+  it('should have required fields in schema', () => {
+    registerProductSearchTool();
+
+    const call = vi.mocked(navigator.modelContext.registerTool).mock.calls[0][0];
+    expect(call.inputSchema).toHaveProperty('query');
+  });
+});
+```
+
+## Test Tool Execution
+
+Test the handler logic directly:
+
+```typescript
+describe('Product Search Execution', () => {
+  it('should return products for valid query', async () => {
+    // Mock the data layer
+    vi.spyOn(api, 'searchProducts').mockResolvedValue([
+      { id: '1', name: 'Laptop', price: 999 }
+    ]);
+
+    const result = await executeProductSearch({ query: 'laptop' });
+
+    expect(result.content[0].text).toContain('Laptop');
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should return error for empty query', async () => {
+    const result = await executeProductSearch({ query: '' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('empty');
+  });
+
+  it('should handle API errors', async () => {
+    vi.spyOn(api, 'searchProducts').mockRejectedValue(
+      new Error('Database connection failed')
+    );
+
+    const result = await executeProductSearch({ query: 'laptop' });
+
+    expect(result.isError).toBe(true);
+  });
+});
+```
+
+## Test React Hooks
+
+Test `useWebMCP` with React Testing Library:
+
+```typescript
+import { renderHook } from '@testing-library/react';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+
+describe('useWebMCP', () => {
+  beforeEach(() => {
+    global.navigator = {
+      modelContext: {
+        registerTool: vi.fn(() => ({ unregister: vi.fn() }))
+      }
+    } as any;
+  });
+
+  it('should register tool on mount', () => {
+    renderHook(() =>
+      useWebMCP({
+        name: 'test_tool',
+        description: 'Test',
+        inputSchema: {},
+        handler: async () => 'result'
+      })
+    );
+
+    expect(navigator.modelContext.registerTool).toHaveBeenCalledTimes(1);
+  });
+
+  it('should unregister on unmount', () => {
+    const unregister = vi.fn();
+    vi.mocked(navigator.modelContext.registerTool).mockReturnValue({ unregister });
+
+    const { unmount } = renderHook(() =>
+      useWebMCP({
+        name: 'test_tool',
+        description: 'Test',
+        inputSchema: {},
+        handler: async () => 'result'
+      })
+    );
+
+    unmount();
+    expect(unregister).toHaveBeenCalled();
+  });
+});
+```
+
+## Test Input Validation
+
+Verify schemas reject invalid input:
+
+```typescript
+import { z } from 'zod';
+
+describe('Input Schema', () => {
+  const schema = z.object({
+    query: z.string().min(1).max(100),
+    limit: z.number().int().min(1).max(100).default(10)
+  });
+
+  it('should accept valid input', () => {
+    expect(() => schema.parse({ query: 'laptop' })).not.toThrow();
+  });
+
+  it('should reject empty query', () => {
+    expect(() => schema.parse({ query: '' })).toThrow();
+  });
+
+  it('should reject limit over max', () => {
+    expect(() => schema.parse({ query: 'test', limit: 500 })).toThrow();
+  });
+
+  it('should use default limit', () => {
+    const result = schema.parse({ query: 'test' });
+    expect(result.limit).toBe(10);
+  });
+});
+```
+
+## Test with MCP-B Extension
+
+Manual testing with real AI:
+
+<Steps>
+  <Step title="Start development server">
+    ```bash
+    npm run dev
+    ```
+  </Step>
+
+  <Step title="Open your app in Chrome">
+    Navigate to your development URL (e.g., http://localhost:5173)
+  </Step>
+
+  <Step title="Open MCP-B Extension">
+    Click the extension icon and go to the **Tools** tab
+  </Step>
+
+  <Step title="Verify tool registration">
+    Confirm your tools appear in the list with correct names and descriptions
+  </Step>
+
+  <Step title="Test with natural language">
+    Ask the AI to use your tools:
+    - "Search for laptops under $1000"
+    - "Add 2 items to my cart"
+    - "What's in my cart?"
+  </Step>
+
+  <Step title="Verify results">
+    Check that:
+    - The AI calls the correct tool
+    - Your app UI updates appropriately
+    - The AI presents the response clearly
+  </Step>
+</Steps>
+
+## Test Error Scenarios
+
+```typescript
+describe('Error Handling', () => {
+  it('should handle network timeout', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(() =>
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 100)
+      )
+    );
+
+    const result = await executeSearch({ query: 'test' });
+    expect(result.isError).toBe(true);
+  });
+
+  it('should handle unauthorized access', async () => {
+    vi.spyOn(auth, 'getCurrentUser').mockResolvedValue(null);
+
+    const result = await executeProtectedTool({ userId: '123' });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('log in');
+  });
+});
+```
+
+## Quick Checklist
+
+- Test tool registration configuration
+- Test handler with valid inputs
+- Test handler with invalid inputs
+- Test error scenarios (network, auth, not found)
+- Test cleanup on unmount (React)
+- Manual test with MCP-B Extension
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="How to Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+    Error patterns to test
+  </Card>
+
+  <Card title="How to Validate Input" icon="shield-check" href="/how-to/validate-input">
+    Schema patterns to validate
+  </Card>
+</CardGroup>

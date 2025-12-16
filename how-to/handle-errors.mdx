@@ -1,0 +1,253 @@
+---
+title: 'How to Handle Errors'
+sidebarTitle: 'Handle Errors'
+description: 'Return helpful error messages and handle failures gracefully in WebMCP tools.'
+icon: 'triangle-exclamation'
+---
+
+This guide shows how to handle errors in your WebMCP tools so AI agents can understand what went wrong and help users recover.
+
+## Return Error Responses
+
+Use the `isError: true` flag to signal failures:
+
+```javascript
+async execute({ productId }) {
+  const product = await getProduct(productId);
+
+  if (!product) {
+    return {
+      content: [{
+        type: "text",
+        text: `Product ${productId} not found. Please verify the product ID.`
+      }],
+      isError: true
+    };
+  }
+
+  // Success path...
+}
+```
+
+## Check Authentication First
+
+Always verify the user is logged in before accessing protected resources:
+
+```javascript
+async execute({ userId }) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return {
+      content: [{
+        type: "text",
+        text: "User not authenticated. Please log in first."
+      }],
+      isError: true
+    };
+  }
+
+  // Continue with authenticated user...
+}
+```
+
+## Check Authorization
+
+Verify the user has permission for the requested action:
+
+```javascript
+async execute({ userId }) {
+  const currentUser = await getCurrentUser();
+
+  if (currentUser.id !== userId && !currentUser.isAdmin) {
+    return {
+      content: [{
+        type: "text",
+        text: "Unauthorized. You can only access your own profile."
+      }],
+      isError: true
+    };
+  }
+
+  // Continue with authorized action...
+}
+```
+
+## Handle Network Failures
+
+Wrap external calls in try-catch:
+
+```javascript
+async execute({ query }) {
+  try {
+    const results = await fetch('/api/search', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+
+    if (!results.ok) {
+      throw new Error(`API returned ${results.status}`);
+    }
+
+    const data = await results.json();
+    return {
+      content: [{ type: "text", text: formatResults(data) }]
+    };
+
+  } catch (error) {
+    console.error('Search failed:', error);
+
+    return {
+      content: [{
+        type: "text",
+        text: `Search failed: ${error.message}. Please try again.`
+      }],
+      isError: true
+    };
+  }
+}
+```
+
+## Use Specific Error Codes
+
+Create structured error responses for consistency:
+
+```typescript
+enum ErrorCode {
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  NOT_FOUND = 'NOT_FOUND',
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  RATE_LIMIT = 'RATE_LIMIT',
+  SERVER_ERROR = 'SERVER_ERROR'
+}
+
+function formatError(code: ErrorCode, message: string, details?: string) {
+  return {
+    content: [{
+      type: "text",
+      text: `**Error (${code}):** ${message}${details ? `\n\n${details}` : ''}`
+    }],
+    isError: true
+  };
+}
+
+// Usage
+if (rateLimitExceeded) {
+  return formatError(
+    ErrorCode.RATE_LIMIT,
+    'Too many requests.',
+    'Please try again in 60 seconds.'
+  );
+}
+```
+
+## Validate Business Rules
+
+Check constraints beyond just types:
+
+```javascript
+async execute({ productId, quantity }) {
+  const product = await getProduct(productId);
+
+  if (!product) {
+    return {
+      content: [{
+        type: "text",
+        text: `Product ${productId} not found.`
+      }],
+      isError: true
+    };
+  }
+
+  if (product.stock < quantity) {
+    return {
+      content: [{
+        type: "text",
+        text: `Only ${product.stock} units available. Requested: ${quantity}.`
+      }],
+      isError: true
+    };
+  }
+
+  // Proceed with order...
+}
+```
+
+## Complete Example
+
+Here's a comprehensive error handling pattern:
+
+```javascript
+async execute({ userId }) {
+  try {
+    // 1. Check authentication
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      return {
+        content: [{ type: "text", text: "Please log in first." }],
+        isError: true
+      };
+    }
+
+    // 2. Check authorization
+    if (currentUser.id !== userId && !currentUser.isAdmin) {
+      return {
+        content: [{ type: "text", text: "You can only access your own profile." }],
+        isError: true
+      };
+    }
+
+    // 3. Fetch with timeout
+    const profile = await fetchWithTimeout(
+      `/api/users/${userId}`,
+      { timeout: 5000 }
+    );
+
+    // 4. Handle not found
+    if (!profile) {
+      return {
+        content: [{ type: "text", text: `User ${userId} not found.` }],
+        isError: true
+      };
+    }
+
+    // 5. Return success
+    return {
+      content: [{
+        type: "text",
+        text: `# User Profile\n\n**Name:** ${profile.name}\n**Email:** ${profile.email}`
+      }]
+    };
+
+  } catch (error) {
+    // 6. Catch unexpected errors
+    console.error('Profile fetch error:', error);
+    return {
+      content: [{ type: "text", text: `Failed to fetch profile: ${error.message}` }],
+      isError: true
+    };
+  }
+}
+```
+
+## Quick Checklist
+
+- Always use `isError: true` for failures
+- Check authentication before protected operations
+- Check authorization for user-specific data
+- Use timeouts for network requests
+- Provide actionable error messages
+- Log errors for debugging
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="How to Validate Input" icon="shield-check" href="/how-to/validate-input">
+    Prevent errors with input validation
+  </Card>
+
+  <Card title="How to Format Responses" icon="file-lines" href="/how-to/format-responses">
+    Format error messages as markdown
+  </Card>
+</CardGroup>

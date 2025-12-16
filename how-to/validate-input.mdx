@@ -1,0 +1,220 @@
+---
+title: 'How to Validate Input'
+sidebarTitle: 'Validate Input'
+description: 'Use Zod and JSON Schema for robust input validation in WebMCP tools.'
+icon: 'shield-check'
+---
+
+This guide shows how to validate tool inputs to prevent errors and provide helpful feedback to AI agents.
+
+## Zod Validation (React)
+
+Use Zod for TypeScript projects with the `@mcp-b/react-webmcp` package:
+
+```typescript
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+useWebMCP({
+  name: 'products_search',
+  description: 'Search products',
+  inputSchema: {
+    query: z.string()
+      .min(1, 'Search query cannot be empty')
+      .max(100, 'Search query too long')
+      .describe('Product name, category, or SKU'),
+
+    minPrice: z.number()
+      .positive()
+      .optional()
+      .describe('Minimum price filter in USD'),
+
+    maxPrice: z.number()
+      .positive()
+      .optional()
+      .describe('Maximum price filter in USD'),
+
+    category: z.enum(['electronics', 'clothing', 'home', 'sports'])
+      .optional()
+      .describe('Filter by category'),
+
+    limit: z.number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(10)
+      .describe('Results per page (1-100, default: 10)')
+  },
+  handler: async ({ query, minPrice, maxPrice, category, limit }) => {
+    // TypeScript knows exact types here
+  }
+});
+```
+
+<Info>
+Parameter descriptions (via `.describe()`) are sent to the AI model. Be detailed!
+</Info>
+
+## JSON Schema Validation (Vanilla JS)
+
+Use JSON Schema for vanilla JavaScript:
+
+```javascript
+navigator.modelContext.registerTool({
+  name: 'products_search',
+  description: 'Search products',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 100,
+        description: 'Product name, category, or SKU'
+      },
+      minPrice: {
+        type: 'number',
+        minimum: 0,
+        description: 'Minimum price filter in USD'
+      },
+      maxPrice: {
+        type: 'number',
+        minimum: 0,
+        description: 'Maximum price filter in USD'
+      },
+      category: {
+        type: 'string',
+        enum: ['electronics', 'clothing', 'home', 'sports'],
+        description: 'Filter by category'
+      },
+      limit: {
+        type: 'integer',
+        minimum: 1,
+        maximum: 100,
+        default: 10,
+        description: 'Results per page (1-100)'
+      }
+    },
+    required: ['query']
+  },
+  async execute({ query, minPrice, maxPrice, category, limit = 10 }) {
+    // ...
+  }
+});
+```
+
+## Validate Business Rules
+
+Go beyond type checking:
+
+```typescript
+inputSchema: {
+  productId: z.string()
+    .uuid('Invalid product ID format')
+    .describe('Product UUID'),
+
+  quantity: z.number()
+    .int()
+    .positive()
+    .max(99, 'Cannot order more than 99 items at once')
+    .describe('Quantity to add to cart'),
+
+  promoCode: z.string()
+    .regex(/^[A-Z0-9]{6,12}$/, 'Invalid promo code format')
+    .optional()
+    .describe('Optional promotional code (6-12 alphanumeric characters)')
+}
+```
+
+## Common Patterns
+
+### Optional with Default
+
+```typescript
+// Zod
+limit: z.number().int().default(10).describe('Results per page')
+
+// JSON Schema
+limit: { type: 'integer', default: 10, description: 'Results per page' }
+```
+
+### Enum Choices
+
+```typescript
+// Zod
+status: z.enum(['pending', 'shipped', 'delivered']).describe('Order status filter')
+
+// JSON Schema
+status: {
+  type: 'string',
+  enum: ['pending', 'shipped', 'delivered'],
+  description: 'Order status filter'
+}
+```
+
+### Nested Objects
+
+```typescript
+// Zod
+address: z.object({
+  street: z.string().describe('Street address'),
+  city: z.string().describe('City name'),
+  zip: z.string().regex(/^\d{5}$/).describe('5-digit ZIP code')
+}).describe('Shipping address')
+
+// JSON Schema
+address: {
+  type: 'object',
+  description: 'Shipping address',
+  properties: {
+    street: { type: 'string', description: 'Street address' },
+    city: { type: 'string', description: 'City name' },
+    zip: { type: 'string', pattern: '^\\d{5}$', description: '5-digit ZIP code' }
+  },
+  required: ['street', 'city', 'zip']
+}
+```
+
+### Arrays
+
+```typescript
+// Zod
+productIds: z.array(z.string().uuid())
+  .min(1)
+  .max(10)
+  .describe('List of product IDs (1-10)')
+
+// JSON Schema
+productIds: {
+  type: 'array',
+  items: { type: 'string', format: 'uuid' },
+  minItems: 1,
+  maxItems: 10,
+  description: 'List of product IDs (1-10)'
+}
+```
+
+## Quick Reference
+
+| Validation | Zod | JSON Schema |
+|------------|-----|-------------|
+| Required string | `z.string()` | `{ type: 'string' }` + `required` |
+| Optional | `.optional()` | Omit from `required` |
+| Default | `.default(value)` | `default: value` |
+| Min/max number | `.min(1).max(100)` | `minimum: 1, maximum: 100` |
+| String length | `.min(1).max(100)` | `minLength: 1, maxLength: 100` |
+| Enum | `z.enum([...])` | `enum: [...]` |
+| Regex | `.regex(/pattern/)` | `pattern: "..."` |
+| Description | `.describe('...')` | `description: '...'` |
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Schema Reference" icon="book" href="/concepts/schemas">
+    Complete schema syntax reference
+  </Card>
+
+  <Card title="How to Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+    Handle validation failures gracefully
+  </Card>
+</CardGroup>

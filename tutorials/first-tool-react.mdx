@@ -1,0 +1,191 @@
+---
+title: 'Tutorial: Your First Tool (React)'
+sidebarTitle: 'Your First Tool (React)'
+description: 'Build a working WebMCP tool from scratch using React. By the end, AI agents will be able to interact with your application.'
+icon: 'graduation-cap'
+---
+
+In this tutorial, you'll build a simple counter application with an AI-accessible tool. By the end, AI agents will be able to read and modify your counter through natural language.
+
+**What you'll build:** A React counter app where AI agents can get the current count and increment it.
+
+**Time:** ~15 minutes
+
+## Prerequisites
+
+You need:
+- Node.js 18+ installed
+- A code editor (VS Code recommended)
+- Chrome, Edge, or Brave browser
+- Basic React knowledge
+
+## Step 1: Create Your React App
+
+Open your terminal and create a new React project:
+
+```bash
+npm create vite@latest my-webmcp-app -- --template react-ts
+cd my-webmcp-app
+```
+
+## Step 2: Install WebMCP Packages
+
+Install the required packages:
+
+```bash
+npm install @mcp-b/global @mcp-b/react-webmcp zod
+```
+
+- **@mcp-b/global** - Adds the `navigator.modelContext` API to your browser
+- **@mcp-b/react-webmcp** - React hooks for registering tools
+- **zod** - Schema validation for tool inputs
+
+## Step 3: Install the Browser Extension
+
+Install the MCP-B Extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa).
+
+This extension allows AI agents to discover and call your tools.
+
+## Step 4: Create Your Counter Component
+
+Replace the contents of `src/App.tsx` with:
+
+```tsx "src/App.tsx"
+import { useState } from 'react';
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+import './App.css';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div className="App">
+      <h1>WebMCP Counter</h1>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>
+        Increment
+      </button>
+      <CounterTools count={count} setCount={setCount} />
+    </div>
+  );
+}
+
+function CounterTools({
+  count,
+  setCount
+}: {
+  count: number;
+  setCount: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  // Tool 1: Get the current count
+  useWebMCP({
+    name: 'get_count',
+    description: 'Get the current counter value',
+    inputSchema: {},
+    handler: async () => {
+      return `The current count is ${count}`;
+    }
+  });
+
+  // Tool 2: Increment the counter
+  useWebMCP({
+    name: 'increment_count',
+    description: 'Increment the counter by a specified amount',
+    inputSchema: {
+      amount: z.number().min(1).max(100).default(1)
+        .describe('Amount to increment by (1-100)')
+    },
+    handler: async ({ amount }) => {
+      setCount(c => c + amount);
+      return `Incremented counter by ${amount}. New count: ${count + amount}`;
+    }
+  });
+
+  return null; // This component only registers tools
+}
+
+export default App;
+```
+
+Let's understand what this code does:
+
+1. **State management** - `useState` tracks the counter value
+2. **`useWebMCP` hook** - Registers tools that AI agents can call
+3. **`get_count` tool** - Returns the current count (read operation)
+4. **`increment_count` tool** - Increases the count (write operation)
+5. **Input schema** - Defines what parameters the tool accepts using Zod
+
+## Step 5: Start Your Development Server
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173 in your browser. You should see your counter app.
+
+## Step 6: Test Your Tools
+
+1. Click the MCP-B extension icon in your browser toolbar
+2. Click the **Tools** tab
+3. You should see your two tools: `get_count` and `increment_count`
+
+<Frame>
+  <img src="/images/tutorials/extension-tools-tab.png" alt="Extension showing registered tools" />
+</Frame>
+
+Try calling your tools:
+
+1. In the extension chat, type: "What's the current count?"
+2. The AI will call `get_count` and report the value
+3. Type: "Increment the counter by 5"
+4. The AI will call `increment_count` and your app's UI will update
+
+**Congratulations!** You've built your first WebMCP tool. AI agents can now interact with your React application.
+
+## Step 7: Add a Third Tool
+
+Let's add a tool to reset the counter. Add this inside the `CounterTools` component:
+
+```tsx
+// Tool 3: Reset the counter
+useWebMCP({
+  name: 'reset_count',
+  description: 'Reset the counter back to zero',
+  inputSchema: {},
+  handler: async () => {
+    setCount(0);
+    return 'Counter has been reset to 0';
+  }
+});
+```
+
+Refresh your browser and check the extension - you'll see the new tool available.
+
+## What You Learned
+
+- How to install and set up WebMCP in a React project
+- How to use the `useWebMCP` hook to register tools
+- How to define input schemas with Zod
+- How to test tools using the MCP-B extension
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Build a Task Manager" icon="list-check" href="/tutorials/task-manager">
+    Build a more complex app with CRUD operations
+  </Card>
+
+  <Card title="How-to: Handle Errors" icon="triangle-exclamation" href="/how-to/handle-errors">
+    Learn to handle errors gracefully in tools
+  </Card>
+
+  <Card title="How-to: Add Authentication" icon="lock" href="/how-to/authentication">
+    Protect tools with user authentication
+  </Card>
+
+  <Card title="Tool Registration Reference" icon="book" href="/concepts/tool-registration">
+    Complete API reference for registerTool
+  </Card>
+</CardGroup>

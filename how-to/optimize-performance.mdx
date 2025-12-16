@@ -1,0 +1,223 @@
+---
+title: 'How to Optimize Performance'
+sidebarTitle: 'Optimize Performance'
+description: 'Use optimistic updates and avoid blocking operations for fast tool responses.'
+icon: 'gauge-high'
+---
+
+This guide shows how to make your tools respond quickly, especially important for voice interfaces and real-time interactions.
+
+## Use Optimistic Updates
+
+Update local state immediately instead of waiting for API responses:
+
+<Tabs>
+  <Tab title="Good: Optimistic">
+    ```javascript
+    navigator.modelContext.registerTool({
+      name: 'cart_add_item',
+      description: 'Add product to cart',
+      inputSchema: { /* ... */ },
+      async execute({ productId, quantity }) {
+        // 1. Update local state immediately
+        const cartState = getCartState();
+        const product = cartState.addItem({ productId, quantity });
+
+        // 2. Return success instantly
+        const response = {
+          content: [{
+            type: "text",
+            text: `**Added to cart:** ${product.name} x${quantity}`
+          }]
+        };
+
+        // 3. Sync to backend in background (don't await)
+        syncCartToBackend(cartState).catch(err => {
+          console.error('Background sync failed:', err);
+        });
+
+        return response;
+      }
+    });
+    ```
+  </Tab>
+
+  <Tab title="Avoid: Blocking">
+    ```javascript
+    // Slow - waits for API before responding
+    navigator.modelContext.registerTool({
+      name: 'cart_add_item',
+      async execute({ productId, quantity }) {
+        // Blocks until API responds (could take seconds)
+        const result = await fetch('/api/cart/add', {
+          method: 'POST',
+          body: JSON.stringify({ productId, quantity })
+        });
+
+        const data = await result.json();
+        return {
+          content: [{ type: "text", text: `Added ${data.name}` }]
+        };
+      }
+    });
+    ```
+  </Tab>
+</Tabs>
+
+**Benefits:**
+- Instant responses for voice and real-time interactions
+- Better user experience
+- Voice models can chain multiple operations smoothly
+
+## Maintain Local State
+
+Keep application state that tools can update synchronously:
+
+```javascript
+// Using a state manager (Zustand, Redux, etc.)
+import { useCartStore } from './stores/cart';
+
+function CartTools() {
+  const cart = useCartStore();
+
+  useWebMCP({
+    name: 'cart_add_item',
+    handler: async ({ productId, quantity }) => {
+      // Synchronous state update
+      cart.addItem(productId, quantity);
+
+      // Return immediately
+      return `Added ${quantity} items. Cart total: $${cart.total}`;
+    }
+  });
+}
+```
+
+## Use Timeouts
+
+Don't let slow operations block indefinitely:
+
+```javascript
+async execute({ query }) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch('/api/search', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+    return { content: [{ type: "text", text: formatResults(response) }] };
+
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      return {
+        content: [{ type: "text", text: "Search timed out. Try a simpler query." }],
+        isError: true
+      };
+    }
+    throw error;
+  }
+}
+```
+
+## Lazy Tool Registration
+
+Only register tools when needed:
+
+```javascript
+// Register tools only when user is authenticated
+function AuthenticatedTools({ user }) {
+  useWebMCP({
+    name: 'user_orders',
+    description: 'Get user order history',
+    handler: async () => {
+      const orders = await getOrders(user.id);
+      return formatOrders(orders);
+    }
+  });
+
+  return null;
+}
+
+// Conditionally render
+function App() {
+  const { user } = useAuth();
+
+  return (
+    <div>
+      {user && <AuthenticatedTools user={user} />}
+    </div>
+  );
+}
+```
+
+## Limit Concurrent Tools
+
+Don't register hundreds of tools:
+
+```javascript
+// Bad: One tool per product
+products.forEach(product => {
+  registerTool({ name: `buy_${product.id}`, ... });
+}); // Could register 1000+ tools!
+
+// Good: One tool that handles any product
+registerTool({
+  name: 'buy_product',
+  inputSchema: {
+    productId: z.string().describe('Product ID to purchase')
+  },
+  handler: async ({ productId }) => {
+    // Handle any product
+  }
+});
+```
+
+## Cache Expensive Operations
+
+```javascript
+const cache = new Map();
+const CACHE_TTL = 60000; // 1 minute
+
+async execute({ query }) {
+  const cacheKey = `search:${query}`;
+  const cached = cache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.response;
+  }
+
+  const results = await searchProducts(query);
+  const response = {
+    content: [{ type: "text", text: formatResults(results) }]
+  };
+
+  cache.set(cacheKey, { response, timestamp: Date.now() });
+  return response;
+}
+```
+
+## Quick Checklist
+
+- Update local state before returning
+- Sync to backend in background (non-blocking)
+- Use timeouts for network requests
+- Limit tool count (consolidate related operations)
+- Cache expensive operations
+- Register tools lazily when possible
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Performance Reference" icon="book" href="/concepts/performance">
+    Complete performance guidelines
+  </Card>
+
+  <Card title="How to Design Tools" icon="pen-ruler" href="/how-to/design-tools">
+    Consolidate tools to reduce count
+  </Card>
+</CardGroup>
