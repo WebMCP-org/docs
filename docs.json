@@ -181,31 +181,37 @@
             ]
           },
           {
-            "group": "Core Concepts",
+            "group": "Core Features",
             "icon": "cubes",
             "pages": [
               "concepts/tool-registration",
               "concepts/prompts",
               "concepts/resources",
-              "concepts/transports"
+              "concepts/transports",
+              "concepts/context-engineering"
             ]
           },
           {
-            "group": "Design & Architecture",
-            "icon": "diagram-project",
+            "group": "Advanced Topics",
+            "icon": "rocket",
             "pages": [
-              "concepts/schemas",
-              "concepts/context-engineering",
               "concepts/mcp-ui-integration",
-              "concepts/extension"
+              "concepts/extension",
+              "concepts/schemas"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "icon": "lightbulb-on",
+            "pages": [
+              "concepts/tool-design",
+              "concepts/performance"
             ]
           },
           {
             "group": "Reference",
             "icon": "book",
             "pages": [
-              "concepts/tool-design",
-              "concepts/performance",
               "concepts/glossary"
             ]
           }
