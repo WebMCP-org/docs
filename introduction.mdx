@@ -1,13 +1,13 @@
 ---
 title: 'WebMCP Documentation'
-description: 'W3C standard for making websites AI-accessible - Enable AI agents to interact with your website through structured tools via navigator.modelContext'
+description: 'W3C draft proposal for making websites AI-accessible - Enable AI agents to interact with your website through structured tools via navigator.modelContext'
 icon: 'book-open'
 ---
 
 ## Welcome to WebMCP
 
 <Warning>
-**Early Incubation**: The WebMCP API is currently being incubated by the [W3C Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/). The standard is still evolving, and not all features implemented by MCP-B may be included in the final WebMCP specification. APIs and patterns documented here are subject to change as the standard matures.
+**Early Incubation**: The WebMCP API is currently being incubated by the [W3C Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/). The proposal is still evolving, and not all features implemented by MCP-B may be included in the final WebMCP specification. APIs and patterns documented here are subject to change as the proposal matures.
 </Warning>
 
 With WebMCP, your existing JavaScript functions become discoverable tools. Rather than relying on browser automation or remote APIs, agents get deterministic function calls that work reliably and securely.
@@ -18,7 +18,7 @@ AI assistants are great at conversation, but they can't reliably interact with y
 
 ### The Solution
 
-**WebMCP** is a W3C web standard (currently being incubated by the [Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/)) that lets websites expose structured tools to AI agents through the `navigator.modelContext` API. AI assistants can then help users by directly calling your website's functionality - all while respecting authentication and permissions.
+**WebMCP** is a draft proposal (currently being incubated by the [W3C Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/)) that lets websites expose structured tools to AI agents through the `navigator.modelContext` API. AI assistants can then help users by directly calling your website's functionality - all while respecting authentication and permissions.
 
 ### Design Philosophy
 
@@ -51,7 +51,7 @@ These use cases are explicitly out of scope for WebMCP and should use other solu
 
 For detailed terminology, see the [Glossary](/concepts/glossary). Key concepts:
 
-- **WebMCP**: W3C Web Model Context API standard for exposing website tools to AI agents
+- **WebMCP**: W3C Web Model Context API proposal for exposing website tools to AI agents
 - **MCP-B**: Reference implementation that polyfills `navigator.modelContext` and bridges WebMCP with MCP
 - **MCP-B Extension**: Browser extension for building, testing, and using WebMCP servers
 
@@ -105,7 +105,7 @@ For detailed terminology, see the [Glossary](/concepts/glossary). Key concepts:
 
 ## Why Use WebMCP?
 
-- **Standards-Based**: Implements the W3C Web Model Context API proposal
+- **Openly Developed**: Implements the W3C Web Model Context API proposal
 - **Zero Backend**: Runs entirely in the browser - no server changes needed
 - **Respects Auth**: Tools inherit your user's session and permissions
 - **Framework Agnostic**: Works with React, Vue, vanilla JS, or any framework
