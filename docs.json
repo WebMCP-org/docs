@@ -119,19 +119,7 @@
           {
             "group": "Frameworks",
             "pages": [
-              "how-to/frameworks/vanilla",
-              "how-to/frameworks/react",
-              "how-to/frameworks/nextjs",
-              {
-                "group": "More Frameworks",
-                "expanded": false,
-                "pages": [
-                  "how-to/frameworks/vue",
-                  "how-to/frameworks/svelte",
-                  "how-to/frameworks/angular",
-                  "how-to/frameworks/astro"
-                ]
-              }
+              "how-to/frameworks"
             ]
           },
           {
@@ -159,9 +147,8 @@
           {
             "group": "WebMCP Standard",
             "pages": [
-              "reference/webmcp/model-context",
+              "reference/webmcp/standard-api",
               "reference/webmcp/declarative-api",
-              "reference/webmcp/model-context-testing",
               "reference/webmcp/browser-support-and-flags"
             ]
           },
@@ -202,9 +189,7 @@
           {
             "group": "Project",
             "pages": [
-              "reference/project/mcp-endpoint",
-              "reference/project/llms-txt",
-              "reference/project/changelog"
+              "reference/project/metadata"
             ]
           }
         ]
