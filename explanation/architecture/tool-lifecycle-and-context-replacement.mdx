@@ -1,7 +1,94 @@
 ---
-title: "Tool Lifecycle And Context Replacement"
-description: "Explain dynamic registration, context replacement, and lifecycle semantics."
+title: "Tool Lifecycle and Dynamic Registration"
+description: "How tools are registered, discovered, replaced, and cleaned up using registerTool and unregisterTool."
+keywords: ["registertool", "unregistertool", "dynamic registration", "tool lifecycle", "context replacement", "change notifications", "tools/list_changed"]
+icon: "arrows-rotate"
 ---
 
-Explanation. Explain `provideContext` versus `registerTool`, dynamic registration, and why lifecycle semantics matter.
-Source from `docs/plans/WEBMCP_SPEC.md`, `docs/plans/WEBMCP_ALIGNMENT_MATRIX.md`, and `e2e/tests/runtime-contract-*.spec.ts`.
+WebMCP tools are not static declarations. They appear, change, and disappear as application state evolves. A login page exposes different tools than the dashboard that follows. A shopping cart page may add a `checkout` tool only after items are present. Understanding the lifecycle model helps you design tools that stay in sync with your application.
+
+## Registration with `registerTool()` and `unregisterTool()`
+
+The WebMCP core API provides two methods for managing tools: `registerTool()` adds a single tool, and `unregisterTool()` removes one by name. Together, they support both initial setup and dynamic changes to the tool set.
+
+```js
+// Register base tools
+navigator.modelContext.registerTool({
+  name: "get-user",
+  description: "Get current user info",
+  /* ... */
+});
+
+// Conditionally add admin tools
+if (currentUser.isAdmin) {
+  navigator.modelContext.registerTool({
+    name: "delete-user",
+    description: "Delete a user account (admin only)",
+    /* ... */
+  });
+}
+
+// Remove on logout
+function onLogout() {
+  navigator.modelContext.unregisterTool("get-user");
+  navigator.modelContext.unregisterTool("delete-user");
+}
+```
+
+`registerTool()` throws if a tool with the same name already exists. This is a deliberate design choice: name collisions indicate a bug (two parts of the application trying to own the same tool), and a silent override would make it harder to find.
+
+## Change notifications
+
+When the tool set changes, connected agents need to know. The WebMCP testing API provides `registerToolsChangedCallback()` on `navigator.modelContextTesting`, and the MCP-B runtime emits `notifications/tools/list_changed` over any connected transport.
+
+The notification does not include the new tool list. It signals that the agent should call `listTools()` again if it needs the updated set. This design avoids sending large payloads on every change and lets agents decide when they care about updates.
+
+In the MCP-B runtime, the notification is sent automatically after any `registerTool` or `unregisterTool` call. You do not need to emit it yourself.
+
+## Context replacement: the deeper story
+
+The `@mcp-b/global` initialization sequence performs a context replacement that is worth understanding, because it affects how tools flow through the system.
+
+Before `@mcp-b/global` runs, `navigator.modelContext` is either the native browser implementation or the polyfill. After initialization, `navigator.modelContext` is a `BrowserMcpServer` that wraps the original.
+
+When you call `navigator.modelContext.registerTool(tool)`, the `BrowserMcpServer`:
+
+1. Stores the tool descriptor (including the `execute` function) in its internal registry.
+2. Creates a stripped copy of the descriptor (without `execute`) and calls `native.registerTool(strippedCopy)` on the underlying context.
+
+Step 2 is why tools appear in `navigator.modelContextTesting.listTools()`. The testing API reads from the native/polyfill context. Without mirroring, the testing API would see nothing.
+
+When an agent calls a tool (via transport, via `callTool`, or via `modelContextTesting.executeTool`), the `BrowserMcpServer` looks up the full descriptor in its own registry and invokes the `execute` function. The native context never executes tools directly in this configuration.
+
+This two-registry approach means the `BrowserMcpServer` owns execution, while the native context owns discovery. Both are kept in sync by the mirroring logic described in [Runtime Layering](/explanation/architecture/runtime-layering).
+
+## Ordering guarantees
+
+When a tool call changes application state (and therefore changes which tools should be available), the ordering of events matters.
+
+The W3C proposal discusses a specific ordering contract for tool calls that trigger state changes:
+
+1. Execute the tool and evaluate its body.
+2. Deliver the tool result to the agent.
+3. Recompute the tool catalog and emit `tools/list_changed` if it changed.
+4. Apply any navigation or DOM updates.
+
+This ordering ensures the agent receives the result before the tool set changes underneath it. It also means a tool that is currently executing will not be unregistered until after its result has been delivered.
+
+In practice, the MCP-B runtime follows this ordering for the first three steps. DOM updates and navigation typically happen as part of the `execute` callback (step 1), so step 4 is handled by the developer's own code.
+
+## Dynamic tools in practice
+
+Good dynamic tool management follows a pattern: tools reflect the current application state, and the agent can rely on the tool list being accurate at any given moment.
+
+Some common patterns:
+
+**Route-based tools.** In a single-page application, unregister old tools and register new ones on each route transition. This keeps the tool set in sync with the current view.
+
+**Role-based tools.** Use `registerTool()` to add privileged tools after authentication. Use `unregisterTool()` on logout to remove them.
+
+**Conditional tools.** Register a tool only when its preconditions are met (e.g., a `checkout` tool that appears only when the cart is non-empty). Remove it with `unregisterTool()` when the precondition fails.
+
+**Cleanup.** Iterate over registered tools and call `unregisterTool()` for each on page unload or component unmount to avoid stale tools lingering in the registry.
+
+For principles on designing the tools themselves (naming, schemas, failure handling), see [Tool Design](/explanation/design/tool-design).

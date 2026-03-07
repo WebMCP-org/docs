@@ -1,12 +1,459 @@
 ---
 title: "React Packages"
-description: "Reference for usewebmcp (strict-core hook) and @mcp-b/react-webmcp (full MCP-B React integration)."
+description: "API reference for usewebmcp (strict-core hook) and @mcp-b/react-webmcp (full MCP-B React integration)."
+keywords: ["react", "usewebmcp", "@mcp-b/react-webmcp", "useWebMCP", "hooks", "useWebMCPContext", "McpClientProvider", "tool registration"]
+icon: "react"
 ---
 
-Reference. Side-by-side reference for both React packages:
+Two React packages provide hooks for WebMCP tool registration and consumption. Both register tools with `navigator.modelContext` on mount and unregister on unmount.
 
-**usewebmcp** — The strict-core React hook. Describe the hook API, return state, schema inference, and strict-core positioning.
-Source from `packages/usewebmcp/README.md` and `packages/usewebmcp/src/types.ts`.
+## Package comparison
 
-**@mcp-b/react-webmcp** — The full MCP-B React integration. Describe provider hooks, client hooks, and React-specific runtime contracts.
-Source from `packages/react-webmcp/README.md`, `docs/react-webmcp-guide.md`, and `packages/react-webmcp/src/index.ts`.
+| | `usewebmcp` | `@mcp-b/react-webmcp` |
+|---|---|---|
+| **Scope** | Strict core (`registerTool` only) | Full MCP-B (tools, prompts, resources, sampling, elicitation, client) |
+| **Schema support** | JSON Schema (`as const`), Standard Schema v1 | JSON Schema (`as const`), Standard Schema v1, Zod v3 object maps |
+| **Runtime dependency** | `@mcp-b/webmcp-polyfill` + `@mcp-b/webmcp-types` | `@mcp-b/global` + `@mcp-b/webmcp-ts-sdk` + `@mcp-b/webmcp-types` |
+| **Peer dependencies** | `react` | `react`, `zod` (optional), `zod-to-json-schema` (optional) |
+| **Install** | `pnpm add usewebmcp react` | `pnpm add @mcp-b/react-webmcp zod` |
+| **Config field for logic** | `execute` (preferred) or `handler` (alias) | `handler` |
+
+Both packages are `'use client'` modules. Both require `navigator.modelContext` to exist at runtime (via native browser support, [`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill), or [`@mcp-b/global`](/reference/runtime/global)). If `navigator.modelContext` is missing, the hook logs a warning and skips registration.
+
+For guidance on choosing between these packages, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions). For step-by-step React integration, see [Framework Integration Guide](/how-to/frameworks).
+
+---
+
+## `usewebmcp`
+
+Standalone React hook for strict-core WebMCP tool registration.
+
+### Installation
+
+```bash
+pnpm add usewebmcp react
+```
+
+### `useWebMCP(config, deps?)`
+
+```ts
+import { useWebMCP } from 'usewebmcp';
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `WebMCPConfig` | Tool configuration object (see below) |
+| `deps` | `DependencyList` | Optional dependency array that triggers tool re-registration when values change |
+
+**Returns:** `WebMCPReturn`
+
+| Field | Type | Description |
+|---|---|---|
+| `state` | `ToolExecutionState` | Current execution state |
+| `execute(input)` | `(input) => Promise` | Manually invoke the tool from your UI or tests |
+| `reset()` | `() => void` | Reset state to initial values (clears results, errors, execution count) |
+
+### Config fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Unique tool identifier (lowercase with underscores) |
+| `description` | `string` | Yes | Human-readable description for AI assistants |
+| `inputSchema` | JSON Schema or Standard Schema v1 | No | Defines input parameters. Use `as const` for type inference. |
+| `outputSchema` | `JsonSchemaObject` | No | Defines output structure. Enables `structuredContent` in MCP responses and infers return types. |
+| `annotations` | `ToolAnnotations` | No | Metadata hints (`readOnlyHint`, `idempotentHint`, `destructiveHint`, etc.) |
+| `execute(input)` | `(input) => T \| Promise<T>` | Yes* | Preferred tool implementation function |
+| `handler(input)` | `(input) => T \| Promise<T>` | Yes* | Backward-compatible alias for `execute`. If both are provided, `execute` is used. |
+| `formatOutput(output)` | `(output) => string` | No | **Deprecated.** Custom formatter for MCP text response. Use `outputSchema` instead. |
+| `onSuccess(result, input)` | `(result, input) => void` | No | Callback after successful execution |
+| `onError(error, input)` | `(error, input) => void` | No | Callback after failed execution |
+
+*One of `execute` or `handler` is required. Providing neither throws a `TypeError`.
+
+### `ToolExecutionState`
+
+| Field | Type | Description |
+|---|---|---|
+| `isExecuting` | `boolean` | Whether the tool is currently running |
+| `lastResult` | `TOutput \| null` | Result from the most recent successful execution. `null` if never executed or last execution failed. |
+| `error` | `Error \| null` | Error from the most recent failed execution. `null` if never executed or last execution succeeded. |
+| `executionCount` | `number` | Total successful executions |
+
+### Type inference
+
+**Input inference** works with two schema formats:
+
+- **JSON Schema literals** (`as const`): inferred via `InferArgsFromInputSchema`
+- **Standard Schema v1** (Zod v4, Valibot, ArkType): inferred via `~standard.types.input`
+
+**Output inference** from `outputSchema` (JSON Schema `as const`):
+
+- The `execute`/`handler` return type is inferred from the schema
+- `state.lastResult` is typed accordingly
+- The MCP response includes `structuredContent`
+
+```tsx
+const OUTPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    total: { type: 'integer' },
+  },
+  required: ['total'],
+  additionalProperties: false,
+} as const;
+
+const tool = useWebMCP({
+  name: 'count_items',
+  description: 'Count items',
+  outputSchema: OUTPUT_SCHEMA,
+  execute: () => ({ total: 3 }),
+});
+
+// tool.state.lastResult is inferred as { total: number } | null
+```
+
+### Re-registration triggers
+
+The tool re-registers (unregister + register) when any of these change:
+
+- `name`
+- `description`
+- `inputSchema` reference
+- `outputSchema` reference
+- `annotations` reference
+- Values in `deps`
+
+These callbacks are stored in refs and do **not** trigger re-registration:
+
+- `execute`
+- `handler`
+- `onSuccess`
+- `onError`
+- `formatOutput`
+
+The latest callback version is always used at execution time.
+
+<Warning>
+Define `inputSchema`, `outputSchema`, and `annotations` outside your component or memoize them. Inline object literals create new references on every render and cause unnecessary re-registration. In development mode, the hook warns when schema references change.
+</Warning>
+
+### Output schema contract
+
+When `outputSchema` is defined, the tool implementation must return a JSON-serializable object. Returning a non-object value (`string`, `null`, array) causes an error response from the registered MCP tool.
+
+### Example
+
+```tsx
+import { initializeWebMCPPolyfill } from '@mcp-b/webmcp-polyfill';
+import { useWebMCP } from 'usewebmcp';
+
+initializeWebMCPPolyfill();
+
+const COUNTER_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {},
+} as const;
+
+const COUNTER_OUTPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    count: { type: 'integer' },
+  },
+  required: ['count'],
+  additionalProperties: false,
+} as const;
+
+export function CounterTool() {
+  const counterTool = useWebMCP({
+    name: 'counter_get',
+    description: 'Get current count',
+    inputSchema: COUNTER_INPUT_SCHEMA,
+    outputSchema: COUNTER_OUTPUT_SCHEMA,
+    execute: async () => ({ count: 42 }),
+  });
+
+  return (
+    <div>
+      <p>Executions: {counterTool.state.executionCount}</p>
+      <p>Last count: {counterTool.state.lastResult?.count ?? 'none'}</p>
+      {counterTool.state.error && <p>Error: {counterTool.state.error.message}</p>}
+      <button onClick={() => counterTool.execute({})}>
+        Run Tool Locally
+      </button>
+    </div>
+  );
+}
+```
+
+### Exported types
+
+| Type | Description |
+|---|---|
+| `WebMCPConfig` | Configuration object type |
+| `WebMCPReturn` | Return value type |
+| `ToolExecutionState` | Execution state shape |
+| `ToolExecuteFunction` | Tool implementation function signature |
+| `InferToolInput` | Utility: infer input type from schema |
+| `InferOutput` | Utility: infer output type from schema |
+
+---
+
+## `@mcp-b/react-webmcp`
+
+Full MCP-B React integration with provider hooks, client hooks, prompt/resource registration, sampling, and elicitation.
+
+### Installation
+
+```bash
+pnpm add @mcp-b/react-webmcp zod
+```
+
+For client functionality (consuming tools from MCP servers):
+
+```bash
+pnpm add @mcp-b/transports @modelcontextprotocol/sdk
+```
+
+<Note>
+`zod` and `zod-to-json-schema` are optional peer dependencies. They are required only when using Zod v3 object maps as `inputSchema` or `outputSchema`.
+</Note>
+
+### Provider hooks
+
+#### `useWebMCP(config, deps?)`
+
+```ts
+import { useWebMCP } from '@mcp-b/react-webmcp';
+```
+
+Same signature and return value as the `usewebmcp` hook, with two differences:
+
+1. **`handler` is the config field** (not `execute`). The field is called `handler`.
+2. **Zod v3 support**: `inputSchema` and `outputSchema` accept Zod v3 object maps (`Record<string, z.ZodTypeAny>`) in addition to JSON Schema and Standard Schema v1. Zod schemas are converted to JSON Schema at registration time.
+
+**Config fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Unique tool identifier |
+| `description` | `string` | Yes | Human-readable description |
+| `inputSchema` | JSON Schema, Standard Schema v1, or Zod v3 object map | No | Input parameters |
+| `outputSchema` | `JsonSchemaObject` or Zod v3 object map | No | Output structure |
+| `annotations` | `ToolAnnotations` | No | Metadata hints |
+| `handler(input)` | `(input) => T \| Promise<T>` | Yes | Tool implementation function |
+| `formatOutput(output)` | `(output) => string` | No | **Deprecated.** Use `outputSchema`. |
+| `onSuccess(result, input)` | `(result, input) => void` | No | Success callback |
+| `onError(error, input)` | `(error, input) => void` | No | Error callback |
+
+**Returns:** `WebMCPReturn` (same shape as `usewebmcp`: `{ state, execute, reset }`)
+
+```tsx
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+function PostsPage() {
+  const likeTool = useWebMCP({
+    name: 'posts_like',
+    description: 'Like a post by ID. Increments the like count.',
+    inputSchema: {
+      postId: z.string().uuid().describe('The post ID to like'),
+    },
+    annotations: {
+      title: 'Like Post',
+      readOnlyHint: false,
+      idempotentHint: true,
+    },
+    handler: async (input) => {
+      await api.posts.like(input.postId);
+      return { success: true, postId: input.postId };
+    },
+  });
+
+  return (
+    <div>
+      {likeTool.state.isExecuting && <Spinner />}
+      {likeTool.state.error && <ErrorAlert error={likeTool.state.error} />}
+    </div>
+  );
+}
+```
+
+#### `useWebMCPContext(name, description, getValue)`
+
+```ts
+import { useWebMCPContext } from '@mcp-b/react-webmcp';
+```
+
+Convenience wrapper around `useWebMCP` for read-only context tools. Automatically sets `readOnlyHint: true`, `idempotentHint: true`, `destructiveHint: false`, and `openWorldHint: false` annotations.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | `string` | Tool identifier |
+| `description` | `string` | Description for AI assistants |
+| `getValue` | `() => T` | Function returning the current context value |
+
+**Returns:** `WebMCPReturn`
+
+<Note>
+`useWebMCPContext` does not use an `outputSchema`, so the MCP response does not include `structuredContent`. Use `useWebMCP` directly with `outputSchema` for structured output.
+</Note>
+
+```tsx
+function PostDetailPage() {
+  const { postId } = useParams();
+  const { data: post } = useQuery(['post', postId], () => fetchPost(postId));
+
+  useWebMCPContext(
+    'context_current_post',
+    'Get the currently viewed post ID and metadata',
+    () => ({
+      postId,
+      title: post?.title,
+      author: post?.author,
+      tags: post?.tags,
+    })
+  );
+
+  return <PostContent post={post} />;
+}
+```
+
+#### `useWebMCPPrompt(config)`
+
+```ts
+import { useWebMCPPrompt } from '@mcp-b/react-webmcp';
+```
+
+Registers an MCP prompt with `navigator.modelContext`. Requires `@mcp-b/global` or a `BrowserMcpServer` that supports `registerPrompt`.
+
+| Config field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Prompt identifier |
+| `description` | `string` | No | Human-readable description |
+| `argsSchema` | JSON Schema, Standard Schema v1, or Zod v3 object map | No | Argument schema |
+| `get(args)` | `(args) => { messages: PromptMessage[] }` | Yes | Message generator (sync or async) |
+
+**Returns:** `{ isRegistered: boolean }`
+
+#### `useWebMCPResource(config)`
+
+```ts
+import { useWebMCPResource } from '@mcp-b/react-webmcp';
+```
+
+Registers an MCP resource with `navigator.modelContext`. Supports static URIs and URI templates with parameters.
+
+| Config field | Type | Required | Description |
+|---|---|---|---|
+| `uri` | `string` | Yes | Resource URI or URI template (e.g., `user://{userId}/profile`) |
+| `name` | `string` | Yes | Human-readable name |
+| `description` | `string` | No | Resource description |
+| `mimeType` | `string` | No | MIME type of the resource content |
+| `read(uri, params?)` | `(uri: URL, params?) => Promise<{ contents: ResourceContents[] }>` | Yes | Read handler |
+
+**Returns:** `{ isRegistered: boolean }`
+
+#### `useElicitation(config)` / `useElicitationHandler(config)`
+
+Request user input from the connected MCP client. See the [`@mcp-b/react-webmcp` source](https://github.com/WebMCP-org/npm-packages/tree/main/packages/react-webmcp) for full type details.
+
+#### `useSampling(config)` / `useSamplingHandler(config)`
+
+Request LLM completions from the connected MCP client. See the [`@mcp-b/react-webmcp` source](https://github.com/WebMCP-org/npm-packages/tree/main/packages/react-webmcp) for full type details.
+
+### Client hooks
+
+For consuming tools from MCP servers (the reverse direction: your React app calls tools on a server).
+
+#### `McpClientProvider`
+
+```tsx
+import { McpClientProvider } from '@mcp-b/react-webmcp';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+```
+
+Provider component that manages an MCP client connection. Handles connecting, fetching tools/resources, listening for server notifications, and cleanup on unmount.
+
+| Prop | Type | Required | Description |
+|---|---|---|---|
+| `children` | `ReactNode` | Yes | Child components |
+| `client` | `Client` | Yes | MCP Client instance from `@modelcontextprotocol/sdk` |
+| `transport` | `Transport` | Yes | Transport instance (e.g., `TabClientTransport` from `@mcp-b/transports`) |
+| `opts` | `RequestOptions` | No | Connection request options |
+
+```tsx
+const client = new Client({ name: 'MyApp', version: '1.0.0' });
+const transport = new TabClientTransport('mcp', { clientInstanceId: 'my-app' });
+
+function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <ToolConsumer />
+    </McpClientProvider>
+  );
+}
+```
+
+#### `useMcpClient()`
+
+```ts
+import { useMcpClient } from '@mcp-b/react-webmcp';
+```
+
+Accesses the MCP client context. Must be used within a `McpClientProvider`.
+
+**Returns:**
+
+| Field | Type | Description |
+|---|---|---|
+| `client` | `Client` | The MCP client instance |
+| `tools` | `Tool[]` | Available tools from the server |
+| `resources` | `Resource[]` | Available resources from the server |
+| `isConnected` | `boolean` | Whether the client is connected |
+| `isLoading` | `boolean` | Whether a connection attempt is in progress |
+| `error` | `Error \| null` | Connection error, if any |
+| `capabilities` | `ServerCapabilities \| null` | Server-reported capabilities |
+| `reconnect()` | `() => Promise<void>` | Manually reconnect to the server |
+
+Throws if used outside a `McpClientProvider`.
+
+```tsx
+function ToolConsumer() {
+  const { client, tools, isConnected } = useMcpClient();
+
+  const handleCallTool = async () => {
+    const result = await client.callTool({
+      name: 'posts_like',
+      arguments: { postId: '123' },
+    });
+    console.log('Result:', result.content[0].text);
+  };
+
+  return (
+    <div>
+      <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
+      <p>Available Tools: {tools.length}</p>
+      <button onClick={handleCallTool} disabled={!isConnected}>
+        Call Tool
+      </button>
+    </div>
+  );
+}
+```
+
+### Zod version compatibility
+
+`@mcp-b/react-webmcp` supports Zod `^3.25 || ^4.0` as an optional peer dependency. Zod v3 object maps (`Record<string, z.ZodTypeAny>`) are converted to JSON Schema at registration time via `zod-to-json-schema`. Zod v4 schemas work through the Standard Schema v1 interface.
+
+---
+
+## Related pages
+
+- [Framework Integration Guide](/how-to/frameworks) for step-by-step integration
+- [Your First React Tool](/tutorials/first-react-tool) for a guided tutorial
+- [Native vs Polyfill vs Global](/explanation/native-vs-polyfill-vs-global) for runtime prerequisites
+- [`@mcp-b/global` Reference](/reference/runtime/global) for the entry-point package
+- [`@mcp-b/webmcp-types` Reference](/reference/runtime/webmcp-types) for shared type definitions

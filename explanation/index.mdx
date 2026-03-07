@@ -1,7 +1,55 @@
 ---
 title: "Explanation"
-description: "Landing page for conceptual WebMCP explanation and architectural background."
+description: "Conceptual background on WebMCP: architecture, design decisions, and the reasoning behind the standard."
+keywords: ["webmcp", "architecture", "design decisions", "concepts", "explanation"]
+icon: "lightbulb"
 ---
 
-Explanation landing page. Set expectations for conceptual reading and keep task instructions out of this section.
-Use `website-docs/_diataxis/references/explanation.md` and `website-docs/_diataxis/references/reference-explanation.md`.
+This section covers the *why* behind WebMCP. It is designed for reading when you step back from the code and want to understand the bigger picture.
+
+You will not find step-by-step instructions here. For that, see [Tutorials](/tutorials/index) and [How-To Guides](/how-to/index). For precise API descriptions, see [Reference](/reference/index).
+
+## Concepts
+
+<CardGroup cols={2}>
+  <Card title="What Is WebMCP?" icon="circle-question" href="/explanation/what-is-webmcp">
+    The proposed API, why it exists, and how it relates to AI agents in the browser.
+  </Card>
+  <Card title="WebMCP vs MCP" icon="arrows-left-right" href="/explanation/webmcp-vs-mcp">
+    How WebMCP relates to the server-side Model Context Protocol.
+  </Card>
+  <Card title="Native vs Polyfill vs Global" icon="layer-group" href="/explanation/native-vs-polyfill-vs-global">
+    Three runtime strategies and when each one applies.
+  </Card>
+  <Card title="Strict Core vs MCP-B Extensions" icon="diagram-venn" href="/explanation/strict-core-vs-mcp-b-extensions">
+    Where the specification ends and the MCP-B extension layer begins.
+  </Card>
+</CardGroup>
+
+## Architecture
+
+<CardGroup cols={2}>
+  <Card title="Runtime Layering" icon="bars-staggered" href="/explanation/architecture/runtime-layering">
+    How native APIs, the polyfill, and BrowserMcpServer stack on top of each other.
+  </Card>
+  <Card title="Transports and Bridges" icon="bridge" href="/explanation/architecture/transports-and-bridges">
+    How tools cross tab, iframe, extension, and desktop boundaries.
+  </Card>
+  <Card title="Tool Lifecycle and Context Replacement" icon="arrows-rotate" href="/explanation/architecture/tool-lifecycle-and-context-replacement">
+    Registration, discovery, context replacement, and why ordering matters.
+  </Card>
+</CardGroup>
+
+## Design
+
+<CardGroup cols={2}>
+  <Card title="Tool Design" icon="pencil-ruler" href="/explanation/design/tool-design">
+    Principles for naming, schemas, composability, and failure handling.
+  </Card>
+  <Card title="Security and Human-in-the-Loop" icon="shield-halved" href="/explanation/design/security-and-human-in-the-loop">
+    The safety model, user presence, and browser-mediated trust.
+  </Card>
+  <Card title="Spec Status and Limitations" icon="flag" href="/explanation/design/spec-status-and-limitations">
+    Where the specification stands and what is still changing.
+  </Card>
+</CardGroup>

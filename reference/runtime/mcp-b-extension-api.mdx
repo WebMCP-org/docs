@@ -1,7 +1,231 @@
 ---
 title: "MCP-B Extension API"
 description: "Reference for prompts, resources, sampling, elicitation, and other non-core runtime extensions."
+keywords: ["mcp-b", "extension api", "registerPrompt", "registerResource", "createMessage", "elicitInput", "listTools", "callTool"]
+icon: "puzzle-piece"
 ---
 
-Reference. Keep this separate from strict WebMCP and label it clearly as MCP-B extension surface.
-Source from `packages/react-webmcp/src/types.ts`, `packages/webmcp-ts-sdk/src/browser-server.ts`, and related tests.
+The MCP-B extension API is the set of methods on `navigator.modelContext` that go beyond the [WebMCP specification surface](/reference/webmcp/standard-api). These methods are added by `BrowserMcpServer` (from `@mcp-b/webmcp-ts-sdk`) when [`@mcp-b/global`](/reference/runtime/global) initializes. They are not part of the WebMCP specification.
+
+For background on the distinction between strict core and extensions, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions).
+
+For usage examples, see [Register Prompts and Resources](/how-to/register-prompts-and-resources).
+
+<Note>
+  The WebMCP standard methods (`registerTool`, `unregisterTool`) are documented on the [WebMCP standard API page](/reference/webmcp/standard-api).
+</Note>
+
+## Prompts
+
+### `registerPrompt(descriptor)`
+
+Registers a prompt template that AI clients can discover and invoke.
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | Yes | Unique prompt name |
+| `description` | `string` | No | Human-readable description |
+| `argsSchema` | `InputSchema` | No | JSON Schema object defining expected arguments |
+| `get` | `(args: Record<string, unknown>) => Promise<{ messages: PromptMessage[] }>` | Yes | Handler that returns prompt messages |
+
+**Returns:** `{ unregister: () => void }`
+
+Call `unregister()` to remove the prompt.
+
+```typescript
+const { unregister } = navigator.modelContext.registerPrompt({
+  name: 'greeting',
+  description: 'Generate a greeting message',
+  argsSchema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'Name to greet' }
+    },
+    required: ['name']
+  },
+  get: async ({ name }) => ({
+    messages: [{ role: 'user', content: { type: 'text', text: `Hello, ${name}!` } }]
+  })
+});
+```
+
+### `listPrompts()`
+
+Returns all registered prompts.
+
+**Returns:** `Array<{ name: string; description?: string; arguments?: Array<{ name: string; description?: string; required?: boolean }> }>`
+
+The `arguments` array is derived from the `argsSchema` provided during registration: each property becomes an entry with its `name`, `description`, and `required` status.
+
+### `getPrompt(name, args?)`
+
+Invokes a registered prompt by name.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `string` | Yes | Name of the registered prompt |
+| `args` | `Record<string, unknown>` | No | Arguments matching the prompt's `argsSchema` |
+
+**Returns:** `Promise<{ messages: PromptMessage[] }>`
+
+**Throws:** `Error` if the prompt is not found, or if `args` fail validation against the prompt's `argsSchema`.
+
+## Resources
+
+### `registerResource(descriptor)`
+
+Registers a resource that AI clients can read.
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `uri` | `string` | Yes | Resource URI (e.g. `app://config`) |
+| `name` | `string` | Yes | Human-readable resource name |
+| `description` | `string` | No | Resource description |
+| `mimeType` | `string` | No | MIME type of the resource content |
+| `read` | `(uri: URL, params?: Record<string, string>) => Promise<{ contents: ResourceContents[] }>` | Yes | Handler that returns resource contents |
+
+**Returns:** `{ unregister: () => void }`
+
+```typescript
+const { unregister } = navigator.modelContext.registerResource({
+  uri: 'app://config',
+  name: 'App Configuration',
+  mimeType: 'application/json',
+  read: async () => ({
+    contents: [{ uri: 'app://config', text: JSON.stringify(config) }]
+  })
+});
+```
+
+### `listResources()`
+
+Returns all registered resources.
+
+**Returns:** `Array<{ uri: string; name: string; description?: string; mimeType?: string }>`
+
+### `readResource(uri)`
+
+Reads a registered resource by URI.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `uri` | `string` | Yes | URI of the registered resource |
+
+**Returns:** `Promise<{ contents: ResourceContents[] }>`
+
+**Throws:** `Error` if no resource is registered at the given URI.
+
+Each item in `contents` has the shape `{ uri: string; text?: string; blob?: string; mimeType?: string }`.
+
+## Sampling
+
+### `createMessage(params, options?)`
+
+Requests an LLM completion from the connected MCP client. Delegates to the MCP SDK's `server.createMessage()`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `params` | `CreateMessageRequest['params']` | Yes | MCP sampling request parameters (messages, maxTokens, etc.) |
+| `options` | `RequestOptions` | No | Request options. Defaults to a 10-second timeout if no `signal` is provided. |
+
+**Returns:** `Promise<CreateMessageResult>`
+
+The `CreateMessageRequest` and `CreateMessageResult` types come from `@modelcontextprotocol/sdk/types.js`.
+
+## Elicitation
+
+### `elicitInput(params, options?)`
+
+Requests structured user input from the connected MCP client. Delegates to the MCP SDK's `server.elicitInput()`.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `params` | `ElicitRequest['params']` | Yes | Elicitation request parameters |
+| `options` | `RequestOptions` | No | Request options. Defaults to a 10-second timeout if no `signal` is provided. |
+
+**Returns:** `Promise<ElicitResult>`
+
+The result contains `action` (`'accept'`, `'decline'`, or `'cancel'`) and optionally `content` with the submitted values.
+
+The `ElicitRequest` and `ElicitResult` types come from `@modelcontextprotocol/sdk/types.js`.
+
+## Tool inspection
+
+### `listTools()`
+
+Returns all registered tools with their metadata.
+
+**Returns:** `ToolListItem[]`
+
+Each item contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Tool name |
+| `description` | `string` | Tool description |
+| `inputSchema` | `InputSchema` | JSON Schema for the tool's arguments |
+| `outputSchema` | `InputSchema` | (Optional) JSON Schema for structured output |
+| `annotations` | `object` | (Optional) Tool annotations |
+
+### `callTool(params)`
+
+Executes a registered tool by name.
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `params.name` | `string` | Yes | Tool name |
+| `params.arguments` | `Record<string, unknown>` | No | Tool arguments |
+
+**Returns:** `Promise<ToolResponse>`
+
+**Throws:** `Error` if the tool is not found.
+
+### `executeTool(name, args?)`
+
+Alias for `callTool`. Accepts positional arguments instead of an object.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | `string` | Yes | Tool name |
+| `args` | `Record<string, unknown>` | No | Tool arguments |
+
+**Returns:** `Promise<ToolResponse>`
+
+## React hooks
+
+The `@mcp-b/react-webmcp` package provides React hooks for each extension method:
+
+| Hook | Extension method |
+|------|-----------------|
+| `useWebMCPPrompt` | `registerPrompt` |
+| `useWebMCPResource` | `registerResource` |
+| `useSampling` | `createMessage` |
+| `useElicitation` | `elicitInput` |
+
+See the [React reference](/reference/runtime/react) for full hook documentation.
+
+## Method binding
+
+All public methods on `BrowserMcpServer` are pre-bound in the constructor. You can destructure them from `navigator.modelContext` without losing `this` context:
+
+```typescript
+const { registerPrompt, registerResource, listTools } = navigator.modelContext;
+// These work correctly when called standalone
+registerPrompt({ name: 'example', get: async () => ({ messages: [] }) });
+```

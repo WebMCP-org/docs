@@ -1,12 +1,118 @@
 ---
 title: "Choose Your Path"
-description: "Find the right documentation path and package based on your role, framework, and agent workflow."
+description: "Find the right starting point based on your role, framework, and what you want to build with WebMCP."
+keywords: ["getting started", "webmcp", "choose runtime", "react", "mcp-b packages", "tutorials", "quickstart"]
+icon: "signs-post"
 ---
 
-Landing page. Combine persona routing and package selection into one entry point:
+# Choose your path
 
-**Part 1 — By persona.** Point website teams, React teams, desktop-agent users, and native Chrome evaluators to the right quadrant and entry page.
-Use `website-docs/_diataxis/references/complex-hierarchies.md`; source from `README.md`, `examples/README.md`, and `packages/webmcp-local-relay/README.md`.
+WebMCP serves different audiences. Find your starting point below.
 
-**Part 2 — By package.** Match product needs to `@mcp-b/webmcp-types`, `@mcp-b/webmcp-polyfill`, `@mcp-b/global`, `usewebmcp`, and `@mcp-b/react-webmcp`.
-Source from `docs/MCPB_PACKAGE_PHILOSOPHY.md`, `CLAUDE.md`, and the package READMEs in `packages/`.
+## By role
+
+<CardGroup cols={3}>
+  <Card title="Web developer" icon="code">
+    You build websites and want to expose functionality to AI agents.
+
+    **Start here:**
+    - [Build your first tool](/tutorials/first-tool) (tutorial)
+    - [Add tools to an existing app](/how-to/add-tools-to-an-existing-app) (how-to)
+    - [Choose a runtime](/how-to/choose-runtime) (how-to)
+  </Card>
+  <Card title="React developer" icon="react">
+    You build React apps and want hook-based tool registration with automatic cleanup.
+
+    **Start here:**
+    - [Build your first React tool](/tutorials/first-react-tool) (tutorial)
+    - [Framework integration guide](/how-to/frameworks) (how-to)
+    - [@mcp-b/react-webmcp reference](/reference/runtime/react) (reference)
+  </Card>
+  <Card title="AI agent builder" icon="robot">
+    You build AI agents or MCP clients and want to consume tools from websites.
+
+    **Start here:**
+    - [Connect desktop agents with local relay](/tutorials/desktop-agent-relay) (tutorial)
+    - [Use DevTools MCP](/how-to/use-devtools-mcp) (how-to)
+    - [Transports reference](/reference/runtime/transports) (reference)
+  </Card>
+</CardGroup>
+
+## By goal
+
+| I want to... | Go to |
+|---|---|
+| Add strict WebMCP tools to my website with one script tag | [Build your first tool](/tutorials/first-tool) |
+| Register tools from React components | [Build your first React tool](/tutorials/first-react-tool) |
+| Test native WebMCP in Chrome Canary | [Preview native WebMCP](/tutorials/first-native-preview) |
+| Connect browser tools to Claude Desktop or Cursor | [Desktop agent relay tutorial](/tutorials/desktop-agent-relay) |
+| Understand what WebMCP is and why it exists | [What is WebMCP?](/explanation/what-is-webmcp) |
+| Learn how WebMCP relates to MCP | [WebMCP vs MCP](/explanation/webmcp-vs-mcp) |
+| Use WebMCP with Vue, Svelte, Angular, or Astro | [Framework integration guide](/how-to/frameworks) |
+| Bridge tools across iframes | [Bridge tools across iframes](/how-to/bridge-tools-across-iframes) |
+| Debug tool registration issues | [Debug and troubleshoot](/how-to/debug-and-troubleshoot) |
+| Read the full API reference | [WebMCP standard API reference](/reference/webmcp/standard-api) |
+
+## By package
+
+The `@mcp-b` packages are layered. Each builds on the one below it. Pick the layer that matches your needs.
+
+<Steps>
+  <Step title="Types only: @mcp-b/webmcp-types">
+    Zero-runtime TypeScript types for `navigator.modelContext`. Install as a dev dependency for compile-time safety without adding any code to your bundle.
+
+    ```bash
+    npm install --save-dev @mcp-b/webmcp-types
+    ```
+
+    [Reference](/reference/runtime/webmcp-types)
+  </Step>
+  <Step title="Strict core polyfill: @mcp-b/webmcp-polyfill">
+    Installs the WebMCP surface on `navigator.modelContext` without MCP-B extensions. Use this first when you want the browser standard in browsers today.
+
+    ```bash
+    npm install @mcp-b/webmcp-polyfill
+    ```
+
+    [Reference](/reference/runtime/webmcp-polyfill)
+  </Step>
+  <Step title="Full runtime: @mcp-b/global">
+    Adds the MCP-B runtime layer on top of the core. Use this when you need transport, `listTools()`, `callTool()`, prompts, resources, or browser-to-desktop connectivity.
+
+    ```bash
+    npm install @mcp-b/global
+    ```
+
+    [Reference](/reference/runtime/global) | [Choose a runtime](/how-to/choose-runtime)
+  </Step>
+  <Step title="React hooks: @mcp-b/react-webmcp or usewebmcp">
+    **`@mcp-b/react-webmcp`** provides hooks for the full MCP-B runtime, including provider and client patterns, Zod schema support, and execution state tracking.
+
+    **`usewebmcp`** provides a single hook for strict core `navigator.modelContext` tool registration. No MCP extensions.
+
+    ```bash
+    # Full MCP-B hooks
+    npm install @mcp-b/react-webmcp
+
+    # Strict core hooks
+    npm install usewebmcp
+    ```
+
+    [react-webmcp reference](/reference/runtime/react) | [Framework guide](/how-to/frameworks)
+  </Step>
+</Steps>
+
+<Note>
+  Not sure which package to pick? See [Choose a runtime](/how-to/choose-runtime) for a detailed comparison, or read [Strict core vs MCP-B extensions](/explanation/strict-core-vs-mcp-b-extensions) to understand the boundary.
+</Note>
+
+## Documentation structure
+
+This documentation follows the [Diataxis framework](https://diataxis.fr/). Each tab serves a different purpose:
+
+| Tab | Purpose | When to use it |
+|-----|---------|----------------|
+| **[Tutorials](/tutorials/index)** | Step-by-step learning exercises | You are new and want guided practice |
+| **[How-To Guides](/how-to/index)** | Goal-oriented directions | You know the basics and have a specific task |
+| **[Reference](/reference/index)** | API and package documentation | You need to look up a method, option, or type |
+| **[Explanation](/explanation/index)** | Conceptual background | You want to understand why things work the way they do |
