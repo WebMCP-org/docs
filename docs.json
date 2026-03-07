@@ -93,77 +93,29 @@
           {
             "group": "Core runtime",
             "pages": [
-              {
-                "group": "@mcp-b/webmcp-types",
-                "pages": ["packages/webmcp-types/overview", "packages/webmcp-types/reference"]
-              },
-              {
-                "group": "@mcp-b/webmcp-polyfill",
-                "pages": ["packages/webmcp-polyfill/overview", "packages/webmcp-polyfill/reference"]
-              },
-              {
-                "group": "@mcp-b/global",
-                "pages": ["packages/global/overview", "packages/global/reference"]
-              },
-              {
-                "group": "@mcp-b/webmcp-ts-sdk",
-                "pages": ["packages/webmcp-ts-sdk/overview", "packages/webmcp-ts-sdk/reference"]
-              },
-              {
-                "group": "@mcp-b/transports",
-                "pages": ["packages/transports/overview", "packages/transports/reference"]
-              },
-              {
-                "group": "@mcp-b/mcp-iframe",
-                "pages": ["packages/mcp-iframe/overview", "packages/mcp-iframe/reference"]
-              }
+              "packages/webmcp-types/overview",
+              "packages/webmcp-polyfill/overview",
+              "packages/global/overview",
+              "packages/webmcp-ts-sdk/overview",
+              "packages/transports/overview",
+              "packages/mcp-iframe/overview"
             ]
           },
           {
             "group": "React",
             "pages": [
-              {
-                "group": "usewebmcp",
-                "pages": ["packages/usewebmcp/overview", "packages/usewebmcp/reference"]
-              },
-              {
-                "group": "@mcp-b/react-webmcp",
-                "pages": ["packages/react-webmcp/overview", "packages/react-webmcp/reference"]
-              }
+              "packages/usewebmcp/overview",
+              "packages/react-webmcp/overview"
             ]
           },
           {
             "group": "Tooling",
             "pages": [
-              {
-                "group": "@mcp-b/webmcp-local-relay",
-                "pages": [
-                  "packages/webmcp-local-relay/overview",
-                  "packages/webmcp-local-relay/reference"
-                ]
-              },
-              {
-                "group": "@mcp-b/chrome-devtools-mcp",
-                "pages": [
-                  "packages/chrome-devtools-mcp/overview",
-                  "packages/chrome-devtools-mcp/reference"
-                ]
-              },
-              {
-                "group": "@mcp-b/extension-tools",
-                "pages": ["packages/extension-tools/overview", "packages/extension-tools/reference"]
-              },
-              {
-                "group": "@mcp-b/smart-dom-reader",
-                "pages": [
-                  "packages/smart-dom-reader/overview",
-                  "packages/smart-dom-reader/reference"
-                ]
-              },
-              {
-                "group": "agent-skills-ts-sdk",
-                "pages": ["packages/agent-skills/overview", "packages/agent-skills/reference"]
-              }
+              "packages/webmcp-local-relay/overview",
+              "packages/chrome-devtools-mcp/overview",
+              "packages/extension-tools/overview",
+              "packages/smart-dom-reader/overview",
+              "packages/agent-skills/overview"
             ]
           }
         ]

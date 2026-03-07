@@ -1,8 +1,8 @@
 ---
-title: "@mcp-b/webmcp-local-relay overview"
+title: "@mcp-b/webmcp-local-relay"
 sidebarTitle: "Overview"
 description: "Bridge browser-hosted WebMCP tools to desktop MCP clients like Claude Desktop, Cursor, and Claude Code through a local WebSocket relay."
-keywords: ["@mcp-b/webmcp-local-relay", "local relay", "desktop agent", "stdio", "websocket", "claude desktop", "cursor"]
+keywords: ["@mcp-b/webmcp-local-relay", "local relay", "desktop agent", "stdio", "websocket", "claude desktop", "cursor", "browser bridge"]
 icon: "satellite-dish"
 ---
 
@@ -18,16 +18,16 @@ Browser Tab                          Local Machine
 │   WebMCP tools       │  localhost  │   (MCP server)       │
 │                      │             │                      │
 └──────────────────────┘             └──────────┬───────────┘
-                                                │
-                                          stdio │ JSON-RPC
-                                                │
-                                     ┌──────────▼───────────┐
-                                     │                      │
-                                     │   Claude Desktop /   │
-                                     │   Cursor / Claude    │
-                                     │   Code / Windsurf    │
-                                     │                      │
-                                     └──────────────────────┘
+                                               │
+                                         stdio │ JSON-RPC
+                                               │
+                                    ┌──────────▼───────────┐
+                                    │                      │
+                                    │   Claude Desktop /   │
+                                    │   Cursor / Claude    │
+                                    │   Code / Windsurf    │
+                                    │                      │
+                                    └──────────────────────┘
 ```
 
 The relay has three parts:
@@ -51,13 +51,21 @@ Add this block to your MCP client configuration (Claude Desktop, Cursor, or simi
 }
 ```
 
+You can also run the relay directly:
+
+```bash
+npx @mcp-b/webmcp-local-relay
+```
+
+A `.mcpb` bundle file is available from [GitHub Releases](https://github.com/WebMCP-org/npm-packages/releases) for Claude Desktop (double-click to install).
+
 Then add the embed script to any page that registers WebMCP tools:
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@mcp-b/webmcp-local-relay@latest/dist/browser/embed.js"></script>
 ```
 
-The relay starts on `ws://127.0.0.1:9333` by default. Tools registered on the page through [`@mcp-b/global`](/packages/global/overview) or the [WebMCP polyfill](/packages/webmcp-polyfill/reference) are forwarded to the desktop client automatically.
+The relay starts on `ws://127.0.0.1:9333` by default. Tools registered on the page through [`@mcp-b/global`](/packages/global/overview) or the [WebMCP polyfill](/packages/webmcp-polyfill/overview) are forwarded to the desktop client automatically.
 
 ## When to use this package
 
@@ -70,26 +78,137 @@ The relay starts on `ws://127.0.0.1:9333` by default. Tools registered on the pa
 - You need browser automation, console access, or DOM inspection. Use [`@mcp-b/chrome-devtools-mcp`](/packages/chrome-devtools-mcp/overview) instead.
 - You only need in-browser tool discovery through a runtime or extension.
 
-## Key behaviors
-
-**Dynamic tool registration.** Tools registered on webpages appear as first-class MCP tools. When multiple tabs register a tool with the same name, the relay disambiguates with a short tab-ID suffix (e.g., `search_ed93`, `search_a1b2`). Tools appear and disappear as tabs connect and disconnect.
-
-**Client mode.** When a second relay instance starts and the default port is in use, it falls back to client mode. In client mode, the relay connects as a WebSocket client to the existing server and proxies tool operations through it. If the server stops, the client promotes itself back to server mode. This lets multiple MCP clients share the same browser connections.
-
-**Static management tools.** The relay always exposes four built-in tools: `webmcp_list_sources`, `webmcp_list_tools`, `webmcp_call_tool`, and `webmcp_open_page`. These let the desktop agent discover connected tabs, list available tools, invoke tools by name, and open or refresh browser pages. See the [reference page](/packages/webmcp-local-relay/reference) for details on each tool.
-
-**Security.** The relay binds to `127.0.0.1` (loopback only) by default. Use `--widget-origin` to restrict which host page origins can register tools. For more on the security model, see [Security and human-in-the-loop](/explanation/design/security-and-human-in-the-loop).
-
 ## Where it sits in the package graph
 
 This package is adjacent to the runtime stack rather than inside it. Pages expose WebMCP tools through [`@mcp-b/global`](/packages/global/overview) or the polyfill, and the relay forwards those tools to desktop clients. For a conceptual discussion of how this fits alongside other transport options, see [Transports and bridges](/explanation/architecture/transports-and-bridges).
 
+---
+
+## API reference
+
+### CLI options
+
+```text
+webmcp-local-relay [options]
+
+  --host, -H               Bind host (default: 127.0.0.1)
+  --port, -p               WebSocket port (default: 9333)
+  --widget-origin          Allowed host page origin(s), comma-separated (default: *)
+  --allowed-origin         Alias for --widget-origin
+  --ws-origin              Alias for --widget-origin
+  --help, -h               Show help
+```
+
+```bash
+# Custom port
+npx @mcp-b/webmcp-local-relay --port 9444
+
+# Restrict to trusted origins
+npx @mcp-b/webmcp-local-relay --widget-origin https://myapp.com,https://other.com
+```
+
+### Static management tools
+
+The relay always exposes four management tools:
+
+| Tool | Description |
+|------|-------------|
+| `webmcp_list_sources` | Lists connected browser tabs with metadata: tab ID, origin, URL, title, icon, tool count |
+| `webmcp_list_tools` | Lists all relayed tools with source info |
+| `webmcp_call_tool` | Invokes a relayed tool by name with JSON arguments (for clients that do not support dynamic tool registration) |
+| `webmcp_open_page` | Opens a URL in the default browser or refreshes a connected source page by matching origin |
+
+### Dynamic tool registration
+
+Tools registered on webpages are forwarded to the MCP server as first-class tools. Tool names are sanitized to the character set `[a-zA-Z0-9_]`.
+
+When multiple tabs register a tool with the same name, a short tab-ID suffix disambiguates them:
+
+| Situation | Tool name |
+|-----------|-----------|
+| Single provider | `get_issue` |
+| Multiple providers | `search_ed93`, `search_a1b2` |
+
+Tools appear and disappear as tabs connect and disconnect.
+
+### Browser embed
+
+Add a script tag to expose a page's WebMCP tools to the relay:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@mcp-b/webmcp-local-relay@latest/dist/browser/embed.js"></script>
+```
+
+If the page already registers tools on `navigator.modelContext`, they are picked up automatically.
+
+To use a custom relay port:
+
+```html
+<script
+  src="https://cdn.jsdelivr.net/npm/@mcp-b/webmcp-local-relay@latest/dist/browser/embed.js"
+  data-relay-port="9444"
+></script>
+```
+
+The embed script injects a hidden iframe that opens a WebSocket to the relay on `localhost`. Tools are discovered via `navigator.modelContext` (or `navigator.modelContextTesting` as fallback) and forwarded to the relay.
+
+### Reconnection and client mode
+
+The widget reconnects automatically using exponential backoff (1.5x multiplier) from 500ms up to 3000ms, stopping after 100 attempts.
+
+When a second relay instance starts and the port is in use (`EADDRINUSE`), it falls back to **client mode**. In client mode the relay connects as a WebSocket client to the existing server relay and proxies tool operations through it. If the server relay stops, the client promotes itself back to server mode. This lets multiple MCP clients share the same browser connections.
+
+### Runtime compatibility
+
+The relay supports pages using:
+
+1. `@mcp-b/global` (recommended)
+2. `@mcp-b/webmcp-polyfill` with `navigator.modelContextTesting`
+
+The browser embed uses `navigator.modelContext.listTools` + `callTool` when present, and falls back to `navigator.modelContextTesting.listTools` + `executeTool`.
+
+### Security
+
+- Binds to `127.0.0.1` by default (loopback only).
+- Default `allowedOrigins` is `*`, permitting any browser page to connect. Use `--widget-origin` to restrict which host page origins can register tools.
+- `--widget-origin` validates the host page origin reported in the browser `hello` message, not the iframe origin.
+- Any local process can connect regardless of origin restrictions.
+
+For the full security model, see [Security and human-in-the-loop](/explanation/design/security-and-human-in-the-loop).
+
+### Exported API
+
+The package exports the following for programmatic use:
+
+| Export | Kind | Description |
+|--------|------|-------------|
+| `LocalRelayMcpServer` | Class | MCP server with stdio transport and dynamic tool sync |
+| `LocalRelayMcpServerOptions` | Type | Construction options |
+| `RelayBridgeServer` | Class | WebSocket relay managing browser connections |
+| `RelayBridgeServerOptions` | Type | Bridge server options |
+| `RelayRegistry` | Class | Multi-source tool aggregation and deduplication |
+| `AggregatedTool` | Type | A tool resolved across multiple sources |
+| `SourceInfo` | Type | Metadata about a connected browser tab |
+| `sanitizeName` | Function | Sanitizes a tool name to `[a-zA-Z0-9_]` |
+| `buildPublicToolName` | Function | Builds a disambiguated public tool name |
+| `extractSanitizedDomain` | Function | Extracts and sanitizes domain from a URL |
+| `parseCliOptions` | Function | Parses CLI arguments |
+| `CliOptions` | Type | Parsed CLI option shape |
+
+Message schema types and Zod schemas for the browser-relay protocol are also exported: `BrowserToRelayMessageSchema`, `RelayToBrowserMessageSchema`, `RelayClientToServerMessageSchema`, `RelayServerToClientMessageSchema`, `ServerHelloMessageSchema`, and their corresponding TypeScript types.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `No sources connected` | Verify the page loaded `embed.js` and the relay process is running |
+| `No tools listed` | Verify tools are registered on the page's WebMCP runtime. Confirm the runtime emits tool-change notifications (`toolschanged` or `registerToolsChangedCallback`) |
+| `Tool not found` | Tab reloaded or disconnected. Call `webmcp_list_tools` to refresh |
+| Connection blocked | Verify `--widget-origin` matches the host page origin and the relay port matches `data-relay-port` |
+
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/webmcp-local-relay/reference">
-    CLI options, exported API, architecture layers, and troubleshooting.
-  </Card>
   <Card title="Connect desktop agents" icon="tower-broadcast" href="/how-to/connect-desktop-agents-with-local-relay">
     Step-by-step setup for desktop MCP clients.
   </Card>

@@ -2,7 +2,7 @@
 title: "@mcp-b/webmcp-polyfill"
 sidebarTitle: "Overview"
 description: "Strict WebMCP polyfill that installs navigator.modelContext in browsers without native support."
-keywords: ["webmcp-polyfill", "polyfill", "navigator.modelContext", "modelContextTesting", "strict core", "registerTool"]
+keywords: ["webmcp-polyfill", "polyfill", "navigator.modelContext", "initializeWebMCPPolyfill", "modelContextTesting", "strict core", "registerTool"]
 icon: "puzzle-piece"
 ---
 
@@ -48,7 +48,7 @@ For script tag usage, the IIFE build auto-initializes on load:
 <script src="https://unpkg.com/@mcp-b/webmcp-polyfill@latest/dist/index.iife.js"></script>
 ```
 
-Configure IIFE options by setting `window.__webMCPPolyfillOptions` before the script loads. See the [reference page](/packages/webmcp-polyfill/reference) for available options.
+Configure IIFE options by setting `window.__webMCPPolyfillOptions` before the script loads. See [IIFE / script tag](#iife--script-tag) below for available options.
 
 ## What's included
 
@@ -99,12 +99,182 @@ To inspect tools registered through either the native API or the polyfill, insta
 
 If you start with the polyfill and later need MCP-B extensions, `@mcp-b/global` wraps the existing polyfill context without replacing it. You do not need to change your tool registrations. For a deeper comparison, see [Native vs polyfill vs global](/explanation/native-vs-polyfill-vs-global).
 
+---
+
+## API reference
+
+### Functions
+
+#### `initializeWebMCPPolyfill(options?)`
+
+Installs the strict core polyfill on `navigator.modelContext`.
+
+```ts
+import { initializeWebMCPPolyfill } from '@mcp-b/webmcp-polyfill';
+
+initializeWebMCPPolyfill();
+```
+
+**Behavior:**
+
+- No-op in non-browser environments.
+- Non-destructive: if `navigator.modelContext` already exists (native or from a previous install), initialization is skipped.
+- Safe to call repeatedly.
+
+##### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `autoInitialize` | `boolean` | `true` | Set `false` to disable auto-init from IIFE/import side effect. |
+| `installTestingShim` | `boolean \| 'always' \| 'if-missing'` | `'if-missing'` | Controls whether `navigator.modelContextTesting` is installed. |
+| `disableIframeTransportByDefault` | `boolean` | - | Deprecated no-op, kept for backward compatibility. |
+
+##### `installTestingShim` values
+
+| Value | Behavior |
+|-------|----------|
+| `true` or `'if-missing'` | Install only when `modelContextTesting` is not already present |
+| `'always'` | Install even when `modelContextTesting` already exists |
+| `false` | Do not install |
+
+#### `initializeWebModelContextPolyfill(options?)`
+
+Alias for `initializeWebMCPPolyfill`.
+
+#### `cleanupWebMCPPolyfill()`
+
+Restores previous `navigator.modelContext` and `navigator.modelContextTesting` property descriptors and resets the polyfill install state.
+
+```ts
+import { cleanupWebMCPPolyfill } from '@mcp-b/webmcp-polyfill';
+
+cleanupWebMCPPolyfill();
+```
+
+### IIFE / script tag
+
+The IIFE build auto-initializes on load. Configure via `window.__webMCPPolyfillOptions`:
+
+```html title="iife-with-options.html"
+<script>
+  window.__webMCPPolyfillOptions = {
+    installTestingShim: 'if-missing',
+  };
+</script>
+<script src="https://unpkg.com/@mcp-b/webmcp-polyfill@latest/dist/index.iife.js"></script>
+```
+
+### Methods on `navigator.modelContext`
+
+After initialization, `navigator.modelContext` exposes these methods:
+
+#### `registerTool(tool)`
+
+Adds a single tool to the registry.
+
+- Requires a non-empty `name`, non-empty `description`, and `execute` function.
+- Throws on duplicate tool names.
+- If `inputSchema` is omitted, defaults to `{ type: "object", properties: {} }`.
+
+#### `unregisterTool(name)`
+
+Removes a tool by name. Unknown names are a no-op.
+
+<Note>
+The polyfill does not provide `listTools()` or `callTool()` on `navigator.modelContext`. For tool listing and execution, use `navigator.modelContextTesting` (when the testing shim is enabled) or switch to [`@mcp-b/global`](/packages/global/overview).
+</Note>
+
+### Testing shim
+
+When `installTestingShim` is enabled, the polyfill installs `navigator.modelContextTesting` with the standard testing API:
+
+| Method | Returns |
+|--------|---------|
+| `listTools()` | `ModelContextTestingToolInfo[]` |
+| `executeTool(toolName, inputArgsJson, options?)` | `Promise<string \| null>` |
+| `registerToolsChangedCallback(callback)` | `void` |
+| `getCrossDocumentScriptToolResult()` | `Promise<string>` (always `"[]"` in polyfill) |
+
+```ts title="testing-shim.ts"
+initializeWebMCPPolyfill({ installTestingShim: true });
+
+const tools = navigator.modelContextTesting?.listTools();
+const result = await navigator.modelContextTesting?.executeTool(
+  'search',
+  JSON.stringify({ query: 'webmcp' })
+);
+```
+
+For full details on the testing API, see [WebMCP standard API](/explanation/webmcp/standard-api).
+
+### Input schema support
+
+The polyfill accepts three formats for `inputSchema`:
+
+| Format | Description |
+|--------|-------------|
+| Plain JSON Schema | `InputSchema` object |
+| Standard Schema v1 validator | Object with `~standard.validate()` (e.g., Zod 4) |
+| Standard JSON Schema v1 | Object with `~standard.jsonSchema.input()` |
+
+Standard JSON Schema conversion is attempted with targets `draft-2020-12` first, then `draft-07`. When both Standard validator and Standard JSON Schema are present on the same object, JSON conversion is preferred.
+
+### Validation
+
+The polyfill validates tool descriptors on registration:
+
+| Condition | Error |
+|-----------|-------|
+| `tool` is not an object | `TypeError: registerTool(tool) requires a tool object` |
+| `name` is empty or not a string | `TypeError: Tool "name" must be a non-empty string` |
+| `description` is empty or not a string | `TypeError: Tool "description" must be a non-empty string` |
+| `execute` is not a function | `TypeError: Tool "execute" must be a function` |
+| Duplicate tool name | `Error: Tool already registered: <name>` |
+| Invalid JSON Schema structure | `Error: Invalid JSON Schema at <path>: <details>` |
+| Schema not JSON-serializable | `Error: Invalid JSON Schema at <path>: schema must be JSON-serializable` |
+
+Input arguments are validated at execution time using JSON Schema validation (via `@cfworker/json-schema`). Standard Schema validators are used when available.
+
+### Type inference
+
+For compile-time type inference, pair the polyfill with `@mcp-b/webmcp-types`:
+
+```ts title="type-inference.ts"
+import type { JsonSchemaForInference } from '@mcp-b/webmcp-types';
+import { initializeWebMCPPolyfill } from '@mcp-b/webmcp-polyfill';
+
+initializeWebMCPPolyfill();
+
+const inputSchema = {
+  type: 'object',
+  properties: {
+    query: { type: 'string' },
+    limit: { type: 'integer', minimum: 1, maximum: 50 },
+  },
+  required: ['query'],
+  additionalProperties: false,
+} as const satisfies JsonSchemaForInference;
+
+navigator.modelContext.registerTool({
+  name: 'search',
+  description: 'Search indexed docs',
+  inputSchema,
+  async execute(args) {
+    // args inferred as: { query: string; limit?: number }
+    return { content: [{ type: 'text', text: `Searching for ${args.query}` }] };
+  },
+});
+```
+
+For full inference documentation, see [@mcp-b/webmcp-types](/packages/webmcp-types/overview).
+
+### Interop with `@mcp-b/global`
+
+If the polyfill is installed first, `@mcp-b/global` wraps the existing context with `BrowserMcpServer` to add MCP-B extension APIs without replacing the core object identity. Use `@mcp-b/global` directly when you need `callTool`, resources, prompts, or transport. For guidance on choosing between them, see [Choose a runtime](/how-to/choose-runtime). For the layering rationale, see [Native vs polyfill vs global](/explanation/native-vs-polyfill-vs-global).
+
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="API reference" icon="book-open" href="/packages/webmcp-polyfill/reference">
-    Initialization options, testing shim details, validation rules, and schema support.
-  </Card>
   <Card title="First tool tutorial" icon="graduation-cap" href="/tutorials/first-tool">
     Build and test your first WebMCP tool from scratch.
   </Card>
