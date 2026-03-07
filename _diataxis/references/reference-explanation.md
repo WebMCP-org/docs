@@ -26,7 +26,7 @@ There are good rules of thumb:
 - On the other hand **if you can imagine reading something in the bath**, probably, it’s *explanation* (even if really there is no accounting for what people might read in the bath).
 
 Imagine asking a friend, while out for a walk or over a drink, **Can you
-tell me more about <topic>?** - the answer or discussion that follows is
+tell me more about `<topic>`?** - the answer or discussion that follows is
 most likely going to be an *explanation* of it.
 
 ### … but intuition isn’t reliable enough¶
