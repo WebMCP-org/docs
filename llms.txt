@@ -1,0 +1,159 @@
+# WebMCP Documentation
+
+> WebMCP is a W3C standard for making websites AI-accessible. It defines the Web Model Context API (`navigator.modelContext`), enabling any website to register tools, prompts, and resources that work with Claude, ChatGPT, and custom AI agents.
+
+## Quick Start
+
+Add WebMCP to any website with one script tag:
+
+```html
+<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js" defer></script>
+<script>
+  navigator.modelContext.registerTool({
+    name: 'get_weather',
+    description: 'Get weather for a city',
+    inputSchema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] },
+    handler: async ({ city }) => ({ content: [{ type: 'text', text: `Weather in ${city}: 72F, sunny` }] })
+  });
+</script>
+```
+
+Or with npm:
+
+```bash
+npm install @mcp-b/global
+```
+
+```typescript
+import '@mcp-b/global';
+
+navigator.modelContext.registerTool({
+  name: 'get_weather',
+  description: 'Get weather for a city',
+  inputSchema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] },
+  handler: async ({ city }) => ({ content: [{ type: 'text', text: `Weather in ${city}: 72F, sunny` }] })
+});
+```
+
+## Core Concepts
+
+### Web Model Context API
+`navigator.modelContext` is the browser-native API (proposed W3C standard) for AI tool registration. WebMCP polyfills this API for browsers that don't support it natively yet.
+
+### Tool Registration
+Tools are functions that AI agents can call. Register them with `navigator.modelContext.registerTool()`. Each tool has a name, description, JSON Schema input, and an async handler.
+
+### Prompts
+Prompts are predefined message templates. Register with `navigator.modelContext.registerPrompt()`. Useful for standardizing how agents interact with your application.
+
+### Resources
+Resources expose data to agents. Register with `navigator.modelContext.registerResource()`. Think of them as read-only data endpoints.
+
+### Transports
+Transports connect your website's tools to AI agents. Available transports:
+- **Tab Transport**: Extension communicates with the page via Chrome tabs API
+- **Iframe Transport**: Parent-child iframe communication
+- **Chrome DevTools MCP**: Connect Claude Code or other MCP clients via Chrome DevTools Protocol
+
+### Package Layering
+```
+@mcp-b/global              → Entry point, auto-initializes
+@mcp-b/webmcp-ts-sdk       → BrowserMcpServer with MCP extensions
+@mcp-b/webmcp-polyfill      → Polyfills navigator.modelContext
+Native browser API           → navigator.modelContext (when available)
+```
+
+## How Agents Connect
+
+1. **AI Browsers**: Chrome with built-in AI, Perplexity browser — native `navigator.modelContext` support
+2. **Browser Extension**: MCP-B extension connects any MCP client to page tools
+3. **Embedded Agent**: Drop-in `<char-agent>` component for in-page AI assistants
+4. **Chrome DevTools MCP**: Connect Claude Code, Cursor, or any MCP client via DevTools Protocol
+
+## NPM Packages
+
+| Package | Purpose |
+|---------|---------|
+| `@mcp-b/global` | Entry point — polyfill + BrowserMcpServer auto-setup |
+| `@mcp-b/webmcp-polyfill` | Polyfills `navigator.modelContext` for non-native browsers |
+| `@mcp-b/webmcp-ts-sdk` | BrowserMcpServer with full MCP capabilities |
+| `@mcp-b/webmcp-types` | TypeScript types for the Web Model Context API |
+| `@mcp-b/react-webmcp` | React hooks (`useWebMCP`) for tool registration |
+| `@mcp-b/transports` | Tab and iframe transport implementations |
+| `@mcp-b/mcp-iframe` | Iframe-based MCP communication |
+| `@mcp-b/chrome-devtools-mcp` | Connect MCP clients via Chrome DevTools Protocol |
+| `@mcp-b/extension-tools` | Utilities for the browser extension |
+| `@mcp-b/smart-dom-reader` | Intelligent DOM content extraction |
+
+## Framework Support
+
+WebMCP works with any JavaScript framework:
+- **React**: `@mcp-b/react-webmcp` with `useWebMCP` hook
+- **Vue**: Direct `navigator.modelContext.registerTool()` in `onMounted`
+- **Svelte**: Direct API in `onMount`
+- **Angular**: Direct API in `ngOnInit`
+- **TanStack Start / Remix**: React hook approach
+- **Rails (Stimulus)**: Direct API in `connect()`
+- **Phoenix LiveView**: Direct API in `mounted()` hook
+
+## Documentation Sitemap
+
+### Getting Started
+- [Introduction](/introduction): What is WebMCP and why it matters
+- [Quickstart](/quickstart): Get running in 5 minutes
+- [Examples](/examples): Code examples overview
+
+### Guides
+- [Best Practices](/best-practices): Patterns for effective tool design
+- [Development](/development): Local development workflow
+- [Advanced](/advanced): Advanced patterns and techniques
+- [Building MCP UI Apps](/building-mcp-ui-apps): Full application patterns
+- [Security](/security): Security model and best practices
+
+### Framework Guides
+- [Overview](/frameworks/index): Framework integration overview
+- [React](/frameworks/react) | [Vue](/frameworks/vue) | [Svelte](/frameworks/svelte) | [Angular](/frameworks/angular)
+- [TanStack Start](/frameworks/tanstack-start) | [Remix](/frameworks/remix) | [Nuxt](/frameworks/nuxt)
+- [Rails](/frameworks/rails) | [Phoenix LiveView](/frameworks/phoenix-liveview)
+
+### Calling Tools (Agent Connection)
+- [Overview](/calling-tools/index): How agents discover and call tools
+- [Embedded Agent](/calling-tools/embedded-agent): Drop-in AI chat component
+- [AI Browsers](/calling-tools/ai-browsers): Native browser support
+- [Extension](/calling-tools/extension): MCP-B browser extension
+- [DevTools MCP](/calling-tools/devtools-mcp): Chrome DevTools Protocol bridge
+
+### Concepts
+- [Overview](/concepts/overview) | [Why WebMCP](/concepts/why-webmcp) | [Architecture](/concepts/architecture)
+- [Tool Registration](/concepts/tool-registration) | [Prompts](/concepts/prompts) | [Resources](/concepts/resources)
+- [Transports](/concepts/transports) | [Context Engineering](/concepts/context-engineering)
+- [MCP UI Integration](/concepts/mcp-ui-integration) | [Extension](/concepts/extension) | [Schemas](/concepts/schemas)
+- [Tool Design](/concepts/tool-design) | [Performance](/concepts/performance) | [Glossary](/concepts/glossary)
+
+### NPM Package Reference
+- [@mcp-b/global](/packages/global) | [@mcp-b/transports](/packages/transports)
+- [@mcp-b/mcp-iframe](/packages/mcp-iframe) | [@mcp-b/react-webmcp](/packages/react-webmcp)
+- [@mcp-b/chrome-devtools-mcp](/packages/chrome-devtools-mcp) | [@mcp-b/extension-tools](/packages/extension-tools)
+- [@mcp-b/webmcp-ts-sdk](/packages/webmcp-ts-sdk) | [@mcp-b/smart-dom-reader](/packages/smart-dom-reader)
+
+### Extension
+- [Overview](/extension/index) | [Agents](/extension/agents) | [Userscripts](/extension/managing-userscripts)
+- [Native Host Setup](/native-host-setup)
+
+### Reference
+- [Changelog](/changelog) | [Troubleshooting](/troubleshooting) | [Claude Code](/tools/claude-code)
+
+### For AI
+- [MCP Integration](/mcp-integration) | [llms.txt](/llms-txt)
+
+### Live Examples
+- [Tools](/live-tool-examples) | [Prompts](/live-prompt-examples) | [Resources](/live-resource-examples)
+
+## Support
+
+- Documentation: https://docs.mcp-b.ai
+- GitHub: https://github.com/WebMCP-org
+- NPM Packages: https://github.com/WebMCP-org/npm-packages
+- Examples: https://github.com/WebMCP-org/examples
+- Discord: https://discord.gg/ZnHG4csJRB
+- Live Demo: https://webmcp.sh
