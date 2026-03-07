@@ -2,9 +2,7 @@
 // Loads the WebMCP polyfill from CDN to enable live tool examples
 // This file is automatically included on all pages by Mintlify
 
-(function() {
-  'use strict';
-
+(() => {
   // Check if already loaded (e.g., by the MCP-B browser extension)
   if (window.navigator?.modelContext) {
     console.log('WebMCP already loaded (likely via browser extension)');

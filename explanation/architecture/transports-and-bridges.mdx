@@ -28,7 +28,7 @@ This is the path that powers extension-side discovery and inspection. A page reg
 
 When a page embeds another page in an iframe, and the embedded page has WebMCP tools, those tools do not automatically become visible to the parent. The iframe transport pair handles that boundary.
 
-The parent uses an `IframeParentTransport`. The child uses an `IframeChildTransport`. The [`@mcp-b/mcp-iframe`](/reference/runtime/mcp-iframe) package wraps that setup in a custom element and namespaces the forwarded tools to prevent collisions.
+The parent uses an `IframeParentTransport`. The child uses an `IframeChildTransport`. The [`@mcp-b/mcp-iframe`](/packages/mcp-iframe/reference) package wraps that setup in a custom element and namespaces the forwarded tools to prevent collisions.
 
 This is why iframe bridging belongs in MCP-B documentation, not in the standard pages. It is transport and composition policy, not the browser API itself.
 
@@ -53,7 +53,7 @@ From the desktop client's perspective, the relay looks like a normal MCP server.
 
 ## Chrome DevTools bridge
 
-[`@mcp-b/chrome-devtools-mcp`](/reference/tools/chrome-devtools-mcp) takes a different route. Instead of using `postMessage`, it reaches the page through the Chrome DevTools Protocol. That is why it fits especially well in coding-agent workflows where the same agent also wants screenshots, traces, console messages, and DOM access.
+[`@mcp-b/chrome-devtools-mcp`](/packages/chrome-devtools-mcp/reference) takes a different route. Instead of using `postMessage`, it reaches the page through the Chrome DevTools Protocol. That is why it fits especially well in coding-agent workflows where the same agent also wants screenshots, traces, console messages, and DOM access.
 
 ## Choosing a bridge
 
@@ -61,4 +61,4 @@ The question is not only where the tool lives. The question is where the caller 
 
 If the caller is an extension in the same browser, use the tab or extension transport. If the caller is a parent page, use iframe transport. If the caller is a desktop MCP client, use the local relay or the DevTools bridge.
 
-For API details, see [@mcp-b/transports](/reference/runtime/transports), [@mcp-b/mcp-iframe](/reference/runtime/mcp-iframe), [@mcp-b/webmcp-local-relay](/reference/tools/webmcp-local-relay), and [@mcp-b/chrome-devtools-mcp](/reference/tools/chrome-devtools-mcp).
+For API details, see [@mcp-b/transports](/packages/transports/reference), [@mcp-b/mcp-iframe](/packages/mcp-iframe/reference), [@mcp-b/webmcp-local-relay](/packages/webmcp-local-relay/reference), and [@mcp-b/chrome-devtools-mcp](/packages/chrome-devtools-mcp/reference).

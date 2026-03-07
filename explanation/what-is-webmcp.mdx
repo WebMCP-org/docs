@@ -25,7 +25,7 @@ WebMCP offers two complementary surfaces.
 
 **Declarative WebMCP** is the HTML lane. A page exposes tool-like form workflows directly from markup.
 
-The distinction matters, but the exact API details are still owned upstream. If you want the precise imperative API surface, use the [WebMCP standard API reference](/reference/webmcp/standard-api) and then follow the links to the W3C spec. If you want the evolving declarative model, start with [Declarative API](/reference/webmcp/declarative-api), which points to the Chrome team's explainer.
+The distinction matters, but the exact API details are still owned upstream. If you want the precise imperative API surface, use the [WebMCP standard API reference](/explanation/webmcp/standard-api) and then follow the links to the W3C spec. If you want the evolving declarative model, start with [Declarative API](/explanation/webmcp/declarative-api), which points to the Chrome team's explainer.
 
 ## Where WebMCP sits in the ecosystem
 
@@ -51,7 +51,7 @@ Several design choices shape WebMCP and distinguish it from alternatives like ra
 
 **Human-in-the-loop.** WebMCP assumes a human is present. A browsing context is required, and the declarative model includes explicit review points. For more on this model, see [Security and Human-in-the-Loop](/explanation/design/security-and-human-in-the-loop).
 
-**Progressive adoption.** A site can start with one tool. The cleanest first step is native WebMCP or the strict [`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill). If you later need transport, prompts, resources, or other MCP-B-only behavior, move up to [`@mcp-b/global`](/reference/runtime/global).
+**Progressive adoption.** A site can start with one tool. The cleanest first step is native WebMCP or the strict [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference). If you later need transport, prompts, resources, or other MCP-B-only behavior, move up to [`@mcp-b/global`](/packages/global/reference).
 
 ## Limitations
 

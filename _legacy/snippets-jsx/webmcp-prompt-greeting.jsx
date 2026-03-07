@@ -42,12 +42,12 @@ export const GreetingPrompt = () => {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const result = await onExecute();
 
     setExecutionPhase('complete');
     hidePageEffect();
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     setExecutionPhase(null);
 
     return result;
@@ -70,18 +70,21 @@ export const GreetingPrompt = () => {
                   role: 'user',
                   content: {
                     type: 'text',
-                    text: 'Hello! How can you help me today?'
+                    text: 'Hello! How can you help me today?',
                   },
                 },
               ];
 
               setLastMessages(messages);
-              setPromptCalls(prev => [...prev, {
-                time: new Date().toISOString(),
-                name: 'greeting',
-                status: 'success',
-                messages,
-              }]);
+              setPromptCalls((prev) => [
+                ...prev,
+                {
+                  time: new Date().toISOString(),
+                  name: 'greeting',
+                  status: 'success',
+                  messages,
+                },
+              ]);
 
               return { messages };
             });
@@ -128,23 +131,38 @@ export const GreetingPrompt = () => {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">
-            Greeting Prompt
-          </h3>
+          <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">Greeting Prompt</h3>
           {isActive && (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#8B5CF6]/10 text-[#8B5CF6] dark:bg-[#8B5CF6]/20 dark:text-[#A78BFA]">
               {executionPhase === 'executing' && (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Getting prompt...
                 </>
               )}
               {executionPhase === 'complete' && (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   Complete
@@ -155,14 +173,16 @@ export const GreetingPrompt = () => {
         </div>
         {isRegistered && !isActive && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
             Ready
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">registerPrompt()</span>
+        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">
+          registerPrompt()
+        </span>
         <span>Simple prompt without arguments</span>
       </div>
 
@@ -218,19 +238,30 @@ export const GreetingPrompt = () => {
             Recent Calls
           </h4>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {promptCalls.slice(-3).reverse().map((call, idx) => (
-              <div
-                key={idx}
-                className="p-3 rounded-lg text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700"
-              >
-                <div className="flex items-center justify-between">
-                  <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">getPrompt("{call.name}")</code>
-                  <svg className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+            {promptCalls
+              .slice(-3)
+              .reverse()
+              .map((call, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-lg text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700"
+                >
+                  <div className="flex items-center justify-between">
+                    <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">
+                      getPrompt("{call.name}")
+                    </code>
+                    <svg
+                      className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}

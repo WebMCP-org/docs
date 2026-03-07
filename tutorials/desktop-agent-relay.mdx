@@ -179,7 +179,11 @@ You have called a browser-side tool from a desktop AI agent through the local re
 
 <Step title="Try with a live website">
 
-Open any website that uses WebMCP (for example, [webmcp.sh](https://webmcp.sh)) in a separate tab. Then ask the agent to list sources again. You will see tools from multiple tabs. The relay aggregates tools from all connected pages.
+Open [webmcp.sh](https://webmcp.sh) in a separate tab. It has WebMCP tools for navigation, SQL queries, entity management, and more. Ask the agent to list sources again. You will see tools from both tabs. The relay aggregates tools from all connected pages.
+
+<Frame caption="webmcp.sh dashboard: a production app with WebMCP tools the relay can discover">
+  <img src="/images/webmcp-sh-dashboard.png" alt="webmcp.sh dashboard showing memory stats, charts, and audit log" />
+</Frame>
 
 </Step>
 
@@ -194,6 +198,6 @@ Open any website that uses WebMCP (for example, [webmcp.sh](https://webmcp.sh)) 
 
 ## Next steps
 
-- See the [`webmcp-local-relay` reference](/reference/tools/webmcp-local-relay) for CLI options, security settings, and architecture details
+- See the [`webmcp-local-relay` reference](/packages/webmcp-local-relay/reference) for CLI options, security settings, and architecture details
 - Read [Connect Desktop Agents with Local Relay](/how-to/connect-desktop-agents-with-local-relay) for production configuration (origin restrictions, custom ports)
 - Try [Build Your First Tool](/tutorials/first-tool) or [Build Your First React Tool](/tutorials/first-react-tool) if you have not yet created your own tools

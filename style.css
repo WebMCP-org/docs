@@ -43,14 +43,22 @@ html.dark,
 }
 
 @media (prefers-color-scheme: light) {
-  :root { --nav-logo-label-color: #0b0b0b; --nav-logo-label-weight: 600; }
+  :root {
+    --nav-logo-label-color: #0b0b0b;
+    --nav-logo-label-weight: 600;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root { --nav-logo-label-color: #e6e6e6; --nav-logo-label-weight: 400; }
+  :root {
+    --nav-logo-label-color: #e6e6e6;
+    --nav-logo-label-weight: 400;
+  }
 }
 
-.nav-logo-label { font-weight: var(--nav-logo-label-weight, 600); }
+.nav-logo-label {
+  font-weight: var(--nav-logo-label-weight, 600);
+}
 
 .docs-landing {
   position: relative;
@@ -58,8 +66,7 @@ html.dark,
   overflow: hidden;
   background:
     radial-gradient(circle at top center, rgba(31, 94, 255, 0.18), transparent 28rem),
-    radial-gradient(circle at bottom right, rgba(65, 209, 255, 0.12), transparent 26rem),
-    #08060d;
+    radial-gradient(circle at bottom right, rgba(65, 209, 255, 0.12), transparent 26rem), #08060d;
   color: rgba(255, 255, 255, 0.92);
 }
 
@@ -71,7 +78,13 @@ html.dark,
   background-size: calc((100vw - 3rem) / 4) 100%;
   background-position: center top;
   opacity: 0.32;
-  mask-image: linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.9) 8rem, rgba(0, 0, 0, 0.95) calc(100% - 8rem), transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.9) 8rem,
+    rgba(0, 0, 0, 0.95) calc(100% - 8rem),
+    transparent 100%
+  );
   pointer-events: none;
 }
 
@@ -80,8 +93,15 @@ html.dark,
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to right, transparent 0, rgba(255, 255, 255, 0.04) 33.333%, transparent 33.333%, transparent 66.666%, rgba(255, 255, 255, 0.04) 66.666%, transparent 66.666%),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 12rem);
+    linear-gradient(
+      to right,
+      transparent 0,
+      rgba(255, 255, 255, 0.04) 33.333%,
+      transparent 33.333%,
+      transparent 66.666%,
+      rgba(255, 255, 255, 0.04) 66.666%,
+      transparent 66.666%
+    ), linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent 12rem);
   pointer-events: none;
 }
 
@@ -167,14 +187,62 @@ html.dark,
 }
 
 .docs-landing-title {
+  position: relative;
+  display: inline-block;
   margin: 0.9rem 0 0;
-  max-width: 12ch;
-  font-size: clamp(2.6rem, 5.5vw, 4.8rem);
+  max-width: 100%;
+  font-size: clamp(2.2rem, 4.6vw, 3.85rem);
   font-weight: 620;
-  line-height: 0.95;
-  letter-spacing: -0.06em;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  white-space: nowrap;
   color: #f4f7ff;
-  text-wrap: balance;
+  background-image: linear-gradient(120deg, #f8fbff 0%, #c8d9ff 22%, #7dcfff 48%, #f4f8ff 72%, #9db9ff 100%);
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 18px rgba(125, 207, 255, 0.16));
+  animation: docs-landing-title-shift 12s ease-in-out infinite;
+}
+
+.docs-landing-title::after {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  right: 0.25rem;
+  bottom: 0.2rem;
+  height: 0.24rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(31, 94, 255, 0), rgba(125, 207, 255, 0.55), rgba(31, 94, 255, 0));
+  opacity: 0.75;
+  filter: blur(12px);
+  pointer-events: none;
+  animation: docs-landing-title-glow 8s ease-in-out infinite;
+}
+
+@keyframes docs-landing-title-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes docs-landing-title-glow {
+  0%,
+  100% {
+    transform: scaleX(0.92);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scaleX(1);
+    opacity: 0.85;
+  }
 }
 
 .docs-landing-lead,
@@ -219,7 +287,10 @@ html.dark,
   font-size: 0.92rem;
   font-weight: 600;
   text-decoration: none;
-  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
 }
 
 .docs-landing-link:hover {
@@ -336,7 +407,13 @@ html.dark,
   border: 1px solid transparent;
   background:
     linear-gradient(#0c0a14, #0c0a14) padding-box,
-    linear-gradient(110deg, rgba(31, 94, 255, 0.95) 0%, rgba(125, 207, 255, 0.95) 50%, rgba(31, 94, 255, 0.95) 100%) border-box;
+    linear-gradient(
+      110deg,
+      rgba(31, 94, 255, 0.95) 0%,
+      rgba(125, 207, 255, 0.95) 50%,
+      rgba(31, 94, 255, 0.95) 100%
+    )
+    border-box;
 }
 
 .docs-landing-visual h3 {
@@ -518,7 +595,7 @@ html.dark,
 }
 
 .docs-landing-icon-npm {
-  color: #CB3837;
+  color: #cb3837;
 }
 
 .docs-landing-links-cell {
@@ -587,8 +664,8 @@ html.dark,
   }
 
   .docs-landing-title {
-    max-width: 10ch;
-    font-size: clamp(2.15rem, 9vw, 3.2rem);
+    font-size: clamp(1.5rem, 8.2vw, 2.75rem);
+    letter-spacing: -0.045em;
   }
 
   .docs-landing-hero-diagram {
@@ -599,6 +676,11 @@ html.dark,
 @media (prefers-reduced-motion: reduce) {
   .docs-landing-link {
     transition: none;
+  }
+
+  .docs-landing-title,
+  .docs-landing-title::after {
+    animation: none;
   }
 }
 
@@ -611,8 +693,7 @@ body.theme-light .docs-landing,
 html:not(.dark) .docs-landing {
   background:
     radial-gradient(circle at top center, rgba(31, 94, 255, 0.12), transparent 24rem),
-    radial-gradient(circle at bottom right, rgba(65, 209, 255, 0.08), transparent 24rem),
-    #f5f7fc;
+    radial-gradient(circle at bottom right, rgba(65, 209, 255, 0.08), transparent 24rem), #f5f7fc;
   color: rgba(12, 18, 32, 0.92);
 }
 
@@ -635,8 +716,15 @@ body.theme-light .docs-landing::after,
 .mint-light .docs-landing::after,
 html:not(.dark) .docs-landing::after {
   background:
-    linear-gradient(to right, transparent 0, rgba(15, 23, 42, 0.03) 33.333%, transparent 33.333%, transparent 66.666%, rgba(15, 23, 42, 0.03) 66.666%, transparent 66.666%),
-    linear-gradient(to bottom, rgba(15, 23, 42, 0.03), transparent 12rem);
+    linear-gradient(
+      to right,
+      transparent 0,
+      rgba(15, 23, 42, 0.03) 33.333%,
+      transparent 33.333%,
+      transparent 66.666%,
+      rgba(15, 23, 42, 0.03) 66.666%,
+      transparent 66.666%
+    ), linear-gradient(to bottom, rgba(15, 23, 42, 0.03), transparent 12rem);
 }
 
 :root[data-theme="light"] .docs-landing code,
@@ -720,6 +808,17 @@ body.theme-light .docs-landing-visual h3,
 .mint-light .docs-landing-visual h3,
 html:not(.dark) .docs-landing-visual h3 {
   color: #0f172a;
+}
+
+:root[data-theme="light"] .docs-landing-title,
+html[data-theme="light"] .docs-landing-title,
+body.theme-light .docs-landing-title,
+.theme--light .docs-landing-title,
+.light-mode .docs-landing-title,
+.mint-light .docs-landing-title,
+html:not(.dark) .docs-landing-title {
+  background-image: linear-gradient(120deg, #0f172a 0%, #1f5eff 28%, #1292db 52%, #0f172a 78%, #3359d6 100%);
+  filter: drop-shadow(0 0 14px rgba(31, 94, 255, 0.12));
 }
 
 :root[data-theme="light"] .docs-landing-lead,

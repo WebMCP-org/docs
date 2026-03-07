@@ -88,7 +88,11 @@ Once the relay is running and your page has loaded `embed.js`, your AI agent has
 
 Tools also register as first-class MCP tools using their original name. When multiple tabs register a tool with the same name, the relay appends a short tab-ID suffix for disambiguation (e.g. `search_ed93`, `search_a1b2`).
 
-Ask your agent to list sources or tools to confirm the connection is working.
+Ask your agent to list sources or tools to confirm the connection is working. Try [webmcp.sh](https://webmcp.sh) as a test target; it registers tools for SQL queries, entity management, navigation, and more.
+
+<Frame caption="webmcp.sh: a live demo app with WebMCP tools you can relay to any desktop agent">
+  <img src="/images/webmcp-sh-homepage.png" alt="webmcp.sh landing page showing registered WebMCP tools" />
+</Frame>
 
 ## Use a custom port
 
@@ -142,6 +146,6 @@ If the relay is temporarily unavailable, the embed widget reconnects automatical
 
 ## Related pages
 
-- [Local Relay Reference](/reference/tools/webmcp-local-relay) for the full CLI options and architecture details
+- [Local Relay Reference](/packages/webmcp-local-relay/reference) for the full CLI options and architecture details
 - [Transports and Bridges](/explanation/architecture/transports-and-bridges) for how the relay fits into the WebMCP transport layer
 - [Desktop Agent Relay Tutorial](/tutorials/desktop-agent-relay) for a step-by-step walkthrough from scratch

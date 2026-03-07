@@ -8,16 +8,21 @@ export const InteractiveQuickstart = () => {
     const patterns = [
       { regex: /(\/\/.*$)/gm, cls: 'text-zinc-500' },
       { regex: /(`[^`]*`|'[^']*'|"[^"]*")/g, cls: 'text-green-400' },
-      { regex: /\b(import|export|from|async|await|function|const|let|var|return|if|else|try|catch|throw|new|class|extends|type|interface)\b/g, cls: 'text-purple-400' },
-      { regex: /\b(navigator|window|document|console|Promise|Object|Array|String|Number|Boolean)\b/g, cls: 'text-yellow-400' },
+      {
+        regex:
+          /\b(import|export|from|async|await|function|const|let|var|return|if|else|try|catch|throw|new|class|extends|type|interface)\b/g,
+        cls: 'text-purple-400',
+      },
+      {
+        regex:
+          /\b(navigator|window|document|console|Promise|Object|Array|String|Number|Boolean)\b/g,
+        cls: 'text-yellow-400',
+      },
       { regex: /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, cls: 'text-blue-400' },
       { regex: /\b(\d+)\b/g, cls: 'text-orange-400' },
     ];
 
-    let result = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    let result = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     patterns.forEach(({ regex, cls }) => {
       result = result.replace(regex, `<span class="${cls}">$1</span>`);
@@ -40,9 +45,7 @@ export const InteractiveQuickstart = () => {
   const [toolConfig, setToolConfig] = useState({
     name: 'greet_user',
     description: 'Greets the user by name',
-    parameters: [
-      { name: 'name', type: 'string', description: 'Name to greet', required: true }
-    ],
+    parameters: [{ name: 'name', type: 'string', description: 'Name to greet', required: true }],
   });
 
   // Test input state
@@ -67,7 +70,7 @@ export const InteractiveQuickstart = () => {
 
     if (framework === 'react') {
       const zodSchema = toolConfig.parameters
-        .map(p => `      ${p.name}: z.${p.type}()${p.required ? '' : '.optional()'}`)
+        .map((p) => `      ${p.name}: z.${p.type}()${p.required ? '' : '.optional()'}`)
         .join(',\n');
 
       return `import '@mcp-b/global';
@@ -92,11 +95,11 @@ ${zodSchema}
 
     if (framework === 'vanilla') {
       const schemaProps = toolConfig.parameters
-        .map(p => `        ${p.name}: { type: '${p.type}', description: '${p.description}' }`)
+        .map((p) => `        ${p.name}: { type: '${p.type}', description: '${p.description}' }`)
         .join(',\n');
       const required = toolConfig.parameters
-        .filter(p => p.required)
-        .map(p => `'${p.name}'`)
+        .filter((p) => p.required)
+        .map((p) => `'${p.name}'`)
         .join(', ');
 
       return `import '@mcp-b/global';
@@ -121,11 +124,11 @@ ${schemaProps}
 
     if (framework === 'script') {
       const schemaProps = toolConfig.parameters
-        .map(p => `        ${p.name}: { type: '${p.type}', description: '${p.description}' }`)
+        .map((p) => `        ${p.name}: { type: '${p.type}', description: '${p.description}' }`)
         .join(',\n');
       const required = toolConfig.parameters
-        .filter(p => p.required)
-        .map(p => `'${p.name}'`)
+        .filter((p) => p.required)
+        .map((p) => `'${p.name}'`)
         .join(', ');
 
       return `<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
@@ -172,10 +175,10 @@ ${schemaProps}
       const schema = {
         type: 'object',
         properties: {},
-        required: []
+        required: [],
       };
 
-      toolConfig.parameters.forEach(p => {
+      toolConfig.parameters.forEach((p) => {
         schema.properties[p.name] = { type: p.type, description: p.description };
         if (p.required) schema.required.push(p.name);
       });
@@ -199,7 +202,7 @@ ${schemaProps}
           }, 3000);
 
           return { content: [{ type: 'text', text: result }] };
-        }
+        },
       });
 
       setIsRegistered(true);
@@ -240,16 +243,14 @@ ${schemaProps}
 
   // Update parameter
   const updateParameter = (index, field, value) => {
-    setToolConfig(prev => ({
+    setToolConfig((prev) => ({
       ...prev,
-      parameters: prev.parameters.map((p, i) =>
-        i === index ? { ...p, [field]: value } : p
-      )
+      parameters: prev.parameters.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
     }));
     // Update test input key if name changed
     if (field === 'name') {
       const oldName = toolConfig.parameters[index].name;
-      setTestInput(prev => {
+      setTestInput((prev) => {
         const newInput = { ...prev };
         if (oldName in newInput) {
           newInput[value] = newInput[oldName];
@@ -290,15 +291,13 @@ ${schemaProps}
                   style={{
                     strokeDasharray: 24,
                     strokeDashoffset: 24,
-                    animation: 'drawCheck 0.5s ease forwards 0.2s'
+                    animation: 'drawCheck 0.5s ease forwards 0.2s',
                   }}
                 />
               </svg>
             </div>
 
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
-              Tool Executed!
-            </h3>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">Tool Executed!</h3>
 
             {testResult ? (
               <div className="space-y-3">
@@ -318,8 +317,19 @@ ${schemaProps}
             ) : (
               <div className="flex items-center justify-center gap-2 text-zinc-600 dark:text-zinc-400">
                 <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
                 </svg>
                 Processing...
               </div>
@@ -359,19 +369,18 @@ ${schemaProps}
 
       {/* Two-column layout */}
       <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-zinc-200 dark:divide-white/10">
-
         {/* Left: Form */}
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-zinc-900 dark:text-white">Configure Your Tool</h4>
             {isPolyfillLoaded ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 WebMCP Ready
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                 Loading...
               </span>
             )}
@@ -385,14 +394,18 @@ ${schemaProps}
             <input
               type="text"
               value={toolConfig.name}
-              onChange={(e) => setToolConfig(prev => ({
-                ...prev,
-                name: e.target.value.replace(/[^a-z0-9_]/gi, '_').toLowerCase()
-              }))}
+              onChange={(e) =>
+                setToolConfig((prev) => ({
+                  ...prev,
+                  name: e.target.value.replace(/[^a-z0-9_]/gi, '_').toLowerCase(),
+                }))
+              }
               className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="my_tool"
             />
-            <p className="mt-1 text-xs text-zinc-500">Use snake_case (letters, numbers, underscores)</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Use snake_case (letters, numbers, underscores)
+            </p>
           </div>
 
           {/* Description */}
@@ -403,11 +416,13 @@ ${schemaProps}
             <input
               type="text"
               value={toolConfig.description}
-              onChange={(e) => setToolConfig(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) => setToolConfig((prev) => ({ ...prev, description: e.target.value }))}
               className="w-full px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="What does your tool do?"
             />
-            <p className="mt-1 text-xs text-zinc-500">AI uses this to decide when to call your tool</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              AI uses this to decide when to call your tool
+            </p>
           </div>
 
           {/* Parameter */}
@@ -419,7 +434,9 @@ ${schemaProps}
               <input
                 type="text"
                 value={toolConfig.parameters[0]?.name || ''}
-                onChange={(e) => updateParameter(0, 'name', e.target.value.replace(/[^a-z0-9_]/gi, ''))}
+                onChange={(e) =>
+                  updateParameter(0, 'name', e.target.value.replace(/[^a-z0-9_]/gi, ''))
+                }
                 placeholder="param_name"
                 className="flex-1 px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -455,13 +472,17 @@ ${schemaProps}
           {/* Test Section */}
           {isRegistered && (
             <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
-              <h5 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Test Your Tool</h5>
+              <h5 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Test Your Tool
+              </h5>
 
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={testInput[toolConfig.parameters[0]?.name] || ''}
-                  onChange={(e) => setTestInput({ [toolConfig.parameters[0]?.name]: e.target.value })}
+                  onChange={(e) =>
+                    setTestInput({ [toolConfig.parameters[0]?.name]: e.target.value })
+                  }
                   placeholder={`Enter ${toolConfig.parameters[0]?.name || 'value'}...`}
                   className="flex-1 px-3 py-2 text-sm rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
@@ -473,16 +494,42 @@ ${schemaProps}
                   {isExecuting ? (
                     <>
                       <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
                       </svg>
                       Running
                     </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                       Execute
                     </>
@@ -500,8 +547,12 @@ ${schemaProps}
                     className="underline hover:no-underline font-medium"
                   >
                     MCP-B extension
-                  </a>
-                  {' '}and ask Claude to use your <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800 font-mono">{toolConfig.name}</code> tool.
+                  </a>{' '}
+                  and ask Claude to use your{' '}
+                  <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800 font-mono">
+                    {toolConfig.name}
+                  </code>{' '}
+                  tool.
                 </p>
               </div>
             </div>
@@ -517,7 +568,7 @@ ${schemaProps}
                 { id: 'react', label: 'React', icon: '⚛️' },
                 { id: 'vanilla', label: 'Vanilla JS', icon: '📦' },
                 { id: 'script', label: 'Script Tag', icon: '🏷️' },
-              ].map(tab => (
+              ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -532,7 +583,7 @@ ${schemaProps}
                 </button>
               ))}
             </div>
-            <div className="hidden sm:flex flex-1"></div>
+            <div className="hidden sm:flex flex-1" />
             <button
               onClick={copyCode}
               className={`w-full sm:w-auto px-3 py-2 sm:py-1.5 sm:m-1.5 text-xs font-medium sm:rounded transition-all flex items-center justify-center gap-1.5 border-t sm:border-t-0 border-zinc-700 ${
@@ -543,15 +594,35 @@ ${schemaProps}
             >
               {copied ? (
                 <>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                   Copied!
                 </>
               ) : (
                 <>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                   Copy Code
                 </>

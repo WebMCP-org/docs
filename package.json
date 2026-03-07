@@ -5,8 +5,9 @@
   "packageManager": "pnpm@10.14.0",
   "scripts": {
     "dev": "mintlify dev",
-    "build": "mintlify build",
-    "preview": "mintlify preview"
+    "build": "mintlify validate",
+    "preview": "mintlify dev",
+    "validate": "mintlify validate"
   },
   "devDependencies": {
     "mintlify": "^4.2.415"

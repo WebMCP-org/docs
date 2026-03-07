@@ -13,7 +13,7 @@
       "defer": true
     }
   ],
-  "description": "WebMCP documentation organized by Diataxis: tutorials, how-to guides, reference, and explanation for the WebMCP standard, the MCP-B runtime, and related tooling.",
+  "description": "Package-first WebMCP documentation with package overviews, package references, tutorials, how-to guides, and explanations for the browser runtime and tooling ecosystem.",
   "colors": {
     "primary": "#1F5EFF",
     "light": "#4B7BFF",
@@ -78,23 +78,92 @@
         "groups": [
           {
             "group": "Start Here",
-            "pages": [
-              "index",
-              "start-here/choose-your-path"
-            ]
+            "pages": ["index", "start-here/choose-your-path", "start-here/metadata"]
           }
         ]
       },
       {
-        "tab": "Examples",
-        "icon": "flask-vial",
+        "tab": "Packages",
+        "icon": "boxes-stacked",
         "groups": [
           {
-            "group": "Live Examples",
+            "group": "Packages",
+            "pages": ["packages/index"]
+          },
+          {
+            "group": "Core runtime",
             "pages": [
-              "examples/live-tool-examples",
-              "examples/live-prompt-examples",
-              "examples/live-resource-examples"
+              {
+                "group": "@mcp-b/webmcp-types",
+                "pages": ["packages/webmcp-types/overview", "packages/webmcp-types/reference"]
+              },
+              {
+                "group": "@mcp-b/webmcp-polyfill",
+                "pages": ["packages/webmcp-polyfill/overview", "packages/webmcp-polyfill/reference"]
+              },
+              {
+                "group": "@mcp-b/global",
+                "pages": ["packages/global/overview", "packages/global/reference"]
+              },
+              {
+                "group": "@mcp-b/webmcp-ts-sdk",
+                "pages": ["packages/webmcp-ts-sdk/overview", "packages/webmcp-ts-sdk/reference"]
+              },
+              {
+                "group": "@mcp-b/transports",
+                "pages": ["packages/transports/overview", "packages/transports/reference"]
+              },
+              {
+                "group": "@mcp-b/mcp-iframe",
+                "pages": ["packages/mcp-iframe/overview", "packages/mcp-iframe/reference"]
+              }
+            ]
+          },
+          {
+            "group": "React",
+            "pages": [
+              {
+                "group": "usewebmcp",
+                "pages": ["packages/usewebmcp/overview", "packages/usewebmcp/reference"]
+              },
+              {
+                "group": "@mcp-b/react-webmcp",
+                "pages": ["packages/react-webmcp/overview", "packages/react-webmcp/reference"]
+              }
+            ]
+          },
+          {
+            "group": "Tooling",
+            "pages": [
+              {
+                "group": "@mcp-b/webmcp-local-relay",
+                "pages": [
+                  "packages/webmcp-local-relay/overview",
+                  "packages/webmcp-local-relay/reference"
+                ]
+              },
+              {
+                "group": "@mcp-b/chrome-devtools-mcp",
+                "pages": [
+                  "packages/chrome-devtools-mcp/overview",
+                  "packages/chrome-devtools-mcp/reference"
+                ]
+              },
+              {
+                "group": "@mcp-b/extension-tools",
+                "pages": ["packages/extension-tools/overview", "packages/extension-tools/reference"]
+              },
+              {
+                "group": "@mcp-b/smart-dom-reader",
+                "pages": [
+                  "packages/smart-dom-reader/overview",
+                  "packages/smart-dom-reader/reference"
+                ]
+              },
+              {
+                "group": "agent-skills-ts-sdk",
+                "pages": ["packages/agent-skills/overview", "packages/agent-skills/reference"]
+              }
             ]
           }
         ]
@@ -121,9 +190,7 @@
         "groups": [
           {
             "group": "How-To Guides",
-            "pages": [
-              "how-to/index"
-            ]
+            "pages": ["how-to/index"]
           },
           {
             "group": "Adoption",
@@ -136,9 +203,7 @@
           },
           {
             "group": "Frameworks",
-            "pages": [
-              "how-to/frameworks"
-            ]
+            "pages": ["how-to/frameworks"]
           },
           {
             "group": "Connectivity",
@@ -148,66 +213,6 @@
               "how-to/use-devtools-mcp",
               "how-to/debug-and-troubleshoot",
               "how-to/test-native-and-polyfill"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Reference",
-        "icon": "book-open",
-        "groups": [
-          {
-            "group": "Reference",
-            "pages": [
-              "reference/index"
-            ]
-          },
-          {
-            "group": "WebMCP Standard",
-            "pages": [
-              "reference/webmcp/standard-api",
-              "reference/webmcp/declarative-api",
-              "reference/webmcp/browser-support-and-flags"
-            ]
-          },
-          {
-            "group": "Core Runtime",
-            "pages": [
-              "reference/runtime/global",
-              "reference/runtime/webmcp-polyfill",
-              "reference/runtime/webmcp-types",
-              "reference/runtime/react",
-              "reference/runtime/mcp-b-extension-api"
-            ]
-          },
-          {
-            "group": "Composition",
-            "pages": [
-              "reference/runtime/webmcp-ts-sdk",
-              "reference/runtime/transports",
-              "reference/runtime/mcp-iframe"
-            ]
-          },
-          {
-            "group": "Tooling",
-            "pages": [
-              "reference/tools/webmcp-local-relay",
-              "reference/tools/chrome-devtools-mcp",
-              {
-                "group": "Extension & Utilities",
-                "expanded": false,
-                "pages": [
-                  "reference/tools/extension-tools",
-                  "reference/tools/smart-dom-reader",
-                  "reference/tools/agent-skills"
-                ]
-              }
-            ]
-          },
-          {
-            "group": "Project",
-            "pages": [
-              "reference/project/metadata"
             ]
           }
         ]
@@ -224,6 +229,14 @@
               "explanation/webmcp-vs-mcp",
               "explanation/native-vs-polyfill-vs-global",
               "explanation/strict-core-vs-mcp-b-extensions"
+            ]
+          },
+          {
+            "group": "WebMCP Standard",
+            "pages": [
+              "explanation/webmcp/standard-api",
+              "explanation/webmcp/declarative-api",
+              "explanation/webmcp/browser-support-and-flags"
             ]
           },
           {
@@ -256,7 +269,7 @@
   "seo": {
     "indexing": "all",
     "metatags": {
-      "description": "WebMCP documentation organized by Diataxis: tutorials, how-to guides, reference, and explanation for the WebMCP standard, the MCP-B runtime, and related tooling.",
+      "description": "Package-first WebMCP documentation with package overviews, package references, tutorials, how-to guides, and explanations for the browser runtime and tooling ecosystem.",
       "keywords": "MCP, Model Context Protocol, WebMCP, AI agents, web tools, browser extension, tab transport, JavaScript SDK",
       "author": "WebMCP Team",
       "robots": "index, follow",
@@ -265,7 +278,7 @@
       "og:type": "website",
       "og:url": "https://docs.mcp-b.ai",
       "og:image": "https://docs.mcp-b.ai/logo/social-card.png",
-      "og:description": "Tutorials, how-to guides, reference, and explanation for the WebMCP standard, MCP-B runtime packages, and related tooling.",
+      "og:description": "Package overviews and references for the WebMCP runtime stack, plus tutorials, how-to guides, and explanations for the browser tooling ecosystem.",
       "og:site_name": "WebMCP Documentation",
       "og:locale": "en_US",
       "twitter:card": "summary_large_image",
@@ -283,15 +296,6 @@
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
   }
 }

@@ -5,7 +5,7 @@ keywords: ["registerPrompt", "registerResource", "sampling", "elicitation", "mcp
 icon: "layer-plus"
 ---
 
-Prompts, resources, sampling, and elicitation are MCP-B extension features, not part of the strict WebMCP core. They require [`@mcp-b/global`](/reference/runtime/global) (which installs `BrowserMcpServer` as `navigator.modelContext`). For background on this distinction, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions).
+Prompts, resources, sampling, and elicitation are MCP-B extension features, not part of the strict WebMCP core. They require [`@mcp-b/global`](/packages/global/reference) (which installs `BrowserMcpServer` as `navigator.modelContext`). For background on this distinction, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions).
 
 ## Register a prompt
 
@@ -137,7 +137,7 @@ function AppSettingsResource() {
 
 Sampling lets your page request LLM completions from the connected client. Elicitation lets your page request structured input from the user through the client.
 
-Both methods delegate to the MCP SDK and require an active transport connection. See the [MCP-B Extension API reference](/reference/runtime/mcp-b-extension-api) for parameter and return type details.
+Both methods delegate to the MCP SDK and require an active transport connection. See the [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/reference) for parameter and return type details.
 
 ### React
 

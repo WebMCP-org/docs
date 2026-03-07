@@ -23,7 +23,7 @@ The catch is availability. Most users do not browse with that flag enabled, and 
 
 ## The strict polyfill: `@mcp-b/webmcp-polyfill`
 
-[`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill) provides a JavaScript implementation of the WebMCP surface. It installs `navigator.modelContext` without adding MCP-B-only methods.
+[`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference) provides a JavaScript implementation of the WebMCP surface. It installs `navigator.modelContext` without adding MCP-B-only methods.
 
 The polyfill is strict by design. It does not add prompts, resources, transport, relay, `listTools()`, or `callTool()` to `navigator.modelContext`. If you write code against the polyfill, that code is meant to stay close to code written against the native browser surface.
 
@@ -31,7 +31,7 @@ Use the polyfill when you want the standard surface and nothing more, or when yo
 
 ## The full runtime: `@mcp-b/global`
 
-[`@mcp-b/global`](/reference/runtime/global) is the MCP-B runtime layer. It calls the polyfill when needed, captures the current core context, creates a `BrowserMcpServer`, and then replaces `navigator.modelContext` with that server.
+[`@mcp-b/global`](/packages/global/reference) is the MCP-B runtime layer. It calls the polyfill when needed, captures the current core context, creates a `BrowserMcpServer`, and then replaces `navigator.modelContext` with that server.
 
 After that replacement, `navigator.modelContext` still supports the core methods, but it also gains MCP-B-only capabilities:
 
@@ -60,9 +60,9 @@ Each layer is optional from the one above. `@mcp-b/global` calls the polyfill in
 
 ## Choosing a strategy
 
-If you are building a **reusable library**, depend on the strict core. Use [`@mcp-b/webmcp-types`](/reference/runtime/webmcp-types) for types and [`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill) for runtime behavior.
+If you are building a **reusable library**, depend on the strict core. Use [`@mcp-b/webmcp-types`](/packages/webmcp-types/reference) for types and [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference) for runtime behavior.
 
-If you are building a **web application** and only need site-exposed tools, start with [`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill). If you need browser MCP features beyond that, use [`@mcp-b/global`](/reference/runtime/global).
+If you are building a **web application** and only need site-exposed tools, start with [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference). If you need browser MCP features beyond that, use [`@mcp-b/global`](/packages/global/reference).
 
 If you are **testing Chromium's native preview**, use neither package and work directly with the browser implementation. The guided path for that is [Try the Native Chrome Preview](/tutorials/first-native-preview).
 

@@ -48,12 +48,12 @@ export const ConfigResource = () => {
       containerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const result = await onExecute();
 
     setExecutionPhase('complete');
     hidePageEffect();
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     setExecutionPhase(null);
 
     return result;
@@ -84,12 +84,15 @@ export const ConfigResource = () => {
               };
 
               setLastContent(content);
-              setResourceReads(prev => [...prev, {
-                time: new Date().toISOString(),
-                uri: 'config://app-settings',
-                status: 'success',
-                content,
-              }]);
+              setResourceReads((prev) => [
+                ...prev,
+                {
+                  time: new Date().toISOString(),
+                  uri: 'config://app-settings',
+                  status: 'success',
+                  content,
+                },
+              ]);
 
               return { contents: [content] };
             });
@@ -114,7 +117,7 @@ export const ConfigResource = () => {
   }, []);
 
   const updateConfig = (key, value) => {
-    setConfig(prev => ({ ...prev, [key]: value }));
+    setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
   const isActive = executionPhase !== null;
@@ -148,15 +151,32 @@ export const ConfigResource = () => {
               {executionPhase === 'executing' && (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Reading resource...
                 </>
               )}
               {executionPhase === 'complete' && (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   Complete
@@ -167,15 +187,20 @@ export const ConfigResource = () => {
         </div>
         {isRegistered && !isActive && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Ready
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">registerResource()</span>
-        <span>Static resource with URI <code className="text-emerald-600 dark:text-emerald-400">config://app-settings</code></span>
+        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">
+          registerResource()
+        </span>
+        <span>
+          Static resource with URI{' '}
+          <code className="text-emerald-600 dark:text-emerald-400">config://app-settings</code>
+        </span>
       </div>
 
       {!isRegistered && !isActive && (
@@ -194,7 +219,9 @@ export const ConfigResource = () => {
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Theme</label>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Theme
+              </label>
               <select
                 value={config.theme}
                 onChange={(e) => updateConfig('theme', e.target.value)}
@@ -206,7 +233,9 @@ export const ConfigResource = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Language</label>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                Language
+              </label>
               <select
                 value={config.language}
                 onChange={(e) => updateConfig('language', e.target.value)}
@@ -261,19 +290,30 @@ export const ConfigResource = () => {
             Recent Reads
           </h4>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {resourceReads.slice(-3).reverse().map((read, idx) => (
-              <div
-                key={idx}
-                className="p-3 rounded-lg text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700"
-              >
-                <div className="flex items-center justify-between">
-                  <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">readResource("{read.uri}")</code>
-                  <svg className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+            {resourceReads
+              .slice(-3)
+              .reverse()
+              .map((read, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-lg text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700"
+                >
+                  <div className="flex items-center justify-between">
+                    <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">
+                      readResource("{read.uri}")
+                    </code>
+                    <svg
+                      className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}

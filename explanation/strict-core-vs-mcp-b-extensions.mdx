@@ -26,13 +26,13 @@ The formal WebMCP spec currently centers on `registerTool()` and `unregisterTool
 
 The polyfill and type layer also include `provideContext()` and `clearContext()` for batch registration and full reset, matching the `ModelContextCore` interface. These methods appear in the Chromium prototype but are not yet anchored in the formal W3C spec text the way `registerTool` and `unregisterTool` are.
 
-For read and test operations, Chromium currently exposes a separate [navigator.modelContextTesting](/reference/webmcp/standard-api) interface. For the ongoing spec questions around that split, see [Spec Status and Limitations](/explanation/design/spec-status-and-limitations).
+For read and test operations, Chromium currently exposes a separate [navigator.modelContextTesting](/explanation/webmcp/standard-api) interface. For the ongoing spec questions around that split, see [Spec Status and Limitations](/explanation/design/spec-status-and-limitations).
 
 ## The extensions: what MCP-B adds
 
 The Model Context Protocol includes more than tools. It also includes prompts, resources, sampling, and elicitation. These are useful capabilities for browser-based agent workflows, but they are not part of the WebMCP standard.
 
-When [`@mcp-b/global`](/reference/runtime/global) initializes, it installs a `BrowserMcpServer` that keeps the core behavior and adds a separate extension layer:
+When [`@mcp-b/global`](/packages/global/reference) initializes, it installs a `BrowserMcpServer` that keeps the core behavior and adds a separate extension layer:
 
 | Extension method | MCP concept | In WebMCP core? |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ This also leads to a documentation rule. When a page is about the WebMCP standar
 
 ## How the type system enforces it
 
-The [`@mcp-b/webmcp-types`](/reference/runtime/webmcp-types) package defines two important interfaces:
+The [`@mcp-b/webmcp-types`](/packages/webmcp-types/reference) package defines two important interfaces:
 
 - `ModelContextCore` contains the strict core methods.
 - `ModelContextExtensions` contains MCP-B additions.
@@ -68,8 +68,8 @@ The [`@mcp-b/webmcp-types`](/reference/runtime/webmcp-types) package defines two
 
 For most application developers, the boundary is practical only when making runtime choices.
 
-**If you are building a library or adapter**, stay on the core side. Use [`@mcp-b/webmcp-types`](/reference/runtime/webmcp-types) and [`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill).
+**If you are building a library or adapter**, stay on the core side. Use [`@mcp-b/webmcp-types`](/packages/webmcp-types/reference) and [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference).
 
-**If you are building an application**, start by asking whether you need only site-exposed tools. If yes, stay on the strict path with [`@mcp-b/webmcp-polyfill`](/reference/runtime/webmcp-polyfill). If you also need prompts, resources, transport, or desktop-agent connectivity, move up to [`@mcp-b/global`](/reference/runtime/global) and the [MCP-B Extension API](/reference/runtime/mcp-b-extension-api).
+**If you are building an application**, start by asking whether you need only site-exposed tools. If yes, stay on the strict path with [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference). If you also need prompts, resources, transport, or desktop-agent connectivity, move up to [`@mcp-b/global`](/packages/global/reference) and the [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/reference).
 
 For the package-level rationale behind that split, see the [MCP-B Package Philosophy](https://github.com/WebMCP-org/npm-packages/blob/main/docs/MCPB_PACKAGE_PHILOSOPHY.md). For how the runtime layers stack at initialization time, see [Runtime Layering](/explanation/architecture/runtime-layering).

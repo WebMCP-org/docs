@@ -86,7 +86,7 @@ export const DOMQueryTool = () => {
     }
 
     // Phase 3: Wait for scroll and visual effect
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Phase 4: Execute the actual function
     const result = await onExecute();
@@ -94,7 +94,7 @@ export const DOMQueryTool = () => {
     // Phase 5: Show completion
     setExecutionPhase('complete');
     hidePageEffect();
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    await new Promise((resolve) => setTimeout(resolve, 2500));
     setExecutionPhase(null);
 
     return result;
@@ -178,7 +178,7 @@ export const DOMQueryTool = () => {
   };
 
   const clearHighlights = () => {
-    highlightOverlaysRef.current.forEach(overlay => {
+    highlightOverlaysRef.current.forEach((overlay) => {
       if (overlay.parentNode) {
         overlay.parentNode.removeChild(overlay);
       }
@@ -225,20 +225,24 @@ export const DOMQueryTool = () => {
               // Validate required parameter
               if (selector === undefined || selector === null) {
                 return {
-                  content: [{
-                    type: 'text',
-                    text: 'Missing required parameter: selector',
-                  }],
+                  content: [
+                    {
+                      type: 'text',
+                      text: 'Missing required parameter: selector',
+                    },
+                  ],
                   isError: true,
                 };
               }
 
               if (typeof selector !== 'string') {
                 return {
-                  content: [{
-                    type: 'text',
-                    text: `Invalid parameter type: selector must be a string, got ${typeof selector}`,
-                  }],
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Invalid parameter type: selector must be a string, got ${typeof selector}`,
+                    },
+                  ],
                   isError: true,
                 };
               }
@@ -246,10 +250,12 @@ export const DOMQueryTool = () => {
               // Validate action enum if provided
               if (action && !['count', 'text', 'attributes', 'all'].includes(action)) {
                 return {
-                  content: [{
-                    type: 'text',
-                    text: `Invalid parameter value: action must be one of 'count', 'text', 'attributes', 'all', got '${action}'`,
-                  }],
+                  content: [
+                    {
+                      type: 'text',
+                      text: `Invalid parameter value: action must be one of 'count', 'text', 'attributes', 'all', got '${action}'`,
+                    },
+                  ],
                   isError: true,
                 };
               }
@@ -258,39 +264,48 @@ export const DOMQueryTool = () => {
                 try {
                   clearHighlights();
 
-                  setToolCalls(prev => [...prev, {
-                    time: new Date().toISOString(),
-                    selector,
-                    action,
-                    status: 'processing'
-                  }]);
+                  setToolCalls((prev) => [
+                    ...prev,
+                    {
+                      time: new Date().toISOString(),
+                      selector,
+                      action,
+                      status: 'processing',
+                    },
+                  ]);
 
                   const elements = document.querySelectorAll(selector);
 
                   // Highlight elements on the page
                   highlightPageElements(selector);
 
-                  const elementData = Array.from(elements).slice(0, 5).map(el => ({
-                    tag: el.tagName.toLowerCase(),
-                    text: el.textContent?.substring(0, 100) || '',
-                    classes: Array.from(el.classList),
-                    id: el.id || null,
-                  }));
+                  const elementData = Array.from(elements)
+                    .slice(0, 5)
+                    .map((el) => ({
+                      tag: el.tagName.toLowerCase(),
+                      text: el.textContent?.substring(0, 100) || '',
+                      classes: Array.from(el.classList),
+                      id: el.id || null,
+                    }));
 
                   setLastQuery({ selector, count: elements.length, elements: elementData });
 
                   if (elements.length === 0) {
-                    setToolCalls(prev => prev.map((call, idx) =>
-                      idx === prev.length - 1 ? { ...call, count: 0, status: 'success' } : call
-                    ));
+                    setToolCalls((prev) =>
+                      prev.map((call, idx) =>
+                        idx === prev.length - 1 ? { ...call, count: 0, status: 'success' } : call
+                      )
+                    );
 
                     setTimeout(() => clearHighlights(), 2000);
 
                     return {
-                      content: [{
-                        type: 'text',
-                        text: `No elements found matching selector "${selector}"`,
-                      }],
+                      content: [
+                        {
+                          type: 'text',
+                          text: `No elements found matching selector "${selector}"`,
+                        },
+                      ],
                     };
                   }
 
@@ -315,40 +330,59 @@ export const DOMQueryTool = () => {
                     });
                   }
 
-                  setToolCalls(prev => prev.map((call, idx) =>
-                    idx === prev.length - 1 ? { ...call, count: elements.length, elements: elementData, status: 'success' } : call
-                  ));
+                  setToolCalls((prev) =>
+                    prev.map((call, idx) =>
+                      idx === prev.length - 1
+                        ? {
+                            ...call,
+                            count: elements.length,
+                            elements: elementData,
+                            status: 'success',
+                          }
+                        : call
+                    )
+                  );
 
                   setTimeout(() => clearHighlights(), 2000);
 
                   return {
-                    content: [{
-                      type: 'text',
-                      text: result.trim(),
-                    }],
+                    content: [
+                      {
+                        type: 'text',
+                        text: result.trim(),
+                      },
+                    ],
                   };
                 } catch (error) {
-                  setToolCalls(prev => prev.map((call, idx) =>
-                    idx === prev.length - 1 ? { ...call, error: error.message, status: 'error' } : call
-                  ));
+                  setToolCalls((prev) =>
+                    prev.map((call, idx) =>
+                      idx === prev.length - 1
+                        ? { ...call, error: error.message, status: 'error' }
+                        : call
+                    )
+                  );
 
                   clearHighlights();
 
                   return {
-                    content: [{
-                      type: 'text',
-                      text: `Error querying DOM: ${error.message}`,
-                    }],
+                    content: [
+                      {
+                        type: 'text',
+                        text: `Error querying DOM: ${error.message}`,
+                      },
+                    ],
                     isError: true,
                   };
                 }
               });
             } catch (error) {
               return {
-                content: [{
-                  type: 'text',
-                  text: `Error: ${error.message}`,
-                }],
+                content: [
+                  {
+                    type: 'text',
+                    text: `Error: ${error.message}`,
+                  },
+                ],
                 isError: true,
               };
             }
@@ -379,12 +413,14 @@ export const DOMQueryTool = () => {
   const handleQuery = () => {
     try {
       const elements = document.querySelectorAll(selector);
-      const elementData = Array.from(elements).slice(0, 10).map(el => ({
-        tag: el.tagName.toLowerCase(),
-        text: el.textContent?.substring(0, 100) || '',
-        classes: Array.from(el.classList),
-        id: el.id || null,
-      }));
+      const elementData = Array.from(elements)
+        .slice(0, 10)
+        .map((el) => ({
+          tag: el.tagName.toLowerCase(),
+          text: el.textContent?.substring(0, 100) || '',
+          classes: Array.from(el.classList),
+          id: el.id || null,
+        }));
 
       setQueryResult({
         count: elements.length,
@@ -413,8 +449,7 @@ export const DOMQueryTool = () => {
         <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800 rounded-t-xl overflow-hidden">
           <div
             className={`h-full bg-[#1F5EFF] transition-all duration-500 ${
-              executionPhase === 'executing' ? 'w-2/3 animate-pulse' :
-              'w-full'
+              executionPhase === 'executing' ? 'w-2/3 animate-pulse' : 'w-full'
             }`}
           />
         </div>
@@ -422,23 +457,38 @@ export const DOMQueryTool = () => {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">
-            DOM Query Tool
-          </h3>
+          <h3 className="text-lg font-semibold text-zinc-950 dark:text-white">DOM Query Tool</h3>
           {isActive && (
             <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md bg-[#1F5EFF]/10 text-[#1F5EFF] dark:bg-[#1F5EFF]/20 dark:text-[#4B7BFF]">
               {executionPhase === 'executing' && (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
                   </svg>
                   Scanning...
                 </>
               )}
               {executionPhase === 'complete' && (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   Complete
@@ -449,7 +499,7 @@ export const DOMQueryTool = () => {
         </div>
         {isRegistered && !isActive && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Ready
           </span>
         )}
@@ -457,8 +507,12 @@ export const DOMQueryTool = () => {
 
       {/* WebMCP capability badge */}
       <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">querySelectorAll</span>
-        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">structured data</span>
+        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">
+          querySelectorAll
+        </span>
+        <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono">
+          structured data
+        </span>
         <span>Page introspection + Rich responses</span>
       </div>
 
@@ -489,7 +543,9 @@ export const DOMQueryTool = () => {
         {(executionPhase === 'executing' || executionPhase === 'complete') && lastQuery && (
           <div className="p-4 rounded-lg bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-[#1F5EFF] dark:text-[#4B7BFF] uppercase tracking-wide">AI Result</p>
+              <p className="text-xs font-medium text-[#1F5EFF] dark:text-[#4B7BFF] uppercase tracking-wide">
+                AI Result
+              </p>
               <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                 {lastQuery.count} element{lastQuery.count !== 1 ? 's' : ''} found
               </span>
@@ -505,7 +561,9 @@ export const DOMQueryTool = () => {
                       {idx + 1}
                     </span>
                     <code className="text-xs text-zinc-700 dark:text-zinc-300 truncate">
-                      &lt;{el.tag}{el.id && ` #${el.id}`}{el.classes.length > 0 && ` .${el.classes.slice(0, 2).join('.')}`}&gt;
+                      &lt;{el.tag}
+                      {el.id && ` #${el.id}`}
+                      {el.classes.length > 0 && ` .${el.classes.slice(0, 2).join('.')}`}&gt;
                     </code>
                   </div>
                 ))}
@@ -540,14 +598,16 @@ export const DOMQueryTool = () => {
                           {el.id && <span className="text-[#1F5EFF]"> #{el.id}</span>}
                           {el.classes.length > 0 && (
                             <span className="text-emerald-600 dark:text-emerald-400">
-                              {' '}.{el.classes.slice(0, 2).join('.')}
+                              {' '}
+                              .{el.classes.slice(0, 2).join('.')}
                             </span>
                           )}
                           &gt;
                         </code>
                         {el.text && (
                           <p className="text-xs text-zinc-500 truncate mt-1">
-                            {el.text.substring(0, 60)}{el.text.length > 60 ? '...' : ''}
+                            {el.text.substring(0, 60)}
+                            {el.text.length > 60 ? '...' : ''}
                           </p>
                         )}
                       </div>
@@ -571,50 +631,84 @@ export const DOMQueryTool = () => {
             Recent Calls
           </h4>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {toolCalls.slice(-3).reverse().map((call, idx) => (
-              <div
-                key={idx}
-                className={`p-3 rounded-lg text-sm transition-all duration-200 ${
-                  call.status === 'processing'
-                    ? 'bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20'
-                    : call.status === 'success'
-                    ? 'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700'
-                    : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">{call.selector}</code>
-                  <div className="flex items-center gap-2">
-                    {call.count !== undefined && (
-                      <span className="text-xs text-zinc-500 font-medium">
-                        {call.count} found
-                      </span>
-                    )}
-                    {call.status === 'processing' && (
-                      <svg className="w-3.5 h-3.5 animate-spin text-[#1F5EFF]" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    )}
-                    {call.status === 'success' && (
-                      <svg className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                    {call.status === 'error' && (
-                      <svg className="w-3.5 h-3.5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    )}
+            {toolCalls
+              .slice(-3)
+              .reverse()
+              .map((call, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-lg text-sm transition-all duration-200 ${
+                    call.status === 'processing'
+                      ? 'bg-[#1F5EFF]/5 dark:bg-[#1F5EFF]/10 border border-[#1F5EFF]/20'
+                      : call.status === 'success'
+                        ? 'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700'
+                        : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <code className="text-zinc-700 dark:text-zinc-300 font-mono text-sm">
+                      {call.selector}
+                    </code>
+                    <div className="flex items-center gap-2">
+                      {call.count !== undefined && (
+                        <span className="text-xs text-zinc-500 font-medium">
+                          {call.count} found
+                        </span>
+                      )}
+                      {call.status === 'processing' && (
+                        <svg
+                          className="w-3.5 h-3.5 animate-spin text-[#1F5EFF]"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                      )}
+                      {call.status === 'success' && (
+                        <svg
+                          className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                      {call.status === 'error' && (
+                        <svg
+                          className="w-3.5 h-3.5 text-red-600 dark:text-red-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      )}
+                    </div>
                   </div>
+                  {call.error && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">{call.error}</p>
+                  )}
                 </div>
-                {call.error && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    {call.error}
-                  </p>
-                )}
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       )}

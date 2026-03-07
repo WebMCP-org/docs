@@ -27,7 +27,8 @@ export const PolyfillSetup = () => {
   }, []);
 
   const copyScript = () => {
-    const scriptTag = '<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>';
+    const scriptTag =
+      '<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>';
     navigator.clipboard.writeText(scriptTag);
   };
 
