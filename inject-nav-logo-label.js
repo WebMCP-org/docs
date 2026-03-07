@@ -62,9 +62,10 @@
   }
 
   // Also observe for dynamic changes (e.g., SPA navigation or hydration)
-  const observer = new MutationObserver((mutations) => {
-    // If we already added labels, don't keep re-inserting them; function checks existing labels
-    insertLabel();
+  let debounceTimer;
+  const observer = new MutationObserver(() => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(insertLabel, 200);
   });
 
   observer.observe(document.documentElement || document.body, { childList: true, subtree: true });
