@@ -1,0 +1,12 @@
+---
+title: "Use Schemas And Structured Output"
+description: "Define tool input schemas with JSON Schema, Standard Schema, or Zod, and add output schemas for reliable agent responses."
+---
+
+How-to. Two parts in one guide:
+
+**Part 1 — Input schemas.** Compare literal JSON Schema, Standard Schema, and Zod by task, not by library preference. Show when each style is the right choice and how to wire it into `registerTool`.
+Source from `packages/webmcp-types/README.md`, `packages/webmcp-polyfill/README.md`, `packages/usewebmcp/README.md`, and `.reference/standard-schema/packages/spec/schema.md`.
+
+**Part 2 — Output schemas.** Show when to add `outputSchema`, how to return structured content, and how to keep text and structure aligned.
+Source from `packages/webmcp-types/README.md`, `packages/global/README.md`, and `e2e/tests/native-showcase.spec.ts`.

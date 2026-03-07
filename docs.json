@@ -13,7 +13,7 @@
       "defer": true
     }
   ],
-  "description": "WebMCP - W3C standard for making websites AI-accessible. Turn your JavaScript functions into tools that work with Claude, ChatGPT, and custom AI agents via navigator.modelContext.",
+  "description": "WebMCP documentation organized by Diataxis: tutorials, how-to guides, reference, and explanation for the WebMCP standard, the MCP-B runtime, and related tooling.",
   "colors": {
     "primary": "#1F5EFF",
     "light": "#4B7BFF",
@@ -43,8 +43,8 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Get Extension",
-      "href": "https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa"
+      "label": "Live Demo",
+      "href": "https://webmcp.sh"
     }
   },
   "navigation": {
@@ -59,201 +59,184 @@
           "anchor": "Examples",
           "icon": "code",
           "href": "https://github.com/WebMCP-org/examples"
+        },
+        {
+          "anchor": "W3C Spec",
+          "icon": "book",
+          "href": "https://webmachinelearning.github.io/webmcp/"
         }
       ]
     },
     "tabs": [
       {
-        "tab": "Documentation",
-        "icon": "book",
+        "tab": "Home",
+        "icon": "house",
         "groups": [
           {
-            "group": "Getting Started",
+            "group": "Start Here",
             "pages": [
-              "introduction",
-              "quickstart",
-              "examples"
+              "index",
+              "start-here/choose-your-path"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Tutorials",
+        "icon": "graduation-cap",
+        "groups": [
+          {
+            "group": "Tutorials",
+            "pages": [
+              "tutorials/index",
+              "tutorials/first-tool",
+              "tutorials/first-react-tool",
+              "tutorials/first-native-preview",
+              "tutorials/desktop-agent-relay"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "How-To Guides",
+        "icon": "compass-drafting",
+        "groups": [
+          {
+            "group": "How-To Guides",
+            "pages": [
+              "how-to/index"
             ]
           },
           {
-            "group": "Guides",
+            "group": "Adoption",
             "pages": [
-              "best-practices",
-              "development",
-              "advanced",
-              "building-mcp-ui-apps",
-              "security"
+              "how-to/choose-runtime",
+              "how-to/add-tools-to-an-existing-app",
+              "how-to/use-schemas-and-structured-output",
+              "how-to/register-prompts-and-resources"
             ]
           },
           {
-            "group": "Framework Guides",
+            "group": "Frameworks",
             "pages": [
-              "frameworks/index",
+              "how-to/frameworks/vanilla",
+              "how-to/frameworks/react",
+              "how-to/frameworks/nextjs",
               {
-                "group": "React",
-                "icon": "react",
+                "group": "More Frameworks",
+                "expanded": false,
                 "pages": [
-                  "frameworks/react",
-                  "frameworks/tanstack-start",
-                  "frameworks/remix"
+                  "how-to/frameworks/vue",
+                  "how-to/frameworks/svelte",
+                  "how-to/frameworks/angular",
+                  "how-to/frameworks/astro"
                 ]
-              },
-              "frameworks/vue",
-              "frameworks/nuxt",
-              "frameworks/svelte",
-              "frameworks/angular",
-              "frameworks/rails",
-              "frameworks/phoenix-liveview"
+              }
             ]
           },
           {
-            "group": "NPM Packages",
+            "group": "Connectivity",
             "pages": [
-              "packages/global",
-              "packages/transports",
-              "packages/mcp-iframe",
-              "packages/react-webmcp",
-              "packages/chrome-devtools-mcp",
-              "packages/extension-tools",
-              "packages/webmcp-ts-sdk",
-              "packages/smart-dom-reader"
+              "how-to/connect-desktop-agents-with-local-relay",
+              "how-to/bridge-tools-across-iframes",
+              "how-to/use-devtools-mcp",
+              "how-to/debug-and-troubleshoot",
+              "how-to/test-native-and-polyfill"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "icon": "book-open",
+        "groups": [
           {
             "group": "Reference",
             "pages": [
-              "changelog",
-              "troubleshooting",
-              "tools/claude-code"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Calling Tools",
-        "icon": "bolt",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "calling-tools/index"
+              "reference/index"
             ]
           },
           {
-            "group": "Connection Methods",
+            "group": "WebMCP Standard",
             "pages": [
-              "calling-tools/embedded-agent",
-              "calling-tools/ai-browsers",
-              "calling-tools/extension",
-              "calling-tools/devtools-mcp"
+              "reference/webmcp/model-context",
+              "reference/webmcp/declarative-api",
+              "reference/webmcp/model-context-testing",
+              "reference/webmcp/browser-support-and-flags"
+            ]
+          },
+          {
+            "group": "Core Runtime",
+            "pages": [
+              "reference/runtime/global",
+              "reference/runtime/webmcp-polyfill",
+              "reference/runtime/webmcp-types",
+              "reference/runtime/react",
+              "reference/runtime/mcp-b-extension-api"
+            ]
+          },
+          {
+            "group": "Composition",
+            "pages": [
+              "reference/runtime/webmcp-ts-sdk",
+              "reference/runtime/transports",
+              "reference/runtime/mcp-iframe"
+            ]
+          },
+          {
+            "group": "Tooling",
+            "pages": [
+              "reference/tools/webmcp-local-relay",
+              "reference/tools/chrome-devtools-mcp",
+              {
+                "group": "Extension & Utilities",
+                "expanded": false,
+                "pages": [
+                  "reference/tools/extension-tools",
+                  "reference/tools/smart-dom-reader",
+                  "reference/tools/agent-skills"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Project",
+            "pages": [
+              "reference/project/mcp-endpoint",
+              "reference/project/llms-txt",
+              "reference/project/changelog"
             ]
           }
         ]
       },
       {
-        "tab": "Concepts",
+        "tab": "Explanation",
         "icon": "lightbulb",
         "groups": [
           {
-            "group": "Understanding WebMCP",
-            "icon": "compass",
+            "group": "Explanation",
             "pages": [
-              "concepts/overview",
-              "concepts/why-webmcp",
-              "concepts/architecture"
+              "explanation/index",
+              "explanation/what-is-webmcp",
+              "explanation/webmcp-vs-mcp",
+              "explanation/native-vs-polyfill-vs-global",
+              "explanation/strict-core-vs-mcp-b-extensions"
             ]
           },
           {
-            "group": "Core Features",
-            "icon": "cubes",
+            "group": "Architecture",
             "pages": [
-              "concepts/tool-registration",
-              "concepts/prompts",
-              "concepts/resources",
-              "concepts/transports",
-              "concepts/context-engineering"
+              "explanation/architecture/runtime-layering",
+              "explanation/architecture/transports-and-bridges",
+              "explanation/architecture/tool-lifecycle-and-context-replacement"
             ]
           },
           {
-            "group": "Advanced Topics",
-            "icon": "rocket",
+            "group": "Design",
             "pages": [
-              "concepts/mcp-ui-integration",
-              "concepts/extension",
-              "concepts/schemas"
-            ]
-          },
-          {
-            "group": "Best Practices",
-            "icon": "lightbulb-on",
-            "pages": [
-              "concepts/tool-design",
-              "concepts/performance"
-            ]
-          },
-          {
-            "group": "Reference",
-            "icon": "book",
-            "pages": [
-              "concepts/glossary"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Extension",
-        "icon": "puzzle-piece",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "icon": "rocket",
-            "pages": [
-              "extension/index"
-            ]
-          },
-          {
-            "group": "Core Features",
-            "icon": "cubes",
-            "expanded": true,
-            "pages": [
-              "native-host-setup",
-              "extension/agents",
-              "extension/managing-userscripts"
-            ]
-          },
-          {
-            "group": "Architecture & Development",
-            "icon": "code",
-            "pages": [
-              "concepts/extension",
-              "packages/extension-tools"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "For AI",
-        "icon": "robot",
-        "groups": [
-          {
-            "group": "AI Integration",
-            "pages": [
-              "mcp-integration",
-              "llms-txt"
-            ]
-          }
-        ]
-      },
-      {
-        "tab": "Live Examples",
-        "icon": "wand-magic-sparkles",
-        "groups": [
-          {
-            "group": "Interactive Demos",
-            "pages": [
-              "live-tool-examples",
-              "live-prompt-examples",
-              "live-resource-examples"
+              "explanation/design/tool-design",
+              "explanation/design/security-and-human-in-the-loop",
+              "explanation/design/spec-status-and-limitations"
             ]
           }
         ]
@@ -270,27 +253,27 @@
   "seo": {
     "indexing": "all",
     "metatags": {
-      "description": "WebMCP - W3C standard for making websites AI-accessible. Turn your JavaScript functions into tools that work with Claude, ChatGPT, and custom AI agents via navigator.modelContext.",
+      "description": "WebMCP documentation organized by Diataxis: tutorials, how-to guides, reference, and explanation for the WebMCP standard, the MCP-B runtime, and related tooling.",
       "keywords": "MCP, Model Context Protocol, WebMCP, AI agents, web tools, browser extension, tab transport, JavaScript SDK",
       "author": "WebMCP Team",
       "robots": "index, follow",
       "googlebot": "index, follow",
-      "og:title": "WebMCP Documentation - AI-Powered Web Tools",
+      "og:title": "WebMCP Documentation",
       "og:type": "website",
       "og:url": "https://docs.mcp-b.ai",
       "og:image": "https://docs.mcp-b.ai/logo/social-card.png",
-      "og:description": "W3C standard for making websites AI-accessible. WebMCP defines the Web Model Context API (navigator.modelContext), enabling your site to work with Claude, ChatGPT, and custom AI agents.",
+      "og:description": "Tutorials, how-to guides, reference, and explanation for the WebMCP standard, MCP-B runtime packages, and related tooling.",
       "og:site_name": "WebMCP Documentation",
       "og:locale": "en_US",
       "twitter:card": "summary_large_image",
       "twitter:site": "@webmcp",
       "twitter:creator": "@webmcp",
-      "twitter:title": "WebMCP Documentation - AI-Powered Web Tools",
-      "twitter:description": "W3C standard for making websites AI-accessible. WebMCP defines the Web Model Context API for Claude, ChatGPT, and custom AI agents.",
+      "twitter:title": "WebMCP Documentation",
+      "twitter:description": "Tutorials, how-to guides, reference, and explanation for the WebMCP standard, MCP-B runtime packages, and related tooling.",
       "twitter:image": "https://docs.mcp-b.ai/logo/social-card.png",
-      "twitter:image:alt": "WebMCP Documentation - Model Context Protocol for the Web",
+      "twitter:image:alt": "WebMCP Documentation",
       "article:published_time": "2024-01-01T00:00:00+00:00",
-      "article:modified_time": "2024-12-01T00:00:00+00:00",
+      "article:modified_time": "2026-03-07T00:00:00+00:00",
       "article:author": "WebMCP Team",
       "article:section": "Technology",
       "article:tag": "MCP, Model Context Protocol, AI, Web Development, Browser Extension"

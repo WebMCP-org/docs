@@ -6,25 +6,29 @@ This documentation covers WebMCP - a W3C standard for making websites AI-accessi
 
 ## Documentation Structure
 
-```
-website-docs/
-├── docs.json           # Main Mintlify configuration
-├── llms.txt            # LLM-optimized overview
-├── AGENTS.md           # This file
-├── CLAUDE.md           # Points here
-├── _design-system.mdx  # Internal design system reference
-├── _diataxis/          # Complete Diataxis framework reference (from diataxis.fr)
-│   ├── SKILL.md        # Overview, compass, and usage guide
-│   └── references/     # 17 pages of unabridged content
-├── _legacy/            # Old content (outdated, reference only)
-├── favicon.ico         # Site favicon
-├── style.css           # Custom styles
-├── logo/               # Brand assets
-├── .github/            # GitHub workflows
-└── images/             # Documentation images
-```
+**`docs.json`** is the single source of truth for the full page hierarchy. Read it to understand every page, its path, and where it sits in the navigation. The site is organized into five Diataxis tabs:
 
-The documentation is being rewritten from scratch. The `_legacy/` directory contains the previous content — it's mostly outdated but useful for understanding what topics were covered and how the site was structured.
+| Tab | Path prefix | Content type |
+|-----|------------|--------------|
+| **Home** | `index`, `start-here/` | Landing page, chooser |
+| **Tutorials** | `tutorials/` | Learning-oriented guided exercises |
+| **How-To Guides** | `how-to/` | Goal-oriented guides (adoption, frameworks, connectivity) |
+| **Reference** | `reference/` | Factual package/API docs (standard, runtime, tooling, project) |
+| **Explanation** | `explanation/` | Conceptual background (architecture, design) |
+
+### Supporting files
+
+| File/Directory | Purpose |
+|---|---|
+| `docs.json` | Mintlify config — **navigation, groups, nested hierarchies** |
+| `AGENTS.md` | This file — agent instructions, source material, writing style |
+| `CLAUDE.md` | Slim pointer to this file |
+| `llms.txt` | LLM-optimized site overview for AI indexing |
+| `_design-system.mdx` | Internal design system reference (colors, components) |
+| `_diataxis/` | Complete Diataxis framework reference (SKILL.md + 17 reference pages) |
+| `_legacy/` | Old content (outdated, reference only during rewrite) |
+
+The documentation is being rewritten from scratch. Each `.mdx` template file contains a Diataxis type annotation and source material pointers — read them before writing.
 
 ## Source Material in the NPM Packages Repo
 
