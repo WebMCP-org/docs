@@ -13,6 +13,9 @@ website-docs/
 ├── AGENTS.md           # This file
 ├── CLAUDE.md           # Points here
 ├── _design-system.mdx  # Internal design system reference
+├── _diataxis/          # Complete Diataxis framework reference (from diataxis.fr)
+│   ├── SKILL.md        # Overview, compass, and usage guide
+│   └── references/     # 17 pages of unabridged content
 ├── _legacy/            # Old content (outdated, reference only)
 ├── favicon.ico         # Site favicon
 ├── style.css           # Custom styles
@@ -105,7 +108,7 @@ grep -r "navigator.modelContext" ../docs/ --include="*.md" -l
 
 ## Diataxis Framework
 
-This documentation follows the [Diataxis framework](https://diataxis.fr/) for technical documentation:
+This documentation follows the [Diataxis framework](https://diataxis.fr/) for technical documentation. The complete, unabridged Diataxis reference is available at `_diataxis/` in this repo — read `_diataxis/SKILL.md` for the overview and `_diataxis/references/` for all source content from diataxis.fr.
 
 | Type | Purpose | Location | User need |
 |------|---------|----------|-----------|
