@@ -58,38 +58,34 @@ export const CalculatorTool = () => {
   const [toolCalls, setToolCalls] = useState([]);
 
   useEffect(() => {
-    const registerTool = async () => {
-      if (!window.navigator?.modelContext) return;
+    if (!window.navigator?.modelContext) return;
 
-      await window.navigator.modelContext.registerTool({
-        name: 'calculator',
-        description: 'Performs mathematical calculations',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            expression: {
-              type: 'string',
-              description: 'Mathematical expression to evaluate',
-            },
+    window.navigator.modelContext.registerTool({
+      name: 'calculator',
+      description: 'Performs mathematical calculations',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          expression: {
+            type: 'string',
+            description: 'Mathematical expression to evaluate',
           },
-          required: ['expression'],
         },
-        handler: async ({ expression }) => {
-          const result = Function(`"use strict"; return (${expression})`)();
+        required: ['expression'],
+      },
+      handler: ({ expression }) => {
+        const result = Function(`"use strict"; return (${expression})`)();
 
-          return {
-            content: [{
-              type: 'text',
-              text: `The result of ${expression} is ${result}`,
-            }],
-          };
-        },
-      });
+        return {
+          content: [{
+            type: 'text',
+            text: `The result of ${expression} is ${result}`,
+          }],
+        };
+      },
+    });
 
-      setIsRegistered(true);
-    };
-
-    registerTool();
+    setIsRegistered(true);
   }, []);
 
   // ... UI implementation
@@ -116,34 +112,31 @@ This tool showcases advanced input schema features - the `outputFormat` paramete
 // Converts HEX colors to RGB and HSL formats
 export const ColorConverterTool = () => {
   useEffect(() => {
-    const registerTool = async () => {
-      if (!window.navigator?.modelContext) return;
+    if (!window.navigator?.modelContext) return;
 
-      await window.navigator.modelContext.registerTool({
-        name: 'color_converter',
-        description: 'Converts HEX colors to RGB and HSL formats. Input must be in HEX format.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            color: {
-              type: 'string',
-              description: 'Color in HEX format (e.g., "#3b82f6" or "3b82f6"). Must be a valid HEX color code.'
-            },
-            outputFormat: {
-              type: 'string',
-              enum: ['rgb', 'hsl', 'all'],
-              description: 'Desired output format (rgb, hsl, or all)',
-              default: 'all'
-            }
+    window.navigator.modelContext.registerTool({
+      name: 'color_converter',
+      description: 'Converts HEX colors to RGB and HSL formats. Input must be in HEX format.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          color: {
+            type: 'string',
+            description: 'Color in HEX format (e.g., "#3b82f6" or "3b82f6"). Must be a valid HEX color code.'
           },
-          required: ['color']
+          outputFormat: {
+            type: 'string',
+            enum: ['rgb', 'hsl', 'all'],
+            description: 'Desired output format (rgb, hsl, or all)',
+            default: 'all'
+          }
         },
-        handler: async ({ color, outputFormat = 'all' }) => {
-          // Conversion logic here
-        }
-      });
-    };
-    registerTool();
+        required: ['color']
+      },
+      handler: ({ color, outputFormat = 'all' }) => {
+        // Conversion logic here
+      }
+    });
   }, []);
 };
 ```
@@ -168,29 +161,24 @@ This component registers **three related tools** (`storage_set`, `storage_get`, 
 // Manages browser localStorage with set, get, and list operations
 export const StorageTool = () => {
   useEffect(() => {
-    const registerTools = async () => {
-      if (!window.navigator?.modelContext) return;
+    if (!window.navigator?.modelContext) return;
 
-      // Registers multiple tools: storage_set, storage_get, storage_list
-      await Promise.all([
-        window.navigator.modelContext.registerTool({
-          name: 'storage_set',
-          description: 'Store a key-value pair in localStorage',
-          // ... implementation
-        }),
-        window.navigator.modelContext.registerTool({
-          name: 'storage_get',
-          description: 'Retrieve a value from localStorage',
-          // ... implementation
-        }),
-        window.navigator.modelContext.registerTool({
-          name: 'storage_list',
-          description: 'List all items in localStorage',
-          // ... implementation
-        })
-      ]);
-    };
-    registerTools();
+    // Registers multiple tools: storage_set, storage_get, storage_list
+    window.navigator.modelContext.registerTool({
+      name: 'storage_set',
+      description: 'Store a key-value pair in localStorage',
+      // ... implementation
+    });
+    window.navigator.modelContext.registerTool({
+      name: 'storage_get',
+      description: 'Retrieve a value from localStorage',
+      // ... implementation
+    });
+    window.navigator.modelContext.registerTool({
+      name: 'storage_list',
+      description: 'List all items in localStorage',
+      // ... implementation
+    });
   }, []);
 };
 ```
@@ -215,31 +203,28 @@ This tool queries the actual page DOM using CSS selectors and returns structured
 // Queries page elements using CSS selectors
 export const DOMQueryTool = () => {
   useEffect(() => {
-    const registerTool = async () => {
-      if (!window.navigator?.modelContext) return;
+    if (!window.navigator?.modelContext) return;
 
-      await window.navigator.modelContext.registerTool({
-        name: 'dom_query',
-        description: 'Query page elements using CSS selectors',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            selector: { type: 'string', description: 'CSS selector (e.g., "h1", ".class", "#id")' }
-          },
-          required: ['selector']
+    window.navigator.modelContext.registerTool({
+      name: 'dom_query',
+      description: 'Query page elements using CSS selectors',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          selector: { type: 'string', description: 'CSS selector (e.g., "h1", ".class", "#id")' }
         },
-        handler: async ({ selector }) => {
-          const elements = document.querySelectorAll(selector);
-          return {
-            content: [{
-              type: 'text',
-              text: `Found ${elements.length} elements matching "${selector}"`
-            }]
-          };
-        }
-      });
-    };
-    registerTool();
+        required: ['selector']
+      },
+      handler: ({ selector }) => {
+        const elements = document.querySelectorAll(selector);
+        return {
+          content: [{
+            type: 'text',
+            text: `Found ${elements.length} elements matching "${selector}"`
+          }]
+        };
+      }
+    });
   }, []);
 };
 ```
