@@ -37,6 +37,10 @@
         "href": "https://github.com/WebMCP-org/npm-packages"
       },
       {
+        "label": "Chrome Extension",
+        "href": "https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa"
+      },
+      {
         "label": "Discord",
         "href": "https://discord.gg/ZnHG4csJRB"
       }
@@ -77,6 +81,20 @@
             "pages": [
               "index",
               "start-here/choose-your-path"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "icon": "flask-vial",
+        "groups": [
+          {
+            "group": "Live Examples",
+            "pages": [
+              "examples/live-tool-examples",
+              "examples/live-prompt-examples",
+              "examples/live-resource-examples"
             ]
           }
         ]
