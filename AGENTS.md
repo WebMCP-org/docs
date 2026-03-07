@@ -131,6 +131,10 @@ When writing new pages, identify which Diataxis quadrant it belongs to and follo
 
 ## Writing Style
 
+The `writing-clearly-and-concisely` skill is loaded for all docs-writer agents. It enforces Strunk's principles and AI pattern avoidance automatically. The rules below are WebMCP-specific additions on top of that skill.
+
+### Voice
+
 - Use active voice and present tense
 - Second-person ("you") for instructions
 - Keep sentences concise and scannable
@@ -139,6 +143,20 @@ When writing new pages, identify which Diataxis quadrant it belongs to and follo
 - Link to related content liberally
 - Include descriptions in frontmatter for llms.txt indexing
 - Prerequisites at start of procedural content
+
+### WebMCP-specific tone rules
+
+- **Don't say "simply"** before install commands or setup steps. If it were simple, they wouldn't need docs.
+- **Don't say "just"** to minimize effort. ("Just add a script tag" — if they knew that, they wouldn't be here.)
+- **Don't hedge with "might", "could potentially", "in certain scenarios"** — state what happens and when.
+- **Don't use em dashes** — use commas, periods, or parentheses instead. Em dashes are an AI tell.
+- **Don't use "leverage", "utilize", "facilitate"** — use "use", "run", "call", "send".
+- **Don't use "robust", "seamless", "cutting-edge", "groundbreaking"** — describe what it actually does.
+- **Don't use "Note that" or "It's important to note"** — use a `<Note>` callout or state the fact directly.
+- **Don't use "ecosystem"** unless referring to the actual npm/browser ecosystem. Don't say "WebMCP ecosystem".
+- **Prefer short sentences.** If a sentence has more than one comma, split it.
+- **Lead with the verb** in how-to steps: "Install the package", "Register a tool", "Run the dev server".
+- **Use the product name correctly**: "WebMCP" for the standard, `@mcp-b/*` for packages, "MCP-B" only in package scope contexts.
 
 ## Code Examples
 
