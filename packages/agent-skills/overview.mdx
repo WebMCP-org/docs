@@ -1,44 +1,153 @@
 ---
 title: "agent-skills-ts-sdk overview"
-description: "When to use the AgentSkills parser and validator package, how it relates to the WebMCP repo, and what it does not cover."
-keywords: ["agent-skills-ts-sdk", "overview", "AgentSkills", "SKILL.md", "parser", "validator"]
+sidebarTitle: "Overview"
+description: "Parse, validate, patch, and build prompts for AgentSkills SKILL.md files in TypeScript."
+keywords: ["agent-skills-ts-sdk", "AgentSkills", "SKILL.md", "parser", "validator", "prompt builder", "patch"]
 icon: "wand-magic-sparkles"
 ---
 
-`agent-skills-ts-sdk` is a tooling package for the AgentSkills `SKILL.md` format. It parses and validates skill files, builds prompt blocks, and applies patch operations. It lives in this monorepo, but it is adjacent to the WebMCP runtime packages rather than part of the browser runtime stack.
+`agent-skills-ts-sdk` is a TypeScript SDK for working with [AgentSkills](https://agentskills.io/specification) `SKILL.md` files. It parses frontmatter and markdown bodies, validates content against the spec, generates XML prompt blocks for system prompts, and applies structured patches to skill files.
+
+This package stands alone in the tooling layer. It shares the monorepo with the WebMCP runtime packages but does not depend on them.
+
+## How skills work
+
+A **skill** is a `SKILL.md` file with YAML frontmatter and a markdown body. The frontmatter declares the skill's identity (name, description, license, compatibility, allowed tools, metadata). The body contains instructions that agents read at runtime.
+
+```markdown title="SKILL.md"
+---
+name: pizza-maker
+description: Interactive pizza builder
+compatibility: Claude, GPT-4
+allowed-tools: Bash(git:*)
+metadata:
+  author: example-org
+  version: "1.0"
+---
+# Pizza maker
+
+Build a pizza with [build-pizza](references/build-pizza).
+```
+
+The SDK parses this into a typed `SkillProperties` object and a separate markdown body string. It validates the frontmatter against the spec's rules (name length, casing, allowed fields) and returns structured error messages when validation fails.
+
+## Quick start
+
+Install the package:
+
+```bash
+npm install agent-skills-ts-sdk
+```
+
+Parse and validate a skill file:
+
+```typescript
+import { parseSkillContent, validateSkillContent } from 'agent-skills-ts-sdk';
+
+const content = `---
+name: my-skill
+description: A test skill
+---
+# My Skill
+
+Instructions here.`;
+
+const { properties, body } = parseSkillContent(content);
+// properties.name === "my-skill"
+// properties.description === "A test skill"
+// body === "# My Skill\n\nInstructions here."
+
+const errors = validateSkillContent(content);
+if (errors.length > 0) {
+  console.error('Validation errors:', errors);
+}
+```
+
+## Key capabilities
+
+### Parsing
+
+`parseSkillContent` extracts frontmatter into a camelCased `SkillProperties` object and returns the markdown body. For content extracted from DOM `<script>` elements (which may have leading whitespace or a BOM), pass `{ inputMode: 'embedded' }`.
+
+Lower-level functions give finer control:
+
+- `parseFrontmatter` returns the spec-keyed `SkillFrontmatter` (hyphenated keys like `allowed-tools`)
+- `frontmatterToProperties` converts `SkillFrontmatter` to `SkillProperties` without re-parsing
+- `extractBody` strips frontmatter and returns the markdown body
+- `findSkillMdFile` locates `SKILL.md` in an in-memory file list
+- `extractResourceLinks` finds tier-3 resource links (`scripts/`, `references/`, `assets/`) in the body
+
+### Validation
+
+`validateSkillContent` checks a raw `SKILL.md` string against the full spec. It returns an array of error messages (empty means valid).
+
+`validateSkillProperties` validates a parsed `SkillProperties` object. Pass `expectedName` to enforce a directory-to-name match.
+
+`validateSkillEntries` validates in-memory file lists, mirroring the reference library's `skills-ref validate` command.
+
+Validation enforces these rules:
+
+| Field | Constraint |
+|-------|-----------|
+| `name` | Required. Max 64 chars. Lowercase, NFKC-normalized. Hyphens allowed (not at start/end, no consecutive). |
+| `description` | Required. Max 1,024 chars. |
+| `compatibility` | Optional. Max 500 chars. |
+| `license` | Optional string. |
+| `metadata` | Optional key-value string pairs. |
+| `allowed-tools` | Optional. Experimental. |
+
+### Prompt generation
+
+`toPrompt` builds an `<available_skills>` XML block from parsed entries or raw SKILL.md content, for injection into system prompts:
+
+```typescript
+import { toPrompt } from 'agent-skills-ts-sdk';
+
+const xml = toPrompt([
+  { content: skillMarkdown, location: 'skills/my-skill/SKILL.md' },
+]);
+```
+
+`toDisclosurePrompt` adds tier-3 resource hints for progressive disclosure workflows. `toDisclosureInstructions` generates canonical instruction text that tells models how to use the read tool. `toReadToolSchema` builds a JSON Schema declaration for the read tool, and `handleSkillRead` handles the 2-level read dispatch (skill overview vs. specific resource).
+
+### Diff and patch
+
+`createSkillPatch` computes a contextual patch from two SKILL.md strings. `applySkillPatch` applies patch operations and validates the result:
+
+```typescript
+import { createSkillPatch, applySkillPatch } from 'agent-skills-ts-sdk';
+
+const patch = createSkillPatch(oldContent, newContent);
+const result = applySkillPatch(oldContent, patch);
+
+if (!result.ok) {
+  console.error(result.errors);
+} else {
+  console.log(result.content);
+}
+```
+
+Patches support three operation types: `replace`, `insert`, and `delete`. `validateSkillPatch` validates model-provided patch payloads before application. `diffSkillContent` returns a line-based diff for display.
 
 ## When to use this package
 
-- You are reading, validating, or transforming `SKILL.md` files.
-- You need prompt construction or patch utilities around the AgentSkills format.
-- You want to reuse the file-format tooling outside a WebMCP runtime.
+- **Building a skill registry**: Parse and validate uploaded `SKILL.md` files, store structured metadata, and serve skills to agents.
+- **Programmatic skill management**: Create, update, and patch skill files from code or CI pipelines.
+- **System prompt construction**: Generate `<available_skills>` XML blocks for LLM system prompts.
+- **Progressive disclosure hosts**: Build read tools that serve skill content in tiers (metadata, overview, resource detail).
 
 ## When not to use this package
 
-- You need `navigator.modelContext` in the browser. Use the WebMCP runtime packages.
-- You are looking for browser transport or relay behavior. That is separate tooling.
-
-## Where it sits in the package graph
-
-This package stands on its own in the tooling layer. It shares the monorepo but does not depend on the WebMCP runtime stack.
-
-## First step
-
-Parse a `SKILL.md` file and inspect its extracted frontmatter and markdown body. The [reference page](/packages/agent-skills/reference) documents parsing, validation, prompt generation, and patch helpers.
+- You need `navigator.modelContext` in the browser. Use the [WebMCP runtime packages](/packages/index) instead.
+- You need browser transports or relay behavior. Those are separate packages.
 
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/agent-skills/reference">
-    Parsing APIs, validation output, prompt helpers, and patch utilities.
+  <Card title="API reference" icon="book-open" href="/packages/agent-skills/reference">
+    Complete function signatures, types, and constants.
   </Card>
   <Card title="Packages index" icon="boxes-stacked" href="/packages/index">
-    Browse the rest of the packages in this monorepo.
-  </Card>
-  <Card title="What is WebMCP?" icon="circle-question" href="/explanation/what-is-webmcp">
-    Background on the browser runtime packages that share the repo.
-  </Card>
-  <Card title="WebMCP vs MCP" icon="arrows-left-right" href="/explanation/webmcp-vs-mcp">
-    Conceptual background on the MCP side of the project.
+    Browse all packages in this monorepo.
   </Card>
 </CardGroup>

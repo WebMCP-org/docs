@@ -1,44 +1,117 @@
 ---
-title: "@mcp-b/mcp-iframe overview"
-description: "When to use the iframe custom element, how it differs from raw transports, and what assumptions it makes about the child page."
-keywords: ["@mcp-b/mcp-iframe", "overview", "iframe bridge", "custom element", "tool forwarding"]
+title: "@mcp-b/mcp-iframe"
+sidebarTitle: "Overview"
+description: "A custom element that bridges MCP tools, resources, and prompts from an iframe to the parent page."
+keywords: ["mcp-iframe", "iframe bridge", "custom element", "web component", "tool forwarding", "cross-frame"]
 icon: "frame"
 ---
 
-`@mcp-b/mcp-iframe` wraps the iframe transport flow in a custom element. It is the package to use when you want to expose an iframe's tools, prompts, or resources to the parent page without manually wiring transport classes.
+`@mcp-b/mcp-iframe` provides `<mcp-iframe>`, a custom element that connects an iframe's MCP server to the parent page's `navigator.modelContext`. Tools, resources, and prompts registered inside the iframe appear on the parent, namespaced by the element's `id` to prevent collisions.
 
-## When to use this package
+## How it works
 
-- You want a parent page to surface capabilities from an iframe.
-- You prefer a declarative element over manual `IframeParentTransport` and `IframeChildTransport` setup.
-- You want namespaced tool forwarding tied to an element ID.
+The `<mcp-iframe>` element wraps a standard `<iframe>` inside a Shadow DOM. When the iframe loads, the element creates an `IframeParentTransport` from [`@mcp-b/transports`](/packages/transports/overview), connects an MCP `Client`, and fetches every tool, resource, and prompt from the iframe's MCP server. Each item is then registered on the parent's `navigator.modelContext` with a prefix derived from the element's `id`.
 
-## When not to use this package
+The iframe page must expose `navigator.modelContext` through [`@mcp-b/global`](/packages/global/overview) or any compatible implementation.
 
-- You need low-level control over message flow or custom transport wiring. Use [`@mcp-b/transports`](/packages/transports/overview).
-- The iframe content does not expose `navigator.modelContext` or a compatible runtime.
+```
+Parent page                          Iframe (child-app.html)
+┌──────────────────────┐             ┌──────────────────────┐
+│  navigator           │             │  navigator           │
+│   .modelContext      │◄── MCP ────►│   .modelContext      │
+│                      │  transport  │                      │
+│  "my-app_calculate"  │             │  "calculate"         │
+│  "my-app_get_data"   │             │  "get_data"          │
+└──────────────────────┘             └──────────────────────┘
+```
 
-## Where it sits in the package graph
+When the element is removed from the DOM, all forwarded items are unregistered automatically.
 
-This package sits on top of the iframe transport pair from [`@mcp-b/transports`](/packages/transports/overview). It is a browser-facing convenience layer, not a separate transport protocol.
+## Quick start
 
-## First step
+Install the package in the parent page:
 
-Expose `navigator.modelContext` inside the iframe, then import `@mcp-b/mcp-iframe` in the parent page and add the `<mcp-iframe>` element. The [reference page](/packages/mcp-iframe/reference) documents events, attributes, methods, and namespacing behavior.
+```bash
+npm install @mcp-b/mcp-iframe
+```
+
+Add the element to your HTML:
+
+```html title="parent.html"
+<mcp-iframe src="./child-app.html" id="my-app"></mcp-iframe>
+
+<script type="module">
+  import '@mcp-b/mcp-iframe';
+
+  const el = document.querySelector('mcp-iframe');
+  el.addEventListener('mcp-iframe-ready', (event) => {
+    console.log('Exposed tools:', event.detail.tools);
+    // e.g. ["my-app_calculate", "my-app_get_data"]
+  });
+</script>
+```
+
+Importing `@mcp-b/mcp-iframe` auto-registers the custom element. No additional setup is required.
+
+## Configuration
+
+Control behavior through HTML attributes:
+
+| Attribute | Default | Purpose |
+|-----------|---------|---------|
+| `src` | -- | URL of the iframe page. |
+| `id` | `"iframe"` | Prefix for forwarded item names. Sanitized to `[a-zA-Z0-9_-]`. |
+| `target-origin` | Inferred from `src` | Override the `postMessage` target origin. |
+| `channel` | `"mcp-iframe"` | Channel ID for the underlying `IframeParentTransport`. |
+| `call-timeout` | `30000` | Timeout in milliseconds for tool calls, resource reads, and prompt gets. |
+| `prefix-separator` | `"_"` | Character between prefix and item name. Must match `[a-zA-Z0-9_-]`. |
+
+Standard iframe attributes (`sandbox`, `allow`, `width`, `height`, `loading`, `referrerpolicy`, `name`, `srcdoc`, `allowfullscreen`, `credentialless`) are mirrored to the internal `<iframe>`.
+
+See the [reference page](/packages/mcp-iframe/reference) for the full list of properties, methods, and events.
+
+## Name prefixing
+
+Items from the iframe are registered on the parent as `{id}{separator}{name}`:
+
+| Iframe tool | Element `id` | Separator | Parent tool name |
+|-------------|-------------|-----------|-----------------|
+| `calculate` | `my-app` | `_` | `my-app_calculate` |
+| `get_data` | `billing` | `_` | `billing_get_data` |
+| `help` | `assistant` | `-` | `assistant-help` |
+
+Prefixed names must match the MCP name pattern `^[a-zA-Z0-9_-]{1,128}$`. Names that exceed 128 characters or contain invalid characters are skipped with a console error.
+
+## Use cases
+
+- **Embedded apps.** Surface tools from a self-contained app running in an iframe without modifying its source code beyond adding `@mcp-b/global`.
+- **Third-party widgets.** Let external widgets contribute tools to the host page while maintaining origin isolation through iframe sandboxing.
+- **Micro-frontends.** Compose multiple independently deployed frontends, each registering its own tools, into a single MCP-aware page.
+- **Multiple iframes.** Use distinct `id` values on each `<mcp-iframe>` to namespace tools from different sources on the same page.
+
+## When to use raw transports instead
+
+`<mcp-iframe>` is a convenience wrapper around the iframe transport pair in [`@mcp-b/transports`](/packages/transports/overview). Use the raw `IframeParentTransport` and `IframeChildTransport` classes when you need:
+
+- Custom message handling or filtering between frames
+- A transport setup that does not involve a custom element (for example, in a framework that manages iframes programmatically)
+- Tab-to-tab transport instead of iframe transport
+
+For background on how transports work across document boundaries, see [Transports and bridges](/explanation/architecture/transports-and-bridges).
 
 ## Related pages
 
 <CardGroup cols={2}>
   <Card title="Reference" icon="book-open" href="/packages/mcp-iframe/reference">
-    Element registration, attributes, methods, and event contract.
+    Attributes, properties, methods, events, and lifecycle details.
   </Card>
   <Card title="Bridge tools across iframes" icon="bridge" href="/how-to/bridge-tools-across-iframes">
-    Set up a parent-child iframe bridge step by step.
+    Step-by-step guide for setting up parent-child iframe bridging.
   </Card>
-  <Card title="Transports overview" icon="network-wired" href="/packages/transports/overview">
-    Inspect the underlying iframe transport classes.
+  <Card title="@mcp-b/transports" icon="network-wired" href="/packages/transports/overview">
+    The underlying iframe and tab transport classes.
   </Card>
-  <Card title="Spec status and limitations" icon="flag" href="/explanation/design/spec-status-and-limitations">
-    Background on cross-document exposure questions that still affect iframe behavior.
+  <Card title="Transports and bridges" icon="lightbulb" href="/explanation/architecture/transports-and-bridges">
+    How cross-document MCP communication works.
   </Card>
 </CardGroup>

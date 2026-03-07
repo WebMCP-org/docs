@@ -1,42 +1,156 @@
 ---
-title: "@mcp-b/webmcp-types overview"
-description: "When to use the WebMCP type package, what it covers, and how it fits under the runtime stack."
-keywords: ["@mcp-b/webmcp-types", "overview", "typescript", "schema inference", "navigator.modelContext"]
+title: "@mcp-b/webmcp-types"
+sidebarTitle: "Overview"
+description: "Zero-runtime TypeScript types for the WebMCP standard API, MCP-B extensions, and JSON Schema inference."
+keywords: ["@mcp-b/webmcp-types", "typescript", "ModelContext", "ModelContextCore", "ToolDescriptor", "schema inference", "navigator.modelContext"]
 icon: "brackets-curly"
 ---
 
-`@mcp-b/webmcp-types` is the lowest-level package in the MCP-B stack. It gives you the type contracts for `navigator.modelContext`, schema inference utilities, and the global `Navigator` augmentation without shipping any runtime code.
+`@mcp-b/webmcp-types` provides TypeScript type definitions for the entire WebMCP surface: the [W3C standard API](https://webmachinelearning.github.io/webmcp/), the MCP-B extension layer, and a JSON Schema inference engine that derives argument types from schema literals at compile time. It ships zero runtime code and zero side effects.
 
-## When to use this package
+```bash
+npm install --save-dev @mcp-b/webmcp-types
+```
 
-- You are authoring a library that wants to type against the WebMCP core surface.
-- You want compile-time inference from JSON Schema literals.
-- You need `navigator.modelContext` types in TypeScript without choosing a runtime yet.
+After installation, activate the global `Navigator` augmentation so TypeScript recognizes `navigator.modelContext`. See the [reference page](/packages/webmcp-types/reference) for all three activation methods.
 
-## When not to use this package
+## The type layering
 
-- You need a runtime implementation in the browser. Use [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview) or [`@mcp-b/global`](/packages/global/overview).
-- You want prompts, resources, or transport features. Those live higher in the stack.
+The package mirrors the [runtime layering](/explanation/architecture/runtime-layering) of WebMCP itself. Four interfaces form the core hierarchy:
 
-## Where it sits in the package graph
+| Interface | Layer | What it covers |
+|-----------|-------|----------------|
+| `ModelContextCore` | W3C standard | `registerTool()`, `unregisterTool()`, `provideContext()`, `clearContext()` |
+| `ModelContextExtensions` | MCP-B extension | `listTools()`, `callTool()`, `addEventListener()` for `toolcall` and `toolschanged` events |
+| `ModelContext` | Alias for `ModelContextCore` | The type of `navigator.modelContext` |
+| `ModelContextWithExtensions` | `ModelContextCore & ModelContextExtensions` | The full runtime shape when `@mcp-b/global` is loaded |
 
-`@mcp-b/webmcp-types` sits under the runtime packages. `@mcp-b/webmcp-polyfill`, `@mcp-b/webmcp-ts-sdk`, `@mcp-b/global`, `usewebmcp`, and `@mcp-b/react-webmcp` all build on these contracts.
+`ModelContextCore` types the four methods defined in the [W3C WebMCP specification](https://webmachinelearning.github.io/webmcp/). Everything on `ModelContextExtensions` is an MCP-B addition (not part of the standard). For a deeper discussion, see [Strict core vs MCP-B extensions](/explanation/strict-core-vs-mcp-b-extensions).
 
-## First step
+```ts
+import type {
+  ModelContext,
+  ModelContextWithExtensions,
+} from '@mcp-b/webmcp-types';
 
-Install the package as a dev dependency, then choose one activation path from the [reference page](/packages/webmcp-types/reference): `types` in `tsconfig.json`, a triple-slash reference, or a side-effect type import.
+// Strict core only (what the W3C spec defines)
+const core: ModelContext = navigator.modelContext;
+core.registerTool({ name: 'ping', description: 'Health check', execute: () => ({ content: [] }) });
+
+// Full runtime (after @mcp-b/global initializes)
+const full = navigator.modelContext as unknown as ModelContextWithExtensions;
+const tools = full.listTools();
+```
+
+## Tool descriptors
+
+`ToolDescriptor` is the main interface for defining tools. It accepts three generic parameters for type-safe argument inference, result typing, and name narrowing:
+
+```ts
+import type { ToolDescriptor, CallToolResult } from '@mcp-b/webmcp-types';
+
+type SearchTool = ToolDescriptor<
+  { query: string; limit?: number },  // TArgs
+  CallToolResult,                      // TResult
+  'search'                             // TName
+>;
+```
+
+`ToolListItem` has the same shape as `ToolDescriptor` but without the `execute` function. It represents tool metadata returned by `listTools()`.
+
+## JSON Schema inference
+
+The package infers TypeScript types from JSON Schema literals at compile time. Write a schema with `as const satisfies JsonSchemaForInference`, and `registerTool` infers the `execute` callback's argument type automatically:
+
+```ts
+import type { JsonSchemaForInference } from '@mcp-b/webmcp-types';
+
+const inputSchema = {
+  type: 'object',
+  properties: {
+    query: { type: 'string' },
+    limit: { type: 'integer', minimum: 1, maximum: 50 },
+  },
+  required: ['query'],
+  additionalProperties: false,
+} as const satisfies JsonSchemaForInference;
+
+navigator.modelContext.registerTool({
+  name: 'search',
+  description: 'Search indexed docs',
+  inputSchema,
+  async execute(args) {
+    // args is inferred as { query: string; limit?: number }
+    return {
+      content: [{ type: 'text', text: `Searching for ${args.query}` }],
+    };
+  },
+});
+```
+
+You can also extract the inferred type directly with `InferArgsFromInputSchema`:
+
+```ts
+import type { InferArgsFromInputSchema } from '@mcp-b/webmcp-types';
+
+type Args = InferArgsFromInputSchema<typeof inputSchema>;
+// { query: string; limit?: number }
+```
+
+The inference engine supports `type`, `properties`, `required`, `items`, `enum`, `const`, `nullable`, and `additionalProperties`. Other JSON Schema keywords are accepted as metadata but do not affect the inferred type. If a schema is widened at runtime (for example, typed as `InputSchema` instead of a literal), inference falls back to `Record<string, unknown>`.
+
+For practical patterns and examples, see [Use schemas and structured output](/how-to/use-schemas-and-structured-output).
+
+## Typed model context
+
+When your project has a fixed set of known tools, `TypedModelContext` narrows `callTool` and `listTools` to those specific tool names and argument types:
+
+```ts
+import type {
+  CallToolResult,
+  ToolDescriptor,
+  TypedModelContext,
+} from '@mcp-b/webmcp-types';
+
+type SearchTool = ToolDescriptor<
+  { query: string; limit?: number },
+  CallToolResult & { structuredContent: { total: number } },
+  'search'
+>;
+type PingTool = ToolDescriptor<Record<string, never>, CallToolResult, 'ping'>;
+
+type AppContext = TypedModelContext<readonly [SearchTool, PingTool]>;
+
+declare const ctx: AppContext;
+
+// Name is narrowed; arguments are type-checked
+await ctx.callTool({ name: 'search', arguments: { query: 'webmcp' } });
+
+// Tools with no args make `arguments` optional
+await ctx.callTool({ name: 'ping' });
+```
+
+## When to use this package directly
+
+Most users get these types transitively through [`@mcp-b/global`](/packages/global/overview) or [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview). Install `@mcp-b/webmcp-types` as a direct dev dependency when:
+
+- You are building a library that types against the WebMCP surface without choosing a runtime.
+- You need compile-time inference from JSON Schema literals.
+- You want `navigator.modelContext` types in TypeScript without any runtime code.
+
+If you need a runtime implementation, use [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview) (strict core only) or [`@mcp-b/global`](/packages/global/overview) (full stack with MCP-B extensions).
 
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/webmcp-types/reference">
-    Type contracts, schema inference helpers, and activation patterns.
+  <Card title="API reference" icon="book-open" href="/packages/webmcp-types/reference">
+    Full type catalog, schema inference rules, and activation patterns.
   </Card>
   <Card title="Use schemas and structured output" icon="list-check" href="/how-to/use-schemas-and-structured-output">
     Practical guidance for schema-driven tool inputs and outputs.
   </Card>
   <Card title="Strict core vs MCP-B extensions" icon="diagram-venn" href="/explanation/strict-core-vs-mcp-b-extensions">
-    Background on where the standard surface ends.
+    Where the W3C standard surface ends and MCP-B extensions begin.
   </Card>
   <Card title="Choose a runtime" icon="compass" href="/how-to/choose-runtime">
     Pick the runtime layer that pairs with these types.

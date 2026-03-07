@@ -1,44 +1,117 @@
 ---
-title: "@mcp-b/webmcp-polyfill overview"
-description: "When to use the strict WebMCP polyfill, where it fits in the stack, and when to move up to the full runtime."
-keywords: ["@mcp-b/webmcp-polyfill", "overview", "polyfill", "navigator.modelContext", "strict core"]
+title: "@mcp-b/webmcp-polyfill"
+sidebarTitle: "Overview"
+description: "Strict WebMCP polyfill that installs navigator.modelContext in browsers without native support."
+keywords: ["webmcp-polyfill", "polyfill", "navigator.modelContext", "modelContextTesting", "strict core", "registerTool"]
 icon: "puzzle-piece"
 ---
 
-`@mcp-b/webmcp-polyfill` installs the strict WebMCP core on `navigator.modelContext` when the browser does not ship it yet. It is the runtime choice for teams that want the browser-facing standard surface without MCP-B-only extensions.
+`@mcp-b/webmcp-polyfill` installs `navigator.modelContext` and `navigator.modelContextTesting` in browsers that do not ship the WebMCP API natively. It implements the strict core surface only: tool registration, context management, and input validation. It does not include prompts, resources, sampling, or elicitation.
 
-## When to use this package
+## How it works
 
-- You want `registerTool` and `unregisterTool` in browsers today.
-- You are building a site or reusable library that wants to stay close to the W3C surface.
-- You want to pair runtime behavior with [`@mcp-b/webmcp-types`](/packages/webmcp-types/overview) for type inference.
+When you call `initializeWebMCPPolyfill()`, the package:
 
-## When not to use this package
+1. Checks whether `navigator.modelContext` already exists (native browser support or a previous install).
+2. If it exists, returns immediately as a no-op.
+3. If it does not exist, creates a `StrictWebMCPContext` and installs it on `navigator.modelContext`.
+4. Optionally installs `navigator.modelContextTesting` (enabled by default) for tool listing and execution in development.
 
-- You need prompts, resources, transport, sampling, or elicitation. Use [`@mcp-b/global`](/packages/global/overview).
-- You only need types at build time. Use [`@mcp-b/webmcp-types`](/packages/webmcp-types/overview).
+The polyfill is safe to call multiple times. It never overwrites a native implementation.
 
-## Where it sits in the package graph
+## Quick start
 
-This package sits directly above `@mcp-b/webmcp-types`. The full runtime in [`@mcp-b/global`](/packages/global/overview) wraps the polyfill when it initializes.
+```bash
+npm install @mcp-b/webmcp-polyfill
+```
 
-## First step
+```ts title="main.ts"
+import { initializeWebMCPPolyfill } from '@mcp-b/webmcp-polyfill';
 
-Initialize the polyfill before your app registers tools. The [reference page](/packages/webmcp-polyfill/reference) documents the initialization options, testing shim behavior, and the strict-core lifecycle.
+initializeWebMCPPolyfill();
+
+navigator.modelContext.registerTool({
+  name: 'get_page_title',
+  description: 'Get the current page title',
+  inputSchema: { type: 'object', properties: {} },
+  async execute() {
+    return {
+      content: [{ type: 'text', text: document.title }],
+    };
+  },
+});
+```
+
+For script tag usage, the IIFE build auto-initializes on load:
+
+```html title="index.html"
+<script src="https://unpkg.com/@mcp-b/webmcp-polyfill@latest/dist/index.iife.js"></script>
+```
+
+Configure IIFE options by setting `window.__webMCPPolyfillOptions` before the script loads. See the [reference page](/packages/webmcp-polyfill/reference) for available options.
+
+## What's included
+
+The polyfill provides the **strict core** WebMCP surface:
+
+| Method | Description |
+|--------|-------------|
+| `registerTool(tool)` | Add a tool to the registry. Validates name, description, execute function, and input schema. |
+| `unregisterTool(name)` | Remove a tool by name. No-op for unknown names. |
+| `provideContext(options)` | Replace all registered tools at once. |
+| `clearContext()` | Remove all registered tools. |
+
+When the testing shim is enabled (the default), `navigator.modelContextTesting` provides:
+
+| Method | Description |
+|--------|-------------|
+| `listTools()` | List all registered tools and their schemas. |
+| `executeTool(name, argsJson)` | Execute a tool with JSON-serialized arguments. Validates inputs against the schema. |
+| `registerToolsChangedCallback(cb)` | Register a callback that fires when tools change. |
+
+## What's not included
+
+The polyfill does not provide MCP-B extension APIs:
+
+- `registerPrompt()`, `registerResource()`
+- `listTools()`, `callTool()` on `navigator.modelContext` itself
+- `createMessage()` (sampling), `elicitInput()` (elicitation)
+- Transport or bridge connectivity
+
+These features live in [`@mcp-b/global`](/packages/global/overview), which wraps the polyfill and adds the full MCP-B runtime. For the rationale behind this separation, see [Strict core vs MCP-B extensions](/explanation/strict-core-vs-mcp-b-extensions).
+
+## Native vs polyfill behavior
+
+The polyfill aligns with the [WebMCP standard API](https://webmachinelearning.github.io/webmcp/). When a browser ships native `navigator.modelContext`, the polyfill detects it and does nothing. Your tool registration code works identically against both the native implementation and the polyfill.
+
+One difference: the native browser provides `modelContextTesting` alongside `modelContext` automatically. The polyfill installs the testing shim separately, controlled by the `installTestingShim` option. In practice this is transparent because both paths are enabled by default.
+
+To inspect tools registered through either the native API or the polyfill, install the Chrome team's [Model Context Tool Inspector](https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd) extension.
+
+## When to use this vs `@mcp-b/global`
+
+| Situation | Package |
+|-----------|---------|
+| You want `registerTool` / `unregisterTool` and nothing else | `@mcp-b/webmcp-polyfill` |
+| You are building a library that stays close to the W3C surface | `@mcp-b/webmcp-polyfill` |
+| You need prompts, resources, sampling, elicitation, or transports | [`@mcp-b/global`](/packages/global/overview) |
+| You only need TypeScript types at build time (no runtime) | [`@mcp-b/webmcp-types`](/packages/webmcp-types/overview) |
+
+If you start with the polyfill and later need MCP-B extensions, `@mcp-b/global` wraps the existing polyfill context without replacing it. You do not need to change your tool registrations. For a deeper comparison, see [Native vs polyfill vs global](/explanation/native-vs-polyfill-vs-global).
 
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/webmcp-polyfill/reference">
-    Initialization options, testing shim details, and runtime behavior.
+  <Card title="API reference" icon="book-open" href="/packages/webmcp-polyfill/reference">
+    Initialization options, testing shim details, validation rules, and schema support.
   </Card>
   <Card title="First tool tutorial" icon="graduation-cap" href="/tutorials/first-tool">
-    Build your first strict-core tool.
+    Build and test your first WebMCP tool from scratch.
   </Card>
   <Card title="Native vs polyfill vs global" icon="layer-group" href="/explanation/native-vs-polyfill-vs-global">
-    Compare the three runtime strategies.
+    Compare the three runtime strategies and when to use each.
   </Card>
-  <Card title="Test native and polyfill" icon="flask-vial" href="/how-to/test-native-and-polyfill">
-    Validate your code against both native and polyfilled paths.
+  <Card title="Choose a runtime" icon="route" href="/how-to/choose-runtime">
+    Pick the right package for your project.
   </Card>
 </CardGroup>

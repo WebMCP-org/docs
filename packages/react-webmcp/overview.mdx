@@ -1,44 +1,363 @@
 ---
-title: "@mcp-b/react-webmcp overview"
-description: "When to use the full React integration package, how it differs from usewebmcp, and which runtime stack it expects."
-keywords: ["@mcp-b/react-webmcp", "overview", "react", "MCP-B", "useWebMCP", "McpClientProvider"]
+title: "@mcp-b/react-webmcp"
+sidebarTitle: "Overview"
+description: "Full React integration for MCP-B with hooks for tools, prompts, resources, sampling, and elicitation, plus a client provider for consuming MCP servers."
+keywords: ["react-webmcp", "react hooks", "useWebMCP", "MCP-B", "tools", "prompts", "resources", "sampling", "elicitation"]
 icon: "react"
 ---
 
-`@mcp-b/react-webmcp` is the full React surface for MCP-B. It covers tool registration, prompt and resource hooks, sampling and elicitation helpers, and client/provider APIs for consuming MCP servers from a React tree.
+`@mcp-b/react-webmcp` provides the complete React surface for MCP-B. It includes hooks for registering tools, prompts, and resources with `navigator.modelContext`, hooks for sampling and elicitation requests, and a provider/hook pair for consuming tools from remote MCP servers.
 
-## When to use this package
+The package expects `@mcp-b/global` (or another `BrowserMcpServer`-based runtime) to be loaded before any hooks run. The provider hooks (`useWebMCP`, `useWebMCPPrompt`, `useWebMCPResource`) register capabilities with `navigator.modelContext`. The request hooks (`useSampling`, `useElicitation`) call MCP-B extension methods on that same context.
 
-- You want the full MCP-B feature set from React.
-- You want Zod v3 object-map support in hook configuration.
-- You need client/provider hooks in addition to browser-exposed tools.
+## Install
 
-## When not to use this package
+<CodeGroup>
+```bash npm
+npm install @mcp-b/react-webmcp @mcp-b/global
+```
+```bash pnpm
+pnpm add @mcp-b/react-webmcp @mcp-b/global
+```
+```bash yarn
+yarn add @mcp-b/react-webmcp @mcp-b/global
+```
+</CodeGroup>
 
-- You only need strict-core `registerTool` behavior. Use [`usewebmcp`](/packages/usewebmcp/overview).
-- You are not using a BrowserMcpServer-based runtime such as [`@mcp-b/global`](/packages/global/overview).
+Zod is an optional peer dependency. Install it if you want to define schemas with Zod objects instead of raw JSON Schema:
 
-## Where it sits in the package graph
+```bash
+npm install zod zod-to-json-schema
+```
 
-This package sits above the full runtime stack. It expects `navigator.modelContext` to come from a browser-native implementation or from the MCP-B runtime that wraps the strict core with `BrowserMcpServer`.
+## Quick start
 
-## First step
+Import `@mcp-b/global` once at your app entry point to initialize the runtime, then use `useWebMCP` in any component to register a tool:
 
-Initialize the runtime with [`@mcp-b/global`](/packages/global/overview), then add the hook or provider that matches your React use case. The [reference page](/packages/react-webmcp/reference) covers tool hooks, prompt/resource hooks, and client/provider APIs.
+```tsx title="App.tsx"
+import '@mcp-b/global';
+import { useWebMCP } from '@mcp-b/react-webmcp';
+import { z } from 'zod';
+
+export function PostsPage() {
+  const likeTool = useWebMCP({
+    name: 'posts_like',
+    description: 'Like a post by ID',
+    inputSchema: { postId: z.string().uuid() },
+    handler: async (input) => {
+      await api.posts.like(input.postId);
+      return { success: true };
+    },
+  });
+
+  return (
+    <div>
+      {likeTool.state.isExecuting && <span>Processing...</span>}
+      {likeTool.state.error && <span>Error: {likeTool.state.error.message}</span>}
+    </div>
+  );
+}
+```
+
+The hook registers the tool on mount and unregisters it on unmount. It returns `state` (execution tracking), `execute` (manual invocation), and `reset` (clear state).
+
+## Hooks overview
+
+### useWebMCP
+
+Registers a tool with `navigator.modelContext`. Manages execution state, lifecycle callbacks (`onSuccess`, `onError`), and automatic cleanup. Accepts JSON Schema or Zod objects for both `inputSchema` and `outputSchema`.
+
+```tsx
+const { state, execute, reset } = useWebMCP({
+  name: 'users_search',
+  description: 'Search users by name',
+  inputSchema: {
+    type: 'object',
+    properties: { query: { type: 'string' } },
+    required: ['query'],
+  } as const,
+  outputSchema: {
+    type: 'object',
+    properties: {
+      users: { type: 'array', items: { type: 'object' } },
+      total: { type: 'number' },
+    },
+  } as const,
+  handler: async ({ query }) => {
+    const results = await searchUsers(query);
+    return { users: results.items, total: results.count };
+  },
+});
+```
+
+When you provide `outputSchema`, the MCP response includes `structuredContent` with typed data that AI models can parse directly.
+
+### useWebMCPContext
+
+A convenience wrapper around `useWebMCP` for read-only context tools. It sets `readOnlyHint`, `idempotentHint`, and `destructiveHint: false` annotations automatically.
+
+```tsx
+import { useWebMCPContext } from '@mcp-b/react-webmcp';
+
+function PostDetailPage({ post }) {
+  useWebMCPContext(
+    'context_current_post',
+    'Get the currently viewed post and metadata',
+    () => ({
+      postId: post.id,
+      title: post.title,
+      author: post.author,
+    })
+  );
+
+  return <PostContent post={post} />;
+}
+```
+
+### useWebMCPPrompt
+
+Registers an MCP prompt (a reusable message template). This is an MCP-B extension, not part of the WebMCP standard `registerTool` surface.
+
+```tsx
+import { useWebMCPPrompt } from '@mcp-b/react-webmcp';
+
+function CodeReviewPrompt() {
+  const { isRegistered } = useWebMCPPrompt({
+    name: 'review_code',
+    description: 'Review code for best practices',
+    argsSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'The code to review' },
+        language: { type: 'string', description: 'Programming language' },
+      },
+      required: ['code'],
+    } as const,
+    get: async ({ code, language }) => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `Please review this ${language ?? ''} code:\n\n${code}`,
+        },
+      }],
+    }),
+  });
+
+  return <div>Code review prompt {isRegistered ? 'ready' : 'loading'}</div>;
+}
+```
+
+### useWebMCPResource
+
+Registers an MCP resource (data that AI models can read). Supports static URIs and URI templates with parameters. Also an MCP-B extension.
+
+```tsx
+import { useWebMCPResource } from '@mcp-b/react-webmcp';
+
+function AppSettingsResource() {
+  const { isRegistered } = useWebMCPResource({
+    uri: 'config://app-settings',
+    name: 'App Settings',
+    description: 'Application configuration',
+    mimeType: 'application/json',
+    read: async (uri) => ({
+      contents: [{
+        uri: uri.href,
+        text: JSON.stringify({ theme: 'dark', language: 'en' }),
+      }],
+    }),
+  });
+
+  return <div>Settings {isRegistered ? 'ready' : 'loading'}</div>;
+}
+```
+
+### useSampling
+
+Requests LLM completions from the connected MCP client. Returns `state`, `createMessage`, and `reset`.
+
+```tsx
+import { useSampling } from '@mcp-b/react-webmcp';
+
+function Summarizer() {
+  const { state, createMessage } = useSampling({
+    onSuccess: (result) => console.log('Response:', result),
+  });
+
+  const summarize = async (text: string) => {
+    await createMessage({
+      messages: [
+        { role: 'user', content: { type: 'text', text: `Summarize: ${text}` } },
+      ],
+      maxTokens: 200,
+    });
+  };
+
+  return (
+    <button onClick={() => summarize('...')} disabled={state.isLoading}>
+      Summarize
+    </button>
+  );
+}
+```
+
+### useElicitation
+
+Requests user input from the connected MCP client. Supports form-based input (schema-driven) and URL-based input (for sensitive data like OAuth).
+
+```tsx
+import { useElicitation } from '@mcp-b/react-webmcp';
+
+function ConfigForm() {
+  const { state, elicitInput } = useElicitation();
+
+  const handleConfigure = async () => {
+    const result = await elicitInput({
+      message: 'Provide your configuration',
+      requestedSchema: {
+        type: 'object',
+        properties: {
+          apiKey: { type: 'string', title: 'API Key' },
+          model: { type: 'string', enum: ['gpt-4', 'gpt-3.5'], title: 'Model' },
+        },
+        required: ['apiKey'],
+      },
+    });
+
+    if (result.action === 'accept') {
+      console.log('Config:', result.content);
+    }
+  };
+
+  return (
+    <button onClick={handleConfigure} disabled={state.isLoading}>
+      Configure
+    </button>
+  );
+}
+```
+
+## McpClientProvider
+
+`McpClientProvider` connects to a remote MCP server and exposes its tools, resources, and connection state to child components through the `useMcpClient` hook. Use it when your React app needs to consume tools from another MCP server (rather than registering its own).
+
+```tsx
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { TabClientTransport } from '@mcp-b/transports';
+import { McpClientProvider, useMcpClient } from '@mcp-b/react-webmcp';
+
+const client = new Client(
+  { name: 'my-app', version: '1.0.0' },
+  { capabilities: {} }
+);
+const transport = new TabClientTransport('mcp', {
+  clientInstanceId: 'my-app-instance',
+});
+
+function App() {
+  return (
+    <McpClientProvider client={client} transport={transport}>
+      <ToolsList />
+    </McpClientProvider>
+  );
+}
+
+function ToolsList() {
+  const { tools, isConnected, isLoading, error, reconnect } = useMcpClient();
+
+  if (isLoading) return <div>Connecting...</div>;
+  if (error) return <button onClick={reconnect}>Retry</button>;
+
+  return (
+    <ul>
+      {tools.map((tool) => (
+        <li key={tool.name}>{tool.description}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+The provider handles connection setup, tool/resource fetching, and server notification listeners for `tools/list_changed` and `resources/list_changed` events.
+
+## Zod schema support
+
+All hooks that accept schemas (`useWebMCP`, `useWebMCPPrompt`) work with both raw JSON Schema objects and Zod v3/v4 schema maps. When you pass a Zod schema, the package converts it to JSON Schema at registration time using `zod-to-json-schema`.
+
+<Tabs>
+  <Tab title="Zod schema">
+  ```tsx
+  import { z } from 'zod';
+
+  useWebMCP({
+    name: 'posts_create',
+    description: 'Create a new post',
+    inputSchema: {
+      title: z.string().min(1).max(200),
+      body: z.string(),
+      tags: z.array(z.string()).optional(),
+    },
+    handler: async (input) => {
+      return await createPost(input.title, input.body, input.tags);
+    },
+  });
+  ```
+  </Tab>
+  <Tab title="JSON Schema">
+  ```tsx
+  useWebMCP({
+    name: 'posts_create',
+    description: 'Create a new post',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', minLength: 1, maxLength: 200 },
+        body: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['title', 'body'],
+    } as const,
+    handler: async ({ title, body, tags }) => {
+      return await createPost(title, body, tags);
+    },
+  });
+  ```
+  </Tab>
+</Tabs>
+
+Both `zod` and `zod-to-json-schema` are optional peer dependencies. The package works without them if you use raw JSON Schema.
+
+## When to use react-webmcp vs usewebmcp
+
+`@mcp-b/react-webmcp` and `usewebmcp` both provide a `useWebMCP` hook for registering tools, but they target different layers of the stack.
+
+| | `@mcp-b/react-webmcp` | `usewebmcp` |
+|---|---|---|
+| Tool registration | Yes | Yes |
+| Prompts and resources | Yes (`useWebMCPPrompt`, `useWebMCPResource`) | No |
+| Sampling and elicitation | Yes (`useSampling`, `useElicitation`) | No |
+| Client provider | Yes (`McpClientProvider`, `useMcpClient`) | No |
+| Runtime dependency | `@mcp-b/global` (full MCP-B runtime) | `navigator.modelContext` only (native or polyfill) |
+| Zod support | Yes | No |
+
+Use `usewebmcp` if you only need `registerTool` on the strict WebMCP core and want to avoid pulling in the full MCP-B runtime. Use `@mcp-b/react-webmcp` when you need prompts, resources, sampling, elicitation, or client-side MCP server consumption.
+
+For background on this split, see [Strict core vs MCP-B extensions](/explanation/strict-core-vs-mcp-b-extensions).
 
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/react-webmcp/reference">
-    Hook APIs, provider APIs, Zod support, and return types.
+  <Card title="API reference" icon="book-open" href="/packages/react-webmcp/reference">
+    Hook signatures, config types, return types, and type utilities.
   </Card>
   <Card title="Your first React tool" icon="graduation-cap" href="/tutorials/first-react-tool">
-    Guided tutorial for registering a React tool.
+    Step-by-step tutorial for registering a tool with useWebMCP.
   </Card>
   <Card title="Register prompts and resources" icon="folder-tree" href="/how-to/register-prompts-and-resources">
-    Apply the full MCP-B React surface.
+    Practical guide for the prompt and resource hooks.
   </Card>
-  <Card title="Strict core vs MCP-B extensions" icon="diagram-venn" href="/explanation/strict-core-vs-mcp-b-extensions">
-    Decide whether the full React surface is necessary.
+  <Card title="usewebmcp overview" icon="react" href="/packages/usewebmcp/overview">
+    The strict-core alternative for tool-only registration.
   </Card>
 </CardGroup>

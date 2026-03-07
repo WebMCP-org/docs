@@ -1,44 +1,98 @@
 ---
-title: "@mcp-b/chrome-devtools-mcp overview"
-description: "When to use the DevTools MCP bridge, what it adds on top of the upstream project, and how it relates to page-hosted WebMCP tools."
-keywords: ["@mcp-b/chrome-devtools-mcp", "overview", "chrome devtools", "MCP server", "browser automation"]
+title: "@mcp-b/chrome-devtools-mcp"
+sidebarTitle: "Overview"
+description: "MCP server that gives AI agents browser control through Chrome DevTools Protocol, with built-in WebMCP tool discovery."
+keywords: ["chrome-devtools-mcp", "browser automation", "MCP server", "DevTools Protocol", "WebMCP tools", "AI agent"]
 icon: "chrome"
 ---
 
-`@mcp-b/chrome-devtools-mcp` is the DevTools bridge for coding-agent workflows. It lets an MCP client control Chrome through the Chrome DevTools Protocol and adds WebMCP integration so the same agent can discover and call tools registered on the page.
+`@mcp-b/chrome-devtools-mcp` is an MCP server that connects AI agents to Chrome through the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) (CDP). It exposes 27 tools for browser automation (navigation, clicking, screenshots, network inspection, performance tracing) and adds WebMCP integration so agents can discover and call tools registered on webpages.
+
+This package is a fork of Google's [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) with WebMCP support layered on top.
+
+## How it works
+
+The server runs as a Node.js process that communicates with your MCP client over stdio. On startup, it connects to a Chrome instance (or launches one) and opens a CDP session. Each CDP command is wrapped as an MCP tool that agents call by name.
+
+For WebMCP integration, the server monitors open pages for `navigator.modelContext`. When a page loads [`@mcp-b/global`](/packages/global/overview), the server detects registered tools and tracks them through a `WebMCPToolHub`. Agents discover these tools with `list_webmcp_tools` and call them with `call_webmcp_tool`.
+
+```
+AI Client  --stdio-->  chrome-devtools-mcp  --CDP-->  Chrome
+                                |
+                                +-- list_webmcp_tools --> discovers page tools
+                                +-- call_webmcp_tool  --> executes page tools
+```
+
+## Quick start
+
+Add the server to your MCP client configuration:
+
+<CodeGroup>
+
+```json "Claude Desktop / Cursor / Windsurf"
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "@mcp-b/chrome-devtools-mcp@latest"]
+    }
+  }
+}
+```
+
+```bash "Claude Code"
+claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
+```
+
+</CodeGroup>
+
+The server connects to a running Chrome instance automatically (Chrome 144+). If no running instance is found, it launches a new one. Pass `--browserUrl=http://127.0.0.1:9222` to connect to a specific instance, or `--headless=true` to run without a visible window.
+
+## Key capabilities
+
+The server provides 27 tools organized into seven categories:
+
+| Category | Tools | What agents can do |
+|----------|-------|--------------------|
+| Input (8) | `click`, `fill`, `fill_form`, `hover`, `drag`, `press_key`, `handle_dialog`, `upload_file` | Interact with page elements |
+| Navigation (6) | `navigate_page`, `new_page`, `close_page`, `list_pages`, `select_page`, `wait_for` | Move between pages and tabs |
+| Debugging (5) | `evaluate_script`, `take_screenshot`, `take_snapshot`, `list_console_messages`, `get_console_message` | Inspect page state and capture output |
+| Performance (3) | `performance_start_trace`, `performance_stop_trace`, `performance_analyze_insight` | Profile runtime performance |
+| Network (2) | `list_network_requests`, `get_network_request` | Monitor HTTP traffic |
+| Emulation (2) | `emulate`, `resize_page` | Simulate devices and network conditions |
+| WebMCP (1) | `list_webmcp_tools` | Discover tools registered on pages |
+
+See the [reference page](/packages/chrome-devtools-mcp/reference) for the full tool list with parameters and configuration options.
+
+## WebMCP tool discovery
+
+When a page registers tools through `@mcp-b/global`, this server discovers them automatically. The `list_webmcp_tools` tool returns tool definitions (name, description, input schema) from the current page. Use `call_webmcp_tool` to invoke any discovered tool by name.
+
+This means agents can both automate the browser (click, type, navigate) and call structured tool APIs exposed by the page, all through a single MCP server.
+
+For a working example of this workflow, see the [Chrome DevTools Quickstart](https://github.com/WebMCP-org/chrome-devtools-quickstart).
 
 ## When to use this package
 
-- You need browser automation, console inspection, traces, screenshots, or DOM access.
-- You want an MCP server that can both debug Chrome and discover WebMCP tools.
-- You are integrating with coding agents that already speak MCP over stdio.
+- You want AI agents to automate Chrome: navigate pages, fill forms, take screenshots, inspect network traffic.
+- You need agents to discover and call [WebMCP tools](/explanation/what-is-webmcp) from live pages through DevTools.
+- You are building coding-agent workflows that speak MCP over stdio (Claude Code, Cursor, GitHub Copilot).
 
-## When not to use this package
-
-- You only need to forward site tools into a desktop client. Use [`@mcp-b/webmcp-local-relay`](/packages/webmcp-local-relay/overview).
-- You are building a Chrome extension rather than a DevTools-based bridge. Use [`@mcp-b/extension-tools`](/packages/extension-tools/overview) for extension-side APIs.
-
-## Where it sits in the package graph
-
-This package is adjacent to the browser runtime packages. It does not replace them. Instead, it reaches into a live browser session and can interact with pages that expose WebMCP tools.
-
-## First step
-
-Add the server to your MCP client config, then connect it to a Chrome instance. The [reference page](/packages/chrome-devtools-mcp/reference) covers setup, tool groups, configuration, and the WebMCP integration surface.
+If you only need to forward page tools into a desktop MCP client without browser automation, use [`@mcp-b/webmcp-local-relay`](/packages/webmcp-local-relay/overview) instead.
 
 ## Related pages
 
 <CardGroup cols={2}>
   <Card title="Reference" icon="book-open" href="/packages/chrome-devtools-mcp/reference">
-    Configuration, tool groups, DevTools behavior, and WebMCP integration details.
+    Full tool list, configuration options, connection modes, and WebMCP integration details.
   </Card>
   <Card title="Use DevTools MCP" icon="wrench" href="/how-to/use-devtools-mcp">
-    Run the bridge in practical debugging workflows.
+    Step-by-step guide for common DevTools MCP workflows.
   </Card>
   <Card title="Transports and bridges" icon="bridge" href="/explanation/architecture/transports-and-bridges">
-    Compare DevTools-based access to relay and transport-based access.
+    How DevTools-based access compares to relay and transport approaches.
   </Card>
-  <Card title="@mcp-b/global overview" icon="globe" href="/packages/global/overview">
-    Runtime setup for pages whose tools are discovered through DevTools.
+  <Card title="@mcp-b/global" icon="globe" href="/packages/global/overview">
+    The runtime that pages load to register tools discovered by this server.
   </Card>
 </CardGroup>

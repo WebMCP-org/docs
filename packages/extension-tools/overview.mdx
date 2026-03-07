@@ -1,44 +1,102 @@
 ---
 title: "@mcp-b/extension-tools overview"
-description: "When to use the Chrome extension tool classes, how they differ from browser-page runtimes, and how they relate to other tooling packages."
-keywords: ["@mcp-b/extension-tools", "overview", "chrome extension", "MCP tools", "tabs", "bookmarks"]
+description: "Pre-built MCP tool classes that wrap Chrome Extension APIs so AI agents can control tabs, bookmarks, history, storage, and more."
+sidebarTitle: "Overview"
+keywords: ["@mcp-b/extension-tools", "chrome extension", "MCP tools", "tabs", "bookmarks", "history", "storage", "AI browser extension"]
 icon: "puzzle-piece"
 ---
 
-`@mcp-b/extension-tools` packages Chrome Extension APIs as MCP tool classes. It is the package to use when you are writing a Chrome extension and want to expose tabs, bookmarks, history, storage, or scripting capabilities to an MCP client.
+`@mcp-b/extension-tools` provides MCP tool classes for Chrome Extension APIs. Each class wraps a Chrome API namespace (tabs, bookmarks, history, storage, scripting, and others) and registers it as a set of MCP tools that AI agents can call. The package includes 70+ tool classes covering the full breadth of the Chrome Extensions platform.
 
-## When to use this package
+## How it works
 
-- You are building an extension background script or related extension runtime.
-- You want prebuilt tool classes instead of manually wrapping Chrome APIs.
-- You need extension-specific capabilities that a webpage runtime cannot provide.
+Every tool class extends `BaseApiTools`, which provides a consistent lifecycle:
 
-## When not to use this package
+1. **Construct** with an `McpServer` instance and an options object that gates individual actions.
+2. **Call `.register()`**, which checks API availability at runtime and registers the tools on the server.
+3. **Agents call tools** through the MCP protocol. Each tool validates input with Zod schemas, calls the underlying `chrome.*` API, and returns structured results.
 
-- You are exposing tools from a normal webpage. Use [`@mcp-b/global`](/packages/global/overview) or [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview).
-- You need DOM extraction only. Use [`@mcp-b/smart-dom-reader`](/packages/smart-dom-reader/overview).
+If a Chrome API is unavailable (missing permission or wrong context), the class logs a warning and skips registration instead of throwing.
 
-## Where it sits in the package graph
+```typescript "background.ts"
+import { TabsApiTools, HistoryApiTools } from '@mcp-b/extension-tools';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-This package is part of the tooling layer rather than the page runtime stack. Some classes depend on [`@mcp-b/smart-dom-reader`](/packages/smart-dom-reader/overview) for DOM-focused extraction behavior.
+const server = new McpServer({ name: 'my-extension', version: '1.0.0' });
 
-## First step
+// Register only the tools you need
+const tabs = new TabsApiTools(server, {
+  listActiveTabs: true,
+  createTab: true,
+  closeTabs: true,
+});
+tabs.register();
 
-Create an MCP server in your extension runtime, then register only the tool classes you want to expose. The [reference page](/packages/extension-tools/reference) groups the API tool classes and their option surfaces.
+const history = new HistoryApiTools(server);
+history.register();
+```
+
+The options object controls which actions are exposed. Pass `true` to enable specific actions, or omit options to enable all actions for that API. Pass `false` to disable an action.
+
+## Available tool classes
+
+The package groups tool classes by Chrome API namespace. Here are the most commonly used classes:
+
+| Class | Chrome API | Example actions |
+|-------|-----------|----------------|
+| `TabsApiTools` | `chrome.tabs` | List, create, close, reload, capture, group tabs |
+| `BookmarksApiTools` | `chrome.bookmarks` | Create, search, move, remove bookmarks |
+| `HistoryApiTools` | `chrome.history` | Search, delete, get visits |
+| `StorageApiTools` | `chrome.storage` | Get, set, remove, clear across local/sync/session areas |
+| `CookiesApiTools` | `chrome.cookies` | Get, set, remove cookies |
+| `ScriptingApiTools` | `chrome.scripting` | Execute scripts, insert/remove CSS |
+| `DownloadsApiTools` | `chrome.downloads` | Search, download, pause, resume files |
+| `WindowsApiTools` | `chrome.windows` | Create, update, remove, get windows |
+| `NotificationsApiTools` | `chrome.notifications` | Create, update, clear notifications |
+| `ReadingListApiTools` | `chrome.readingList` | Add, query, update, remove entries |
+| `WebNavigationApiTools` | `chrome.webNavigation` | Get frames, listen to navigation events |
+| `DomExtractionTools` | `chrome.userScripts` | Extract page structure, regions, and content |
+
+The full set includes 70+ classes. See the [reference page](/packages/extension-tools/reference) for the complete list.
+
+## DOM extraction and smart-dom-reader
+
+`DomExtractionTools` is a specialized class that uses [`@mcp-b/smart-dom-reader`](/packages/smart-dom-reader/overview) to extract page content from within the extension context. It injects the smart-dom-reader bundle into the target tab via `chrome.userScripts.execute` and returns structured markdown.
+
+The extraction follows a progressive workflow designed for token efficiency:
+
+1. **`dom_extract_structure`** returns a high-level page outline (headers, navigation, regions).
+2. **`dom_extract_region`** extracts interactive elements or full content from a specific CSS selector.
+3. **`dom_extract_content`** extracts readable text, headings, lists, and tables from a region.
+
+This progressive approach lets agents start with minimal tokens and drill into areas of interest.
+
+## Use cases
+
+This package is for Chrome extension developers who want to give AI agents access to browser capabilities that web pages cannot provide. Typical use cases include:
+
+- AI assistants that manage tabs, organize bookmarks, or search browsing history
+- Agents that read and modify extension storage
+- Browser automation extensions that use scripting tools to interact with pages
+- Extensions that combine DOM extraction with tab management for page-aware agent workflows
+
+<Note>
+  `@mcp-b/extension-tools` runs in the extension background script (service worker) context. If you are building tools for a regular webpage, use [`@mcp-b/global`](/packages/global/overview) instead. For DevTools Protocol access without an extension, see [`@mcp-b/chrome-devtools-mcp`](/packages/chrome-devtools-mcp/overview).
+</Note>
 
 ## Related pages
 
 <CardGroup cols={2}>
   <Card title="Reference" icon="book-open" href="/packages/extension-tools/reference">
-    Tool classes, option tables, and extension integration details.
+    Complete API for all tool classes, option types, and the Chrome API registry.
   </Card>
-  <Card title="@mcp-b/smart-dom-reader overview" icon="code" href="/packages/smart-dom-reader/overview">
-    DOM extraction utility used by several extension workflows.
+  <Card title="@mcp-b/smart-dom-reader" icon="code" href="/packages/smart-dom-reader/overview">
+    The DOM extraction engine used by DomExtractionTools.
   </Card>
-  <Card title="@mcp-b/chrome-devtools-mcp overview" icon="chrome" href="/packages/chrome-devtools-mcp/overview">
-    Alternative tooling when you want a DevTools bridge instead of an extension.
+  <Card title="@mcp-b/chrome-devtools-mcp" icon="screwdriver-wrench" href="/packages/chrome-devtools-mcp/overview">
+    DevTools Protocol bridge for browser control without an extension.
   </Card>
-  <Card title="Framework guide" icon="code" href="/how-to/frameworks">
-    Runtime guidance for webpage-facing packages when you are not in an extension context.
+  <Card title="Tool design principles" icon="lightbulb" href="/explanation/design/tool-design">
+    Why tools are structured the way they are.
   </Card>
 </CardGroup>
