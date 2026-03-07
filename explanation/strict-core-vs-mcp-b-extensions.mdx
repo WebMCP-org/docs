@@ -32,7 +32,7 @@ For read and test operations, Chromium currently exposes a separate [navigator.m
 
 The Model Context Protocol includes more than tools. It also includes prompts, resources, sampling, and elicitation. These are useful capabilities for browser-based agent workflows, but they are not part of the WebMCP standard.
 
-When [`@mcp-b/global`](/packages/global/reference) initializes, it installs a `BrowserMcpServer` that keeps the core behavior and adds a separate extension layer:
+When [`@mcp-b/global`](/packages/global/overview) initializes, it installs a `BrowserMcpServer` that keeps the core behavior and adds a separate extension layer:
 
 | Extension method | MCP concept | In WebMCP core? |
 | --- | --- | --- |
@@ -57,7 +57,7 @@ This also leads to a documentation rule. When a page is about the WebMCP standar
 
 ## How the type system enforces it
 
-The [`@mcp-b/webmcp-types`](/packages/webmcp-types/reference) package defines two important interfaces:
+The [`@mcp-b/webmcp-types`](/packages/webmcp-types/overview) package defines two important interfaces:
 
 - `ModelContextCore` contains the strict core methods.
 - `ModelContextExtensions` contains MCP-B additions.
@@ -68,8 +68,8 @@ The [`@mcp-b/webmcp-types`](/packages/webmcp-types/reference) package defines tw
 
 For most application developers, the boundary is practical only when making runtime choices.
 
-**If you are building a library or adapter**, stay on the core side. Use [`@mcp-b/webmcp-types`](/packages/webmcp-types/reference) and [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference).
+**If you are building a library or adapter**, stay on the core side. Use [`@mcp-b/webmcp-types`](/packages/webmcp-types/overview) and [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview).
 
-**If you are building an application**, start by asking whether you need only site-exposed tools. If yes, stay on the strict path with [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference). If you also need prompts, resources, transport, or desktop-agent connectivity, move up to [`@mcp-b/global`](/packages/global/reference) and the [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/reference).
+**If you are building an application**, start by asking whether you need only site-exposed tools. If yes, stay on the strict path with [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview). If you also need prompts, resources, transport, or desktop-agent connectivity, move up to [`@mcp-b/global`](/packages/global/overview) and the [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/overview).
 
 For the package-level rationale behind that split, see the [MCP-B Package Philosophy](https://github.com/WebMCP-org/npm-packages/blob/main/docs/MCPB_PACKAGE_PHILOSOPHY.md). For how the runtime layers stack at initialization time, see [Runtime Layering](/explanation/architecture/runtime-layering).

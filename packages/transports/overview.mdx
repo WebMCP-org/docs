@@ -1,44 +1,287 @@
 ---
-title: "@mcp-b/transports overview"
-description: "When to use the transport classes directly, which browser boundaries they cover, and when to prefer higher-level packages."
-keywords: ["@mcp-b/transports", "overview", "postMessage", "iframe", "extension", "transport"]
+title: "@mcp-b/transports"
+sidebarTitle: "Overview"
+description: "Transport classes that move MCP messages across browser boundaries: tabs, iframes, Chrome extensions, and user scripts."
+keywords: ["@mcp-b/transports", "postMessage", "iframe transport", "extension transport", "user script transport", "MCP browser transport", "TabServerTransport", "TabClientTransport", "IframeParentTransport", "IframeChildTransport", "ExtensionServerTransport"]
 icon: "network-wired"
 ---
 
-`@mcp-b/transports` provides the transport classes that move MCP messages through browser boundaries such as tabs, iframes, extensions, and user scripts. It is the package you use when you need to choose or control the message path directly.
+`@mcp-b/transports` provides transport classes that move MCP JSON-RPC messages across browser boundaries. Each class implements the MCP `Transport` interface and handles message serialization, origin validation, and connection lifecycle for a specific boundary type: same-tab `postMessage`, parent-to-iframe `postMessage`, Chrome extension port messaging, or user script port messaging.
 
-## When to use this package
+## Transport types
 
-- You are connecting an MCP server or client across `postMessage`, iframe, or extension boundaries.
-- You need direct access to transport options such as allowed origins or connection IDs.
-- You are building on top of the lower-level browser transport primitives.
+Every boundary requires a **server transport** (where the MCP server runs) and a **client transport** (where the MCP client connects from). The two sides pair up through a shared handshake protocol.
 
-## When not to use this package
+| Boundary | Server transport | Client transport | Messaging API |
+|----------|-----------------|-----------------|---------------|
+| Same tab | `TabServerTransport` | `TabClientTransport` | `window.postMessage` |
+| Parent and iframe | `IframeChildTransport` (inside iframe) | `IframeParentTransport` (in parent) | `window.postMessage` |
+| Extension internal | `ExtensionServerTransport` (background) | `ExtensionClientTransport` (sidebar/popup) | `chrome.runtime.Port` |
+| Extension to extension | `ExtensionServerTransport` (host) | `ExtensionClientTransport` with `extensionId` (guest) | `chrome.runtime.Port` |
+| User script to extension | `UserScriptServerTransport` (background) | `UserScriptClientTransport` (user script) | `chrome.runtime.Port` |
 
-- You want the runtime wired up automatically. Use [`@mcp-b/global`](/packages/global/overview).
-- You want the high-level iframe custom element instead of raw iframe transports. Use [`@mcp-b/mcp-iframe`](/packages/mcp-iframe/overview).
+### Tab transports
 
-## Where it sits in the package graph
+`TabServerTransport` and `TabClientTransport` communicate within a single browser tab using `window.postMessage`. The server listens for incoming messages and broadcasts a `mcp-server-ready` signal on start. The client waits for that signal before sending any messages.
 
-The transport classes sit beside the SDK layer and under several higher-level packages. `@mcp-b/global`, `@mcp-b/react-webmcp`, and `@mcp-b/mcp-iframe` all depend on transport behavior.
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { TabServerTransport } from "@mcp-b/transports";
 
-## First step
+const server = new McpServer({ name: "my-app", version: "1.0.0" });
+const transport = new TabServerTransport({
+  allowedOrigins: ["https://example.com"],
+});
 
-Choose the transport pair that matches your boundary, then connect it to a server or client. The [reference page](/packages/transports/reference) lists every class, option surface, and security boundary.
+await server.connect(transport);
+```
+
+The server transport tracks pending requests and sends interrupted responses during `beforeunload` if the page navigates while a tool call is in progress. Stale requests are cleaned up after 5 minutes.
+
+The client transport includes a configurable request timeout (default 10 seconds). If the server does not respond in time, the client synthesizes a JSON-RPC error with code `-32000`.
+
+### Iframe transports
+
+`IframeChildTransport` runs inside the iframe (server side) and `IframeParentTransport` runs in the parent page (client side). Both use `window.postMessage` with retry-based ready handshakes to handle iframe loading timing.
+
+```typescript "Server inside the iframe"
+import { IframeChildTransport } from "@mcp-b/transports";
+
+const transport = new IframeChildTransport({
+  allowedOrigins: ["https://parent-app.com"],
+});
+await server.connect(transport);
+```
+
+```typescript "Client in the parent page"
+import { IframeParentTransport } from "@mcp-b/transports";
+
+const iframe = document.querySelector("iframe");
+const transport = new IframeParentTransport({
+  iframe,
+  targetOrigin: "https://iframe-app.com",
+});
+await client.connect(transport);
+```
+
+The parent transport retries the ready handshake every 250 ms (configurable via `checkReadyRetryMs`) until the iframe's server responds.
+
+### Extension transports
+
+`ExtensionServerTransport` and `ExtensionClientTransport` use `chrome.runtime.Port` for communication between extension components. The server transport runs in the background service worker. The client transport runs in content scripts, sidebars, or popups.
+
+```typescript "Background service worker"
+import { ExtensionServerTransport } from "@mcp-b/transports";
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "mcp") {
+    const transport = new ExtensionServerTransport(port);
+    server.connect(transport);
+  }
+});
+```
+
+```typescript "Sidebar or popup"
+import { ExtensionClientTransport } from "@mcp-b/transports";
+
+const transport = new ExtensionClientTransport({
+  portName: "mcp",
+});
+await client.connect(transport);
+```
+
+The server transport sends periodic keep-alive pings (every 1 second by default) to prevent Chrome from shutting down the service worker. The client transport reconnects automatically with exponential backoff when the connection drops.
+
+To connect across extensions, pass `extensionId` to `ExtensionClientTransport` and list the guest extension in the host's `externally_connectable` manifest entry.
+
+### User script transports
+
+`UserScriptServerTransport` and `UserScriptClientTransport` mirror the extension transports but use `chrome.runtime.onUserScriptConnect` on the server side. The API is identical to the extension transports, including keep-alive and auto-reconnect behavior.
+
+## Security boundaries
+
+All `postMessage`-based transports enforce origin checks:
+
+- **Server transports** (`TabServerTransport`, `IframeChildTransport`) require an `allowedOrigins` array. Messages from origins not in the list are silently dropped.
+- **Client transports** (`TabClientTransport`, `IframeParentTransport`) accept a `targetOrigin` string. Messages from other origins are ignored.
+
+<Warning>
+Setting `allowedOrigins` to `["*"]` or `targetOrigin` to `"*"` disables origin validation. Use specific origins in production.
+</Warning>
+
+Extension and user script transports rely on Chrome's built-in port security. Only code within the extension (or extensions listed in `externally_connectable`) can open a port.
+
+## When to use this package directly
+
+[`@mcp-b/global`](/packages/global/overview) auto-wires a `TabServerTransport` during initialization, so most applications never import `@mcp-b/transports` directly. Use this package when you need:
+
+- A transport other than the default tab transport (iframe, extension, user script)
+- Custom `allowedOrigins`, `channelId`, or timeout settings
+- Multiple transports on the same page with different channel IDs
+- Direct control over the transport lifecycle
+
+For iframe-based tool bridging with a higher-level API, see [`@mcp-b/mcp-iframe`](/packages/mcp-iframe/overview), which wraps the iframe transports in a custom element.
 
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/transports/reference">
-    Transport classes, option tables, and connection examples.
-  </Card>
   <Card title="Bridge tools across iframes" icon="bridge" href="/how-to/bridge-tools-across-iframes">
-    Practical iframe transport setup.
+    Step-by-step guide for iframe transport setup.
   </Card>
-  <Card title="Transports and bridges" icon="bridge" href="/explanation/architecture/transports-and-bridges">
-    Conceptual background on how tools move between boundaries.
+  <Card title="Transports and bridges" icon="shuffle" href="/explanation/architecture/transports-and-bridges">
+    Why transports exist, how they fit in the architecture, and design tradeoffs.
   </Card>
-  <Card title="mcp-iframe overview" icon="frame" href="/packages/mcp-iframe/overview">
-    The higher-level wrapper built on the iframe transports.
+  <Card title="@mcp-b/mcp-iframe" icon="frame" href="/packages/mcp-iframe/overview">
+    The higher-level custom element built on iframe transports.
   </Card>
 </CardGroup>
+
+---
+
+## API reference
+
+Every transport class implements the MCP `Transport` interface:
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `start()` | `Promise<void>` | Begin listening for messages. |
+| `send(message)` | `Promise<void>` | Send a JSON-RPC 2.0 message. |
+| `close()` | `Promise<void>` | Stop listening and clean up resources. |
+| `onmessage` | `(message: JSONRPCMessage) => void` | Callback for incoming messages. |
+| `onerror` | `(error: Error) => void` | Callback for errors. |
+| `onclose` | `() => void` | Callback when the transport closes. |
+
+### TabServerTransport
+
+#### TabServerTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `allowedOrigins` | `string[]` | Yes | -- | Origins permitted to send messages. Use `["*"]` to allow any origin. |
+| `channelId` | `string` | No | `"mcp-default"` | Channel identifier for message routing. Multiple transports can coexist on the same page with different channel IDs. |
+
+#### Behavior
+
+- Validates `event.origin` against `allowedOrigins` for every incoming message.
+- Tracks pending requests and sends interrupted responses during `beforeunload` if the page navigates while a tool call is in progress.
+- Cleans up stale requests after 5 minutes.
+- Posts `mcp-server-stopped` on close.
+
+### TabClientTransport
+
+#### TabClientTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `targetOrigin` | `string` | No | `"*"` | Expected origin of the server window. Messages from other origins are ignored. |
+| `channelId` | `string` | No | `"mcp-default"` | Channel identifier for message routing. |
+| `requestTimeout` | `number` | No | `10000` | Timeout in milliseconds for requests. If the server does not respond in time, a JSON-RPC error with code `-32000` is synthesized. |
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `serverReadyPromise` | `Promise<void>` | Resolves when the server signals readiness. `send()` awaits this automatically. |
+
+#### Server discovery
+
+`TabClientTransport` does not expose a standalone `discover()` method. The server-ready handshake (`mcp-check-ready` / `mcp-server-ready`) runs internally during `start()`.
+
+### IframeParentTransport
+
+#### IframeParentTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `iframe` | `HTMLIFrameElement` | Yes | -- | Reference to the iframe element. |
+| `targetOrigin` | `string` | No | `"*"` | Expected origin of the iframe for `postMessage` security. |
+| `channelId` | `string` | No | `"mcp-iframe"` | Channel identifier for message routing. |
+| `checkReadyRetryMs` | `number` | No | `250` | Interval in milliseconds to retry the ready handshake if the iframe is not yet ready. |
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `serverReadyPromise` | `Promise<void>` | Resolves when the iframe's server signals readiness. |
+
+### IframeChildTransport
+
+#### IframeChildTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `allowedOrigins` | `string[]` | Yes | -- | Parent origins permitted to connect. Use `["*"]` to allow any origin. |
+| `channelId` | `string` | No | `"mcp-iframe"` | Channel identifier for message routing. |
+| `serverReadyRetryMs` | `number` | No | `250` | Interval in milliseconds to retry broadcasting the ready signal to the parent. |
+
+### ExtensionServerTransport
+
+#### Constructor
+
+```typescript
+new ExtensionServerTransport(port: chrome.runtime.Port, options?: ExtensionServerTransportOptions)
+```
+
+#### ExtensionServerTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `keepAlive` | `boolean` | No | `true` | Send periodic keep-alive pings to prevent service worker shutdown. |
+| `keepAliveInterval` | `number` | No | `1000` | Keep-alive interval in milliseconds. |
+
+#### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getConnectionInfo()` | `{ connectedAt, lastMessageAt, messageCount, uptime, isConnected }` | Connection statistics. |
+
+### ExtensionClientTransport
+
+#### ExtensionClientTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `extensionId` | `string` | No | -- | Extension ID to connect to. Omit for same-extension connections. When provided, uses `chrome.runtime.connect(extensionId, ...)` for cross-extension communication. |
+| `portName` | `string` | No | `"mcp"` | Port name for the connection. |
+| `autoReconnect` | `boolean` | No | `true` | Reconnect automatically on disconnect. |
+| `maxReconnectAttempts` | `number` | No | `10` | Maximum reconnection attempts before giving up. |
+| `reconnectDelay` | `number` | No | `1000` | Initial reconnection delay in milliseconds. |
+| `maxReconnectDelay` | `number` | No | `30000` | Maximum reconnection delay in milliseconds. |
+| `reconnectBackoffMultiplier` | `number` | No | `1.5` | Multiplier applied to the delay after each failed attempt. |
+
+### UserScriptServerTransport
+
+Identical in API to `ExtensionServerTransport`. Wraps a `chrome.runtime.Port` received from a user script connection via `chrome.runtime.onUserScriptConnect`.
+
+#### UserScriptServerTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `keepAlive` | `boolean` | No | `true` | Send periodic keep-alive pings. |
+| `keepAliveInterval` | `number` | No | `1000` | Keep-alive interval in milliseconds. |
+
+### UserScriptClientTransport
+
+Identical in API to `ExtensionClientTransport`. Connects from a user script context to the extension background.
+
+#### UserScriptClientTransportOptions
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `extensionId` | `string` | No | -- | Extension ID to connect to. |
+| `portName` | `string` | No | `"mcp"` | Port name for the connection. |
+| `autoReconnect` | `boolean` | No | `true` | Reconnect automatically on disconnect. |
+| `maxReconnectAttempts` | `number` | No | `10` | Maximum reconnection attempts. |
+| `reconnectDelay` | `number` | No | `1000` | Initial reconnection delay in milliseconds. |
+| `maxReconnectDelay` | `number` | No | `30000` | Maximum reconnection delay in milliseconds. |
+| `reconnectBackoffMultiplier` | `number` | No | `1.5` | Backoff multiplier per failed attempt. |
+
+### Security by transport type
+
+| Transport type | Security mechanism |
+|----------------|-------------------|
+| Tab | `allowedOrigins` on server, `targetOrigin` on client. Messages from non-matching origins are silently dropped. |
+| Iframe | Same as tab transports. Cross-origin `postMessage` with origin checks on both sides. |
+| Extension | Chrome's port-based messaging API. Only code within the extension (or extensions listed in `externally_connectable`) can connect. |
+| Extension external | Requires `externally_connectable` in `manifest.json`. Server should validate `port.sender.id` before accepting connections. |
+| User script | Chrome's `onUserScriptConnect` API. Only registered user scripts can initiate connections. |

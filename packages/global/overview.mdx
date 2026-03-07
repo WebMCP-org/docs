@@ -1,44 +1,288 @@
 ---
-title: "@mcp-b/global overview"
-description: "When to use the full MCP-B runtime entry point, what it adds on top of WebMCP, and how it relates to the lower layers."
-keywords: ["@mcp-b/global", "overview", "BrowserMcpServer", "transport", "MCP-B runtime"]
+title: "@mcp-b/global"
+description: "The full MCP-B runtime entry point: auto-initializes navigator.modelContext with polyfill, BrowserMcpServer, and transport in a single import."
+keywords: ["@mcp-b/global", "BrowserMcpServer", "transport", "MCP-B runtime", "navigator.modelContext", "polyfill", "auto-initialize", "initializeWebModelContext", "cleanupWebModelContext", "auto-initialization", "mcp-b runtime"]
 icon: "globe"
 ---
 
-`@mcp-b/global` is the full runtime entry point for browser applications. It installs or adopts the strict WebMCP surface, creates a `BrowserMcpServer`, connects transport, and exposes MCP-B extension methods on `navigator.modelContext`.
+`@mcp-b/global` is the recommended way to add AI tool support to a browser application. A single import installs `navigator.modelContext` (polyfilling it when the browser lacks native support), wraps it in a `BrowserMcpServer` with MCP protocol capabilities, and connects a transport so extensions and desktop agents can reach your tools.
 
-## When to use this package
+```ts
+import '@mcp-b/global';
 
-- You want prompts, resources, sampling, elicitation, or transport-facing helpers.
-- You want browser tools to be reachable by extensions, relays, or desktop MCP clients.
-- You want one import that wires the runtime stack together.
+navigator.modelContext.registerTool({
+  name: 'get_page_title',
+  description: 'Get the current page title',
+  inputSchema: { type: 'object', properties: {} },
+  async execute() {
+    return {
+      content: [{ type: 'text', text: document.title }],
+    };
+  },
+});
+```
 
-## When not to use this package
+That is the entire setup. The import triggers auto-initialization, and every tool you register is available to AI agents through the browser extension, the local relay, or any MCP client connected via transport.
 
-- You only need strict-core `registerTool` behavior. Use [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview).
-- You are building a lower-level runtime integration. Use [`@mcp-b/webmcp-ts-sdk`](/packages/webmcp-ts-sdk/overview) directly.
+## How initialization works
 
-## Where it sits in the package graph
+When you import `@mcp-b/global` in a browser environment, four things happen in sequence:
 
-`@mcp-b/global` is the top of the runtime stack. It wraps the strict-core layer from [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview), uses [`@mcp-b/webmcp-ts-sdk`](/packages/webmcp-ts-sdk/overview) internally, and starts transports from [`@mcp-b/transports`](/packages/transports/overview).
+1. **Polyfill** -- `initializeWebMCPPolyfill()` runs. If the browser already provides a native `navigator.modelContext`, the polyfill is a no-op. Otherwise it installs both `navigator.modelContext` and `navigator.modelContextTesting`.
 
-## First step
+2. **Capture native** -- A reference to the current `navigator.modelContext` (native or polyfill) is saved. This reference becomes the "native" context that core operations mirror to.
 
-Import the package as early as possible in the browser entry point, then register tools on `navigator.modelContext`. Use the [reference page](/packages/global/reference) when you need configuration, cleanup, or transport details.
+3. **BrowserMcpServer** -- A `BrowserMcpServer` instance is created with the native reference. Core WebMCP methods (`registerTool`, `unregisterTool`) mirror down to the underlying context so that browser-level tooling (like the [Model Context Tool Inspector](https://chromewebstore.google.com/detail/model-context-tool-inspec/gbpdfapgefenggkahomfgkhfehlcenpd)) still sees registered tools. Any tools already registered on the native context are synced into the server.
+
+4. **Replace and connect** -- `navigator.modelContext` is replaced with the `BrowserMcpServer` instance, and a transport (tab or iframe, auto-detected) is connected. Your tools are now reachable over MCP.
+
+The import is SSR-safe (no-op outside browser environments) and idempotent (calling it twice does nothing). A cross-bundle guard prevents double-initialization if multiple bundles include the package.
+
+<Tip>
+  Import `@mcp-b/global` as early as possible in your application entry point so tools registered later in the lifecycle are captured.
+</Tip>
+
+## What you get beyond the polyfill
+
+The [polyfill](/packages/webmcp-polyfill/overview) gives you the strict WebMCP standard surface: `registerTool` and `unregisterTool`. `@mcp-b/global` adds the full MCP protocol on top:
+
+**Prompts and resources** -- Register server-side prompts and resources that MCP clients can discover and use.
+
+```ts
+navigator.modelContext.registerPrompt({
+  name: 'summarize_page',
+  description: 'Summarize the current page content',
+  async handler() {
+    return {
+      messages: [
+        { role: 'user', content: { type: 'text', text: document.body.innerText } },
+      ],
+    };
+  },
+});
+```
+
+**Sampling** -- Request the connected LLM to generate a completion from within your tool.
+
+```ts
+const response = await navigator.modelContext.createMessage({
+  messages: [{ role: 'user', content: { type: 'text', text: 'Translate this to French: Hello' } }],
+  maxTokens: 100,
+});
+```
+
+**Elicitation** -- Ask the user for structured input during tool execution.
+
+```ts
+const result = await navigator.modelContext.elicitInput({
+  message: 'Which format do you want?',
+  requestedSchema: {
+    type: 'object',
+    properties: {
+      format: { type: 'string', enum: ['json', 'csv', 'xml'] },
+    },
+    required: ['format'],
+  },
+});
+```
+
+**Transports** -- Communication between your page and MCP clients is handled automatically. In a main window, `TabServerTransport` connects to browser extensions. Inside an iframe, `IframeChildTransport` connects to the parent frame. You can configure or disable either:
+
+```ts
+import { initializeWebModelContext } from '@mcp-b/global';
+
+initializeWebModelContext({
+  transport: {
+    tabServer: { allowedOrigins: ['https://myapp.com'] },
+  },
+});
+```
+
+For details on prompts, resources, sampling, and elicitation, see the [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/overview).
+
+## When to use each package
+
+`@mcp-b/global` sits at the top of a three-layer stack. Choose the layer that matches your needs:
+
+| Package | What it provides | Choose when |
+|---------|-----------------|-------------|
+| [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/overview) | `registerTool` and `unregisterTool` only | You want the smallest footprint and only need to expose tools through the standard WebMCP surface. No transport, no prompts, no resources. |
+| **`@mcp-b/global`** | Full MCP-B runtime with transport, prompts, resources, sampling, elicitation | You want tools reachable by browser extensions and desktop agents, or you need MCP protocol features beyond tool registration. This is the right choice for most applications. |
+| [`@mcp-b/webmcp-ts-sdk`](/packages/webmcp-ts-sdk/overview) | `BrowserMcpServer` class directly | You need full control over server creation, transport wiring, and lifecycle. Use this when building a custom runtime integration rather than a standard application. |
+
+For the reasoning behind this split, see [Strict core vs. MCP-B extensions](/explanation/strict-core-vs-mcp-b-extensions).
+
+---
+
+## API reference
+
+### Auto-initialization
+
+Importing `@mcp-b/global` in a browser environment auto-initializes `navigator.modelContext`. This behavior is controlled by `window.__webModelContextOptions`.
+
+```html
+<script>
+  window.__webModelContextOptions = {
+    autoInitialize: true,
+    transport: {
+      tabServer: { allowedOrigins: ['https://myapp.com'] },
+    },
+  };
+</script>
+<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+```
+
+To prevent auto-initialization:
+
+```html
+<script>
+  window.__webModelContextOptions = { autoInitialize: false };
+</script>
+<script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+<script>
+  MCPB.initializeWebModelContext();
+</script>
+```
+
+### Functions
+
+#### `initializeWebModelContext(options?)`
+
+Initializes the global adapter. Replaces `navigator.modelContext` with a `BrowserMcpServer` instance.
+
+```ts
+import { initializeWebModelContext } from '@mcp-b/global';
+
+initializeWebModelContext({
+  transport: {
+    tabServer: { allowedOrigins: ['https://example.com'] },
+  },
+});
+```
+
+**Behavior:**
+
+- No-op in non-browser environments (SSR safe).
+- Idempotent: calling multiple times after first initialization is a no-op.
+- Skipped if `navigator.modelContext` is already a `BrowserMcpServer` (cross-bundle guard).
+
+**Initialization sequence:**
+
+1. Calls `initializeWebMCPPolyfill()` to install `navigator.modelContext` and `navigator.modelContextTesting` (skipped if native API exists).
+2. Saves a reference to the current `navigator.modelContext` as `native`.
+3. Creates a `BrowserMcpServer` with `{ native }` so core operations mirror to the underlying context.
+4. Syncs existing tools from the native/polyfill context into the server.
+5. Replaces `navigator.modelContext` with the `BrowserMcpServer` instance.
+6. Creates and connects the transport.
+
+#### `cleanupWebModelContext()`
+
+Tears down the adapter, closes transport, and restores `navigator.modelContext` to its pre-initialization state.
+
+```ts
+import { cleanupWebModelContext } from '@mcp-b/global';
+
+cleanupWebModelContext();
+```
+
+After cleanup, `initializeWebModelContext()` can be called again to re-initialize.
+
+### Configuration
+
+#### `WebModelContextInitOptions`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `transport` | `TransportConfiguration` | Auto-detect | Transport layer configuration |
+| `autoInitialize` | `boolean` | `true` | Whether to auto-initialize on import |
+| `nativeModelContextBehavior` | `'preserve' \| 'patch'` | `'preserve'` | How to handle an existing native `modelContext`. Both modes wrap with `BrowserMcpServer`. |
+| `installTestingShim` | `boolean \| 'always' \| 'if-missing'` | `'if-missing'` | Controls `navigator.modelContextTesting` installation |
+
+#### `TransportConfiguration`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `tabServer` | `Partial<TabServerTransportOptions> \| false` | Auto | Tab transport options, or `false` to disable |
+| `iframeServer` | `Partial<IframeChildTransportOptions> \| false` | Auto | Iframe transport options, or `false` to disable |
+
+Transport is auto-selected based on context:
+
+| Context | Transport used |
+|---------|---------------|
+| Inside an iframe | `IframeChildTransport` |
+| Main window | `TabServerTransport` |
+
+```ts
+// Restrict to specific origins
+initializeWebModelContext({
+  transport: {
+    tabServer: { allowedOrigins: ['https://myapp.com'] },
+  },
+});
+
+// Disable tab transport (iframe only)
+initializeWebModelContext({
+  transport: { tabServer: false },
+});
+```
+
+### Methods on `navigator.modelContext`
+
+After initialization, `navigator.modelContext` is a `BrowserMcpServer` instance. It exposes:
+
+**Strict WebMCP methods** (mirrored to native/polyfill):
+
+| Method | Description |
+|--------|-------------|
+| `registerTool(tool)` | Add a single tool |
+| `unregisterTool(name)` | Remove a tool by name |
+
+**Extension methods** (MCP-B only):
+
+| Method | Description |
+|--------|-------------|
+| `listTools()` | List registered tools |
+| `callTool(params)` | Execute a tool by name |
+| `registerResource(descriptor)` | Register an MCP resource |
+| `registerPrompt(descriptor)` | Register an MCP prompt |
+| `createMessage(params)` | Request LLM sampling |
+| `elicitInput(params)` | Request user input |
+
+For the MCP-B-only methods on `navigator.modelContext`, see [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/overview). For the standard-owned browser surface, see [WebMCP standard API](/explanation/webmcp/standard-api).
+
+### Tool routing
+
+`@mcp-b/global` mirrors the strict tool lifecycle down to the underlying native or polyfill context so browser-facing tooling can still see registered tools. During initialization it can also backfill existing tools from `navigator.modelContextTesting` when that shim is available.
+
+### Type exports
+
+```ts
+import type {
+  CallToolResult,
+  InputSchema,
+  ModelContext,
+  ModelContextCore,
+  ModelContextOptions,
+  NativeModelContextBehavior,
+  ToolAnnotations,
+  ToolDescriptor,
+  ToolListItem,
+  ToolResponse,
+  TransportConfiguration,
+  WebModelContextInitOptions,
+} from '@mcp-b/global';
+```
 
 ## Related pages
 
 <CardGroup cols={2}>
-  <Card title="Reference" icon="book-open" href="/packages/global/reference">
-    Initialization, cleanup, transport configuration, and exported types.
+  <Card title="Runtime layering" icon="bars-staggered" href="/explanation/architecture/runtime-layering">
+    How the polyfill, BrowserMcpServer, and transport layers compose.
   </Card>
   <Card title="Register prompts and resources" icon="folder-tree" href="/how-to/register-prompts-and-resources">
-    Use the MCP-B extension surface in an app.
+    Step-by-step guide to using the MCP-B extension surface.
   </Card>
-  <Card title="Runtime layering" icon="bars-staggered" href="/explanation/architecture/runtime-layering">
-    Understand how the runtime stack is assembled.
-  </Card>
-  <Card title="Connect desktop agents with local relay" icon="tower-broadcast" href="/how-to/connect-desktop-agents-with-local-relay">
-    Bridge browser tools into desktop MCP clients.
+  <Card title="Connect desktop agents" icon="tower-broadcast" href="/how-to/connect-desktop-agents-with-local-relay">
+    Bridge browser tools to Claude Desktop and other MCP clients.
   </Card>
 </CardGroup>

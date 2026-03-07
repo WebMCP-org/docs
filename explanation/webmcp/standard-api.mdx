@@ -87,7 +87,7 @@ const result = await navigator.modelContextTesting?.executeTool(
 | `executeTool(...)` | Yes | Yes |
 | `getCrossDocumentScriptToolResult()` | Returns native results | Returns `"[]"` |
 
-For shim configuration, see [@mcp-b/webmcp-polyfill](/packages/webmcp-polyfill/reference). For end-to-end testing patterns, see [Test native and polyfill](/how-to/test-native-and-polyfill).
+For shim configuration, see [@mcp-b/webmcp-polyfill](/packages/webmcp-polyfill/overview). For end-to-end testing patterns, see [Test native and polyfill](/how-to/test-native-and-polyfill).
 
 ## Feature detection
 
@@ -113,9 +113,9 @@ The browser standard owns the surface above. MCP-B adds a separate layer on top.
 
 | If you need... | Page |
 | --- | --- |
-| Strict core runtime behavior in all browsers | [@mcp-b/webmcp-polyfill](/packages/webmcp-polyfill/reference) |
-| Full runtime with prompts, resources, and transport | [@mcp-b/global](/packages/global/reference) |
-| MCP-B extension methods (`callTool`, `registerPrompt`, `registerResource`, `createMessage`, `elicitInput`) | [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/reference) |
-| TypeScript contracts for the standard surface | [@mcp-b/webmcp-types](/packages/webmcp-types/reference) |
+| Strict core runtime behavior in all browsers | [@mcp-b/webmcp-polyfill](/packages/webmcp-polyfill/overview) |
+| Full runtime with prompts, resources, and transport | [@mcp-b/global](/packages/global/overview) |
+| MCP-B extension methods (`callTool`, `registerPrompt`, `registerResource`, `createMessage`, `elicitInput`) | [`@mcp-b/webmcp-ts-sdk` reference](/packages/webmcp-ts-sdk/overview) |
+| TypeScript contracts for the standard surface | [@mcp-b/webmcp-types](/packages/webmcp-types/overview) |
 
 For why the core surface is kept separate from MCP-B additions, see [Strict core vs MCP-B extensions](/explanation/strict-core-vs-mcp-b-extensions).

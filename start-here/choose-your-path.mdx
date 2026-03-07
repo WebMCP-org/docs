@@ -31,7 +31,7 @@ Use this page when you want help choosing the right docs path. If you want the o
     **Start here:**
     - [Build your first React tool](/tutorials/first-react-tool) (tutorial)
     - [Framework integration guide](/how-to/frameworks) (how-to)
-    - [@mcp-b/react-webmcp reference](/packages/react-webmcp/reference) (reference)
+    - [@mcp-b/react-webmcp reference](/packages/react-webmcp/overview) (reference)
   </Card>
   <Card title="AI agent builder" icon="robot">
     You build AI agents or MCP clients and want to call tools from websites.
@@ -39,7 +39,7 @@ Use this page when you want help choosing the right docs path. If you want the o
     **Start here:**
     - [Connect desktop agents with local relay](/tutorials/desktop-agent-relay) (tutorial)
     - [Use DevTools MCP](/how-to/use-devtools-mcp) (how-to)
-    - [Transports reference](/packages/transports/reference) (reference)
+    - [Transports reference](/packages/transports/overview) (reference)
   </Card>
 </Columns>
 
@@ -140,7 +140,7 @@ Pick the smallest layer that fits the job. For more background on the boundary, 
     npm install --save-dev @mcp-b/webmcp-types
     ```
 
-    [Reference](/packages/webmcp-types/reference)
+    [Reference](/packages/webmcp-types/overview)
   </Step>
   <Step title="Strict core polyfill: @mcp-b/webmcp-polyfill">
     Install the WebMCP surface on `navigator.modelContext` without MCP-B extensions. Use this when you want the browser proposal draft in browsers today.
@@ -149,7 +149,7 @@ Pick the smallest layer that fits the job. For more background on the boundary, 
     npm install @mcp-b/webmcp-polyfill
     ```
 
-    [Reference](/packages/webmcp-polyfill/reference)
+    [Reference](/packages/webmcp-polyfill/overview)
   </Step>
   <Step title="Full runtime: @mcp-b/global">
     Add the MCP-B runtime layer on top of the core. Use this when you need transport, `listTools()`, `callTool()`, prompts, resources, or browser-to-desktop connectivity.
@@ -158,7 +158,7 @@ Pick the smallest layer that fits the job. For more background on the boundary, 
     npm install @mcp-b/global
     ```
 
-    [Reference](/packages/global/reference) | [Choose a runtime](/how-to/choose-runtime)
+    [Reference](/packages/global/overview) | [Choose a runtime](/how-to/choose-runtime)
   </Step>
   <Step title="React hooks: @mcp-b/react-webmcp or usewebmcp">
     **`@mcp-b/react-webmcp`** provides hooks for the full MCP-B runtime, including provider and client patterns, Zod schema support, and execution state tracking.
@@ -173,7 +173,7 @@ Pick the smallest layer that fits the job. For more background on the boundary, 
     npm install usewebmcp
     ```
 
-    [react-webmcp reference](/packages/react-webmcp/reference) | [usewebmcp reference](/packages/usewebmcp/reference) | [Framework guide](/how-to/frameworks)
+    [react-webmcp reference](/packages/react-webmcp/overview) | [usewebmcp reference](/packages/usewebmcp/overview) | [Framework guide](/how-to/frameworks)
   </Step>
 </Steps>
 
