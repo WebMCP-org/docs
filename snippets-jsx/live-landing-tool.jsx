@@ -2,17 +2,21 @@
 // Uses navigator.modelContext directly (provided by @mcp-b/global IIFE).
 
 export const LiveLandingTool = () => {
-  const { useState, useEffect, useRef } = React;
+  const { useState, useEffect } = React;
   const [isRegistered, setIsRegistered] = useState(false);
   const [callCount, setCallCount] = useState(0);
-  const registrationRef = useRef(null);
 
   useEffect(() => {
+    const TOOL_NAME = 'get_docs_info';
+
     const register = () => {
       if (!navigator.modelContext) return;
 
-      registrationRef.current = navigator.modelContext.registerTool({
-        name: 'get_docs_info',
+      // Unregister first in case of re-render or hot reload
+      try { navigator.modelContext.unregisterTool(TOOL_NAME); } catch (e) {}
+
+      navigator.modelContext.registerTool({
+        name: TOOL_NAME,
         description:
           'Returns information about the current WebMCP documentation page: title, URL, headings, link count, and navigation structure.',
         inputSchema: {
@@ -79,9 +83,7 @@ export const LiveLandingTool = () => {
 
     return () => {
       window.removeEventListener('webmcp-loaded', register);
-      if (registrationRef.current?.unregister) {
-        registrationRef.current.unregister();
-      }
+      try { navigator.modelContext?.unregisterTool(TOOL_NAME); } catch (e) {}
     };
   }, []);
 

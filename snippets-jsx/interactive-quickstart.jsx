@@ -161,11 +161,9 @@ ${schemaProps}
     }
 
     // Unregister previous if exists
-    if (registrationRef.current) {
-      try {
-        registrationRef.current.unregister?.();
-      } catch (e) {}
-    }
+    try {
+      navigator.modelContext.unregisterTool(toolConfig.name);
+    } catch (e) {}
 
     setRegistrationError(null);
     setIsRegistered(false);
