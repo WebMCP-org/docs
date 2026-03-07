@@ -191,7 +191,7 @@ html.dark,
   display: inline-block;
   margin: 0.9rem 0 0;
   max-width: 100%;
-  font-size: clamp(2.2rem, 4.6vw, 3.85rem);
+  font-size: clamp(2.05rem, 4.15vw, 3.4rem);
   font-weight: 620;
   line-height: 1;
   letter-spacing: -0.055em;
@@ -627,8 +627,8 @@ html.dark,
 
 @media (min-width: 900px) {
   .docs-landing-hero-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.95fr);
-    gap: 2rem;
+    grid-template-columns: minmax(0, 1.08fr) minmax(21rem, 0.92fr);
+    gap: 2.25rem;
   }
 
   .docs-landing-hero-diagram {
