@@ -3,12 +3,6 @@
 // Included via docs.json scripts array.
 
 (() => {
-  if (window.navigator?.modelContext) {
-    console.log('WebMCP already loaded (likely via browser extension)');
-    window.dispatchEvent(new CustomEvent('webmcp-loaded'));
-    return;
-  }
-
   const load = () => {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js';
