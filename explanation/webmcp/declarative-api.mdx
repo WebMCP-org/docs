@@ -1,0 +1,90 @@
+---
+title: "Declarative API"
+description: "Quick lookup for WebMCP's declarative HTML form integration, with links to Chrome's canonical explainer and draft."
+keywords: ["declarative api", "toolname", "tooldescription", "toolautosubmit", "html forms", "webmcp forms", "schema synthesis"]
+icon: "file-code"
+---
+
+The declarative API lets a page expose HTML workflows, especially forms, as WebMCP tools. This surface is evolving quickly, so the Chrome and W3C documents are the source of truth.
+
+<Note>
+Use this page as a quick summary. For the current explainer, attribute names, schema synthesis rules, constraint mapping, and open design questions, read the [official declarative explainer](https://github.com/webmachinelearning/webmcp/blob/main/docs/explainer.md) and the [declarative draft](https://github.com/webmachinelearning/webmcp/blob/main/docs/declarative.md).
+</Note>
+
+## Current prototype shape
+
+The current Chromium prototype centers on three form-level ideas:
+
+| Concept | Purpose |
+| --- | --- |
+| `toolname` | Declare that a form is a tool |
+| `tooldescription` | Provide agent-facing description text |
+| `toolautosubmit` | Let the browser submit automatically after fields are filled |
+
+Parameter names and validation come from ordinary HTML. The browser derives a schema from form controls, labels, and validation attributes instead of asking authors to maintain a second JSON schema by hand.
+
+For the current browser support and flag requirements, see [Browser Support and Flags](/explanation/webmcp/browser-support-and-flags). For the broader safety model behind `toolautosubmit`, see [Security and Human-in-the-Loop](/explanation/design/security-and-human-in-the-loop). For why this page stays intentionally small, see [What Is WebMCP](/explanation/what-is-webmcp).
+
+## Example
+
+This example matches the current upstream explainer direction:
+
+```html "form.html"
+<form
+  action="/flights/search"
+  method="get"
+  toolname="search_flights"
+  tooldescription="Search flights by route/date"
+  toolautosubmit
+>
+  <label>
+    Origin
+    <input name="origin" required toolparamdescription="IATA code or city" />
+  </label>
+
+  <label>
+    Destination
+    <input name="destination" required />
+  </label>
+
+  <label>
+    Date
+    <input type="date" name="date" required />
+  </label>
+
+  <button type="submit">Search</button>
+</form>
+```
+
+## What happens
+
+At a high level, the browser:
+
+1. Finds forms that declare a tool.
+2. Synthesizes an input schema from the form controls.
+3. Fills controls when an agent invokes the tool.
+4. Either auto-submits or pauses for user review.
+5. Returns the result through browser-managed completion paths.
+
+The exact synthesis rules, event model, CSS pseudo-classes, and cross-document behavior are still being refined upstream. That is why this page does not duplicate the full mapping tables.
+
+## Same-document completion
+
+The current prototype direction includes a `SubmitEvent.respondWith(...)` path for same-document completion:
+
+```js "submit-handler.js"
+document.querySelector("form[toolname='search_flights']")?.addEventListener("submit", (event) => {
+  if (!event.agentInvoked) {
+    return;
+  }
+
+  event.preventDefault();
+  event.respondWith(
+    Promise.resolve({
+      content: [{ type: "text", text: "Search submitted and processed." }],
+    })
+  );
+});
+```
+
+For the current WebIDL additions and cross-document completion discussion, use the [official explainer](https://github.com/webmachinelearning/webmcp/blob/main/docs/explainer.md). For how MCP-B runtime choices relate to native declarative experiments, see [Native vs Polyfill vs Global](/explanation/native-vs-polyfill-vs-global).

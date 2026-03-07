@@ -1,0 +1,104 @@
+---
+title: "Spec Status and Limitations"
+description: "Where the WebMCP specification stands, what is resolved, what is still changing, and what limitations exist in the current design."
+keywords: ["specification status", "w3c", "browser support", "chrome 146", "limitations", "consumer api", "declarative attributes", "cross-origin iframe"]
+icon: "flag"
+---
+
+WebMCP is a proposal, not a finished standard. The specification is being developed under the W3C Web Machine Learning Community Group, with editors from Microsoft and Google. Chrome ships an early preview behind a flag. No other browser has signaled implementation intent.
+
+This page summarizes what is resolved, what is in flux, and what the known limitations are. It is current as of early 2026.
+
+## Specification status
+
+The formal spec is a Community Group Draft (CG-DRAFT), written in Bikeshed and published at [webmachinelearning.github.io/webmcp](https://webmachinelearning.github.io/webmcp/). This is not a W3C Recommendation, a Candidate Recommendation, or even a Working Draft in the traditional W3C process sense. It is a community group document, which means it can change freely and does not carry the weight of a standards-track deliverable.
+
+The spec defines WebMCP as a JavaScript interface that allows web applications to expose tools to AI agents. The formal spec currently anchors `navigator.modelContext` around `registerTool` and `unregisterTool`, with broader lifecycle details still described in proposal material and implementation documents.
+
+## What is resolved
+
+Several design decisions have been finalized at the working group level:
+
+**Root naming.** The API lives at `navigator.modelContext`. This was resolved in an October 2025 meeting after considering alternatives like `navigator.agent` and `window.mcp`.
+
+**Dual API strategy.** Both imperative (JavaScript) and declarative (HTML form annotations) surfaces will be pursued together. This was resolved in January 2026.
+
+**Cancellation via AbortSignal.** Tool execution cancellation uses `AbortSignal`, following established web platform patterns. Resolved in January 2026.
+
+**Imperative outputSchema.** Tools can declare an `outputSchema` describing their structured output. Resolved in February 2026. The declarative counterpart remains open.
+
+**Core imperative methods.** `registerTool()` and `unregisterTool()` are stable in the specification. Their semantics are tested in Chromium's web platform tests.
+
+## What is still changing
+
+### Consumer API
+
+The most significant open question is the consumer API: how does an agent (or extension, or test harness) list and execute tools?
+
+Chromium currently places `listTools()` and `executeTool()` on a separate `navigator.modelContextTesting` interface. The specification has not finalized whether this separation is permanent. Issue [#51](https://github.com/webmachinelearning/webmcp/issues/51) and issue [#74](https://github.com/webmachinelearning/webmcp/issues/74) track this discussion.
+
+The MCP-B packages work around this by providing `listTools()` and `callTool()` on the `BrowserMcpServer` that `@mcp-b/global` installs. Those methods are useful, but they are MCP-B extensions, not the authoritative browser standard surface.
+
+### Declarative attribute names
+
+The declarative attribute set is still in flux. Current prototype and explainer material uses names such as `toolname`, `tooldescription`, `toolautosubmit`, and `toolparamdescription`, but that naming is not final. Issue [#22](https://github.com/webmachinelearning/webmcp/issues/22) is the umbrella issue for declarative API design.
+
+### Cross-origin iframe policy
+
+How tools declared inside cross-origin iframes should be exposed (or restricted) to the parent page is an open question. Issue [#57](https://github.com/webmachinelearning/webmcp/issues/57) tracks this. The answer will affect how `@mcp-b/mcp-iframe` works in production and whether Permissions Policy is used.
+
+### Concurrency and ordering
+
+Whether multiple tool calls can execute concurrently, how `AbortSignal` interacts with concurrent calls, and the ordering guarantees for dynamic registration are tracked in issues [#47](https://github.com/webmachinelearning/webmcp/issues/47) and [#48](https://github.com/webmachinelearning/webmcp/issues/48).
+
+### Declarative output schema
+
+Imperative tools can declare an `outputSchema`. How to associate an output schema with a declarative (form-based) tool is still open. Issue [#9](https://github.com/webmachinelearning/webmcp/issues/9) tracks this.
+
+## Browser support
+
+| Browser | Status |
+|---|---|
+| Chrome 146+ (with flag) | Early preview behind `chrome://flags/#enable-webmcp-testing` |
+| Chrome (default) | Not enabled |
+| Firefox | No public signal |
+| Safari | No public signal |
+| Edge | Inherits Chromium support |
+
+ChromeStatus lists WebMCP as "Proposed" for Chrome. No signals from Firefox or Safari stakeholders appear in the feature entry.
+
+The MCP-B polyfill (`@mcp-b/webmcp-polyfill`) and full runtime (`@mcp-b/global`) work in all modern browsers regardless of native support. Use the polyfill when you want the standard in production today. Use the full runtime when you need behavior beyond the standard.
+
+## Known limitations
+
+These limitations are inherent to the current design, not implementation bugs.
+
+### Browsing context required
+
+Tool calls execute in JavaScript within a browser tab. There is no headless or background execution model. An agent cannot call tools on a page that is not open and visible. The W3C proposal explicitly notes this as a limitation and leaves headless scenarios as a future consideration.
+
+### No cross-site discovery
+
+There is no built-in way for an agent to discover which websites offer WebMCP tools without visiting them. An agent cannot query an index of tool-bearing sites the way it might query a search engine. The proposal acknowledges this gap and mentions search engines and manifests as potential future solutions, but no concrete mechanism is specified.
+
+### UI synchronization burden
+
+When a tool modifies application state, the developer is responsible for updating the UI to reflect the change. The browser does not automatically synchronize visual state with tool-driven changes. For complex applications, this can require refactoring to ensure that state changes from tool calls and human interactions follow the same update path.
+
+### Tool discoverability scope
+
+Even within a single page, the current API has no way to communicate a tool's capabilities beyond its name, description, and schema. There are no categories, tags, or capability descriptors. An agent must infer relevance from the tool's natural language description.
+
+### The `agent` interface is still forming
+
+The W3C proposal introduces an `agent` parameter passed to the `execute` callback. It provides a `requestUserInteraction` method for human-in-the-loop flows during tool execution. This interface is not yet stable and is not reflected in the Chromium prototype's current implementation.
+
+## What this means for developers
+
+The core imperative API is stable enough to build on. The MCP-B packages provide that surface with polyfill fallback, so code written today can stay close to native browser implementations as they arrive.
+
+Declarative APIs (form annotations) are still in prototype stage. If you build on them, expect attribute names and submission semantics to change.
+
+The consumer API (`listTools`, `executeTool` on `modelContextTesting`) will evolve. The MCP-B packages abstract this behind their own `listTools` and `callTool` methods, which gives you a buffer against spec changes, but it also means you are using MCP-B extensions rather than the strict standard alone.
+
+For the security aspects of the current design, see [Security and Human-in-the-Loop](/explanation/design/security-and-human-in-the-loop). For how the MCP-B packages layer on top of the specification, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions).

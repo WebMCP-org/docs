@@ -1,0 +1,62 @@
+---
+title: "What Is WebMCP?"
+description: "WebMCP is a proposed web standard that lets websites expose structured tools to AI agents through navigator.modelContext, replacing screen-scraping with explicit contracts."
+keywords: ["webmcp", "navigator.modelcontext", "web standard", "ai agents", "browser tools", "w3c", "declarative api", "imperative api"]
+icon: "circle-question"
+---
+
+WebMCP is a proposed web standard that lets a website expose actions as tools instead of forcing agents to reverse-engineer the interface. The site describes what can be done. The browser mediates access. The agent calls a tool instead of guessing which pixels to click.
+
+The standard lives at `navigator.modelContext`. The authoritative definition belongs to the [W3C WebMCP spec](https://webmachinelearning.github.io/webmcp/) and the Chrome team's design documents, not to the MCP-B packages. MCP-B exists to help you use that standard today, then extend it when you need browser MCP features beyond the standard.
+
+## The problem WebMCP solves
+
+Today, when an AI agent interacts with a website, it often does so through UI automation. The agent reads the page, decides which element to click, types text into fields, and hopes it understood the interface correctly. That is slow, fragile, and expensive in tokens.
+
+Consider an airline's booking page. A UI-actuation agent has to infer calendars, airport codes, passenger limits, and business rules from rendered controls. A WebMCP-enabled site can publish that action as a tool with a schema. The agent receives the contract directly and reasons over the contract instead of the pixels.
+
+That is the core value of WebMCP. It turns page actions into explicit, structured interfaces.
+
+## Two APIs: imperative and declarative
+
+WebMCP offers two complementary surfaces.
+
+**Imperative WebMCP** is the JavaScript lane. A page registers tools in code.
+
+**Declarative WebMCP** is the HTML lane. A page exposes tool-like form workflows directly from markup.
+
+The distinction matters, but the exact API details are still owned upstream. If you want the precise imperative API surface, use the [WebMCP standard API reference](/explanation/webmcp/standard-api) and then follow the links to the W3C spec. If you want the evolving declarative model, start with [Declarative API](/explanation/webmcp/declarative-api), which points to the Chrome team's explainer.
+
+## Where WebMCP sits in the ecosystem
+
+WebMCP is not a replacement for the server-side Model Context Protocol (MCP). MCP is the broader protocol. It includes tools, resources, prompts, and client-facing flows. WebMCP is the browser-specific standard for site-exposed tools.
+
+The relationship is complementary. A site can expose one set of capabilities in the browser through WebMCP and another on the server through MCP. They may share concepts, but they live in different runtimes and different trust boundaries. For the full comparison, see [WebMCP vs MCP](/explanation/webmcp-vs-mcp).
+
+## Who participates
+
+The specification is developed under the [W3C Web Machine Learning Community Group](https://www.w3.org/community/webmachinelearning/). Editors include engineers from Microsoft and Google. Chrome ships an early preview behind a flag starting in version 146.
+
+The MCP-B project is a runtime layer on top of that work. It provides a strict polyfill for the standard, a fuller browser runtime when you need more than the standard, React hooks, and bridges to extensions and desktop agents. For that split, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions) and [Native vs Polyfill vs Global](/explanation/native-vs-polyfill-vs-global).
+
+## Design values
+
+Several design choices shape WebMCP and distinguish it from alternatives like raw UI automation or server-side-only approaches:
+
+**Familiar tools.** Developers expose capabilities from ordinary page code and page markup.
+
+**Local execution.** Tool calls run in the page's JavaScript context. The tool can work with the page's DOM, state, cookies, and existing application logic.
+
+**Browser mediation.** The browser sits between the agent and the page. It can enforce permissions, show confirmation dialogs, and respect the user's choices.
+
+**Human-in-the-loop.** WebMCP assumes a human is present. A browsing context is required, and the declarative model includes explicit review points. For more on this model, see [Security and Human-in-the-Loop](/explanation/design/security-and-human-in-the-loop).
+
+**Progressive adoption.** A site can start with one tool. The cleanest first step is native WebMCP or the strict [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference). If you later need transport, prompts, resources, or other MCP-B-only behavior, move up to [`@mcp-b/global`](/packages/global/reference).
+
+## Limitations
+
+WebMCP is not designed for headless operation. Tool calls require a browsing context, which means a visible browser tab.
+
+There is no built-in tool discovery across sites. An agent cannot query the web to find which sites offer relevant tools without visiting them first.
+
+The specification is still in active design. Attribute names, consumer APIs, and iframe behavior are still moving. For the current state of that work, see [Spec Status and Limitations](/explanation/design/spec-status-and-limitations). For Chrome's preview and ecosystem material, the [WebMCP early preview post](https://developer.chrome.com/blog/webmcp-epp) and the [AI on Chrome overview](https://developer.chrome.com/docs/ai) are the best starting points.

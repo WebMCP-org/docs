@@ -1,0 +1,8 @@
+# Codex configuration for WebMCP docs
+# See: https://developers.openai.com/codex/config-reference/
+
+# AGENTS.md is the default, but also check AGENTS.md in subdirectories
+project_doc_fallback_filenames = ["AGENTS.md"]
+
+[mcp_servers.mintlify]
+url = "https://mintlify.com/docs/mcp"

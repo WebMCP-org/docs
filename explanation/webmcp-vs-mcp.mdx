@@ -1,0 +1,76 @@
+---
+title: "WebMCP vs MCP"
+description: "How browser-side WebMCP relates to server-side MCP, and where they complement each other."
+keywords: ["webmcp", "mcp", "model context protocol", "browser vs server", "dynamic registration", "browsermcpserver", "@mcp-b/webmcp-ts-sdk"]
+icon: "arrows-left-right"
+---
+
+WebMCP and MCP share a name and a protocol, but they operate in different environments and solve different problems. Understanding how they relate helps you decide which pieces you need and how they fit together.
+
+## MCP: the general protocol
+
+The [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is the general protocol for connecting AI agents to tools, resources, and prompts. A typical MCP server is a Node.js process that exposes capabilities over `stdio` or HTTP. Desktop clients like Claude Desktop, Cursor, and VS Code connect to these servers and discover capabilities through the MCP protocol.
+
+The official MCP TypeScript SDK (`@modelcontextprotocol/sdk`) provides the `McpServer` class for building these servers. It follows a connect-then-register pattern: you define tools, connect a transport, and the server announces its capabilities to the client.
+
+A key constraint of the official SDK is that server capabilities cannot be registered after the transport connects. This makes sense for server-side processes where capabilities are known at startup.
+
+## WebMCP: the browser standard
+
+WebMCP is the browser standard for exposing site actions to agents. Instead of a Node.js process exposing capabilities over `stdio`, a web page exposes tools through `navigator.modelContext`. The browser mediates access and can enforce user-facing review and policy decisions.
+
+The W3C [Web Model Context API](https://webmachinelearning.github.io/webmcp/) proposal defines how browsers expose `navigator.modelContext` natively. The `@mcp-b/webmcp-polyfill` package provides that API in browsers that do not yet support it.
+
+Browser tools behave differently from server tools in one important way: they arrive dynamically. A web page registers tools as its JavaScript executes. A single-page application may register different tools as the user navigates between views. A React component might register a tool when it mounts and unregister it when it unmounts.
+
+## How they relate
+
+The relationship is close, but not identical.
+
+MCP is broader than WebMCP. MCP includes tools, resources, prompts, and client-facing flows like sampling and elicitation. WebMCP is narrower. It is the browser-facing contract for site-exposed tools.
+
+MCP-B is where those two worlds meet in this project. It keeps the WebMCP shape on `navigator.modelContext` where possible, then extends that browser surface with broader MCP concepts when you use [`@mcp-b/global`](/packages/global/reference).
+
+| | MCP | WebMCP |
+|---|---|---|
+| **Environment** | Server or local process | Browser page |
+| **Primary concepts** | Tools, resources, prompts, client features | Site-exposed tools |
+| **Transports** | stdio, HTTP/SSE | Browser mediation, extension messaging, relay |
+| **Registration model** | Usually fixed at startup | Dynamic during page lifecycle |
+| **Browser standard?** | No | Yes |
+
+## The dynamic registration problem
+
+The official MCP SDK enforces a rule: you cannot register capabilities after connecting to a transport. The `Server` class throws an error if you try:
+
+```typescript
+public registerCapabilities(capabilities: ServerCapabilities): void {
+  if (this.transport) {
+    throw new Error('Cannot register capabilities after connecting to transport');
+  }
+}
+```
+
+This works for server-side MCP, where tools are known before the client connects. In the browser, the transport must be ready immediately (the page is already loaded), but tools arrive later as JavaScript executes.
+
+`@mcp-b/webmcp-ts-sdk` solves this by pre-registering tool capabilities in the constructor, before any transport connects. This lets `BrowserMcpServer` accept new tools at any time while remaining fully compatible with the MCP protocol. See the [@mcp-b/webmcp-ts-sdk reference](/packages/webmcp-ts-sdk/reference) for details.
+
+## Where they complement each other
+
+WebMCP and MCP are not alternatives. They work together.
+
+`@mcp-b/chrome-devtools-mcp` is the clearest example: it is a standard MCP server (connecting to desktop clients over `stdio`) that bridges into the browser through the Chrome DevTools Protocol. When a desktop AI agent wants to call a tool registered on a web page, the request flows from the MCP client through `chrome-devtools-mcp` into the browser, where it reaches the WebMCP runtime. See the [Chrome DevTools MCP reference](/packages/chrome-devtools-mcp/reference) for how this bridge works.
+
+`@mcp-b/webmcp-local-relay` provides another bridge. It runs a WebSocket server on localhost and connects to browser tabs that include its embed script. Tools from the browser are forwarded to desktop MCP clients over `stdio`. The relay makes any WebMCP-enabled website callable from Claude Desktop, Cursor, or any MCP client.
+
+In both cases, the browser side speaks WebMCP, and the desktop side speaks standard MCP. The bridge translates between them.
+
+## WebMCP the standard vs. MCP-B the runtime
+
+The **Web Model Context API** is the browser standard. The authoritative definition belongs to the W3C spec and the Chrome team documents.
+
+The **MCP-B runtime** is the implementation layer provided by this project. The strict path is [`@mcp-b/webmcp-polyfill`](/packages/webmcp-polyfill/reference), which gives you the WebMCP surface in browsers today. The fuller path is [`@mcp-b/global`](/packages/global/reference), which adds MCP-B-only methods such as `listTools()`, `callTool()`, prompts, resources, sampling, and elicitation.
+
+You can use WebMCP without MCP-B. You can also use MCP without WebMCP. MCP-B exists to connect them when you want a fuller browser MCP runtime.
+
+For more on the browser standard itself, see [What is WebMCP](/explanation/what-is-webmcp). For the extension boundary, see [Strict Core vs MCP-B Extensions](/explanation/strict-core-vs-mcp-b-extensions). For the layered architecture that connects these pieces, see [Runtime Layering](/explanation/architecture/runtime-layering).

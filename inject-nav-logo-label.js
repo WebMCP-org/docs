@@ -2,28 +2,27 @@
 // Small, idempotent script to insert a visible "MCP-B" label next to the active logo image.
 // Place this file in your site root and include it in the HTML (e.g., <script src="/inject-nav-logo-label.js" defer></script>).
 
-(function () {
-  'use strict';
-
+(() => {
   function insertLabel() {
     try {
       // Find anchors that contain a nav-logo image (the pattern from your markup)
-      const anchors = Array.from(document.querySelectorAll('a')).filter(a =>
+      const anchors = Array.from(document.querySelectorAll('a')).filter((a) =>
         a.querySelector('img.nav-logo')
       );
 
-      anchors.forEach(a => {
+      anchors.forEach((a) => {
         // If a manual label already exists, skip
         if (a.querySelector('.nav-logo-label')) return;
 
         // Determine which img is currently visible (Tailwind pattern: .dark:hidden and hidden .dark:block)
         const imgs = Array.from(a.querySelectorAll('img.nav-logo'));
-        let visibleImg = imgs.find(img => {
-          // offsetParent is null for display:none; also check computed style as a fallback
-          if (img.offsetParent !== null) return true;
-          const cs = window.getComputedStyle(img);
-          return cs && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
-        }) || imgs[0];
+        const visibleImg =
+          imgs.find((img) => {
+            // offsetParent is null for display:none; also check computed style as a fallback
+            if (img.offsetParent !== null) return true;
+            const cs = window.getComputedStyle(img);
+            return cs && cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+          }) || imgs[0];
 
         // If there's no image, skip
         if (!visibleImg) return;

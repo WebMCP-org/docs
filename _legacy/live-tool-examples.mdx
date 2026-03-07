@@ -1,0 +1,246 @@
+---
+title: "Live WebMCP Tool Examples"
+description: "Interactive examples of WebMCP tools that AI agents can call in real-time. Working demonstrations of calculator, color converter, storage, and DOM query tools."
+sidebarTitle: "Live Tool Examples"
+icon: "wand-magic-sparkles"
+---
+
+import { CalculatorTool } from './snippets-jsx/webmcp-tool-calculator.jsx';
+import { ColorConverterTool } from './snippets-jsx/webmcp-tool-color-converter.jsx';
+import { StorageTool } from './snippets-jsx/webmcp-tool-storage.jsx';
+import { DOMQueryTool } from './snippets-jsx/webmcp-tool-dom-query.jsx';
+import { PolyfillSetup } from './snippets-jsx/webmcp-polyfill-setup.jsx';
+
+This page demonstrates **live WebMCP tools** that register themselves with the browser and can be called by AI agents in real-time. Each tool showcases a different WebMCP capability.
+
+<Note>
+**These tools are live and ready!** The WebMCP polyfill is included with this documentation site. Install the [MCP-B browser extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblhnikhdhfa) to enable AI agents (like Claude) to discover and call these tools directly.
+</Note>
+
+<CardGroup cols={3}>
+  <Card title="Build Your Own" icon="code" href="/best-practices">
+    Learn how to create custom tools
+  </Card>
+  <Card title="Tool Registration" icon="list-check" href="/concepts/tool-registration">
+    Understanding tool registration
+  </Card>
+  <Card title="WebMCP SDK" icon="package" href="/packages/webmcp-ts-sdk">
+    SDK reference documentation
+  </Card>
+</CardGroup>
+
+---
+
+## WebMCP Status
+
+Check if the WebMCP polyfill is loaded and ready:
+
+<PolyfillSetup />
+
+---
+
+## Calculator Tool
+
+**Demonstrates:** Basic tool registration with a simple input schema
+
+This tool shows the fundamentals of `registerTool()` - a single required parameter and straightforward execution. Watch the animated result display when AI computes your expression!
+
+<CalculatorTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "use the calculator tool to compute 42 * 1.5 + 10" and watch the animated result appear!
+</Tip>
+
+<CodeGroup>
+```jsx Calculator Tool Implementation
+export const CalculatorTool = () => {
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [toolCalls, setToolCalls] = useState([]);
+
+  useEffect(() => {
+    const registerTool = async () => {
+      if (!window.navigator?.modelContext) return;
+
+      await window.navigator.modelContext.registerTool({
+        name: 'calculator',
+        description: 'Performs mathematical calculations',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            expression: {
+              type: 'string',
+              description: 'Mathematical expression to evaluate',
+            },
+          },
+          required: ['expression'],
+        },
+        handler: async ({ expression }) => {
+          const result = Function(`"use strict"; return (${expression})`)();
+
+          return {
+            content: [{
+              type: 'text',
+              text: `The result of ${expression} is ${result}`,
+            }],
+          };
+        },
+      });
+
+      setIsRegistered(true);
+    };
+
+    registerTool();
+  }, []);
+
+  // ... UI implementation
+};
+```
+</CodeGroup>
+
+---
+
+## Color Converter Tool
+
+**Demonstrates:** Complex schemas with `enum`, `default` values, and optional parameters
+
+This tool showcases advanced input schema features - the `outputFormat` parameter uses an enum for constrained choices and includes a default value. Watch the color splash animation and generated palette when AI converts your color!
+
+<ColorConverterTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "convert the color #FF5733 to RGB format" and watch the dramatic color visualization!
+</Tip>
+
+<CodeGroup>
+```jsx Color Converter Tool Implementation
+// Converts HEX colors to RGB and HSL formats
+export const ColorConverterTool = () => {
+  useEffect(() => {
+    const registerTool = async () => {
+      if (!window.navigator?.modelContext) return;
+
+      await window.navigator.modelContext.registerTool({
+        name: 'color_converter',
+        description: 'Converts HEX colors to RGB and HSL formats. Input must be in HEX format.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            color: {
+              type: 'string',
+              description: 'Color in HEX format (e.g., "#3b82f6" or "3b82f6"). Must be a valid HEX color code.'
+            },
+            outputFormat: {
+              type: 'string',
+              enum: ['rgb', 'hsl', 'all'],
+              description: 'Desired output format (rgb, hsl, or all)',
+              default: 'all'
+            }
+          },
+          required: ['color']
+        },
+        handler: async ({ color, outputFormat = 'all' }) => {
+          // Conversion logic here
+        }
+      });
+    };
+    registerTool();
+  }, []);
+};
+```
+</CodeGroup>
+
+---
+
+## Storage Management Tool
+
+**Demonstrates:** Multiple tool registration and browser API integration
+
+This component registers **three related tools** (`storage_set`, `storage_get`, `storage_list`) that work together to manage browser localStorage. Watch the data flow animation as AI reads and writes to persistent storage!
+
+<StorageTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude to "store my favorite color as blue, then list all stored items" and watch the data persist!
+</Tip>
+
+<CodeGroup>
+```jsx Storage Tool Implementation
+// Manages browser localStorage with set, get, and list operations
+export const StorageTool = () => {
+  useEffect(() => {
+    const registerTools = async () => {
+      if (!window.navigator?.modelContext) return;
+
+      // Registers multiple tools: storage_set, storage_get, storage_list
+      await Promise.all([
+        window.navigator.modelContext.registerTool({
+          name: 'storage_set',
+          description: 'Store a key-value pair in localStorage',
+          // ... implementation
+        }),
+        window.navigator.modelContext.registerTool({
+          name: 'storage_get',
+          description: 'Retrieve a value from localStorage',
+          // ... implementation
+        }),
+        window.navigator.modelContext.registerTool({
+          name: 'storage_list',
+          description: 'List all items in localStorage',
+          // ... implementation
+        })
+      ]);
+    };
+    registerTools();
+  }, []);
+};
+```
+</CodeGroup>
+
+---
+
+## DOM Query Tool
+
+**Demonstrates:** Page introspection and structured data responses
+
+This tool queries the actual page DOM using CSS selectors and returns structured element information. Watch the scanning animation and see matched elements **highlighted directly on the page** when AI queries!
+
+<DOMQueryTool />
+
+<Tip>
+**Try it with your AI assistant:** Ask Claude "how many h2 headings are on this page?" and watch the elements get highlighted on screen!
+</Tip>
+
+<CodeGroup>
+```jsx DOM Query Tool Implementation
+// Queries page elements using CSS selectors
+export const DOMQueryTool = () => {
+  useEffect(() => {
+    const registerTool = async () => {
+      if (!window.navigator?.modelContext) return;
+
+      await window.navigator.modelContext.registerTool({
+        name: 'dom_query',
+        description: 'Query page elements using CSS selectors',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            selector: { type: 'string', description: 'CSS selector (e.g., "h1", ".class", "#id")' }
+          },
+          required: ['selector']
+        },
+        handler: async ({ selector }) => {
+          const elements = document.querySelectorAll(selector);
+          return {
+            content: [{
+              type: 'text',
+              text: `Found ${elements.length} elements matching "${selector}"`
+            }]
+          };
+        }
+      });
+    };
+    registerTool();
+  }, []);
+};
+```
+</CodeGroup>

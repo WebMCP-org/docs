@@ -1,0 +1,154 @@
+---
+title: "Tool Design"
+description: "Principles for designing good WebMCP tools: naming, schema shape, composability, error handling, and token efficiency."
+keywords: ["tool design", "naming conventions", "input schema", "error handling", "composability", "token efficiency", "best practices"]
+icon: "pencil-ruler"
+---
+
+A WebMCP tool is a contract between a website and an AI agent. The quality of that contract determines whether the agent can use the tool reliably, whether the user gets the right outcome, and whether the interaction is efficient.
+
+This page discusses design principles drawn from Chrome's best practices documentation, the W3C proposal, and practical experience with the MCP-B ecosystem. These are opinions grounded in evidence, not absolute rules.
+
+## Naming and semantics
+
+A tool's name is the first thing an agent reads. It should communicate what the tool does and how far its effects reach.
+
+### Use specific verbs
+
+Prefer names that describe exactly what happens. `create_event` implies immediate creation. `start_event_creation_process` implies the user will be redirected to a form. The distinction matters to an agent deciding whether to call the tool silently or tell the user to expect a UI change.
+
+Avoid generic names like `process`, `handle`, or `do`. These force the agent to rely entirely on the description, which introduces ambiguity.
+
+### Positive descriptions
+
+Describe what the tool does, not what it cannot do.
+
+Good: "Create a calendar event scheduled for a specific date and time."
+
+Bad: "Do not use this tool for weather lookups. Only use for calendar events."
+
+Negative instructions are unreliable in language model contexts. A model may treat them as suggestions or misparse them. The tool's capabilities should be evident from a positive description of its scope.
+
+### Match user intent vocabulary
+
+Name parameters and tools using the words a user would use. If users say "book a flight," the tool should be `book_flight`, not `create_reservation_v2`. If users say "departure date," the parameter should be `departureDate`, not `leg1_date_start`.
+
+This reduces the translation work the agent must do between the user's request and the tool call.
+
+## Schema design
+
+The input schema is the tool's type signature. A well-designed schema reduces hallucination, prevents misuse, and makes error recovery straightforward.
+
+### Accept raw user input
+
+Design schemas so the agent can pass user input without transformation. If a user says "11:00 to 15:00," the tool should accept `"11:00"` and `"15:00"` as strings, not require the agent to convert them to minutes-from-midnight (660 and 900). Every transformation the agent must perform is a chance for error.
+
+```json
+{
+  "properties": {
+    "startTime": { "type": "string", "description": "Start time in HH:MM format" },
+    "endTime": { "type": "string", "description": "End time in HH:MM format" }
+  }
+}
+```
+
+### Explicit types and business logic
+
+Every parameter should have a specific type. Avoid generic `string` types when an `enum` or a constrained format is more accurate.
+
+When a parameter's meaning depends on domain knowledge, explain the semantics in the description.
+
+```json
+{
+  "shipping": {
+    "type": "string",
+    "enum": ["STANDARD", "EXPRESS", "OVERNIGHT"],
+    "description": "Use EXPRESS when the user requests next-day delivery"
+  }
+}
+```
+
+Without the description, an agent might guess that "fast shipping" maps to `OVERNIGHT` when the business intent is `EXPRESS`.
+
+### Keep schemas flat when possible
+
+Deeply nested schemas increase the chance that an agent will misplace a property or hallucinate a level of nesting. If a tool needs five string parameters, a flat object is easier for the agent to fill correctly than a nested structure with sub-objects.
+
+Reserve nesting for cases where it is structurally meaningful (e.g., a `shippingAddress` object with `street`, `city`, `zip`).
+
+## Composability
+
+### Atomic, non-overlapping tools
+
+Avoid similar tools with subtle differences. Two tools named `search_products` and `search_products_with_filters` that differ only in whether a `category` parameter is optional are a trap. The agent will struggle to choose between them. Combine them into a single tool with optional parameters.
+
+Each tool should represent a single, well-bounded action. An agent should never need to call two tools to complete what could be one atomic operation.
+
+### Trust the agent's flow control
+
+Do not embed orchestration logic in tool descriptions. Instructions like "After calling this tool, always call `verify_result`" or "Never call this tool after `cancel_order`" are unreliable because agents do not follow procedural scripts. They plan actions based on their understanding of the user's goal.
+
+Instead, design tools that are independently correct. If a verification step is required, build it into the tool's implementation. If `cancel_order` makes certain tools invalid, remove those tools from the context after cancellation (using `unregisterTool()`).
+
+## Error handling
+
+### Validate in code, not just in schema
+
+Schema constraints help the agent construct valid input, but they are not guaranteed to be enforced. An agent may send a string where a number is expected, or omit a required field. Always validate input in your `execute` function.
+
+Return descriptive errors that help the agent self-correct:
+
+```js
+async execute(args) {
+  if (!args.email || !args.email.includes("@")) {
+    return {
+      content: [{ type: "text", text: "Invalid email. Provide a full email address like user@example.com." }],
+      isError: true
+    };
+  }
+  // proceed
+}
+```
+
+A clear error message gives the agent enough information to retry with corrected input. A generic "invalid input" error does not.
+
+### Handle rate limits gracefully
+
+Agents may call tools repeatedly (e.g., comparing prices across products). If your tool hits a rate limit, return a meaningful message rather than silently failing or returning stale data:
+
+```js
+return {
+  content: [{ type: "text", text: "Rate limit reached. Try again in 30 seconds, or ask the user to proceed manually." }],
+  isError: true
+};
+```
+
+### Return after UI updates
+
+If a tool call changes the page's visual state, ensure the `execute` function returns after the UI has been updated. Agents may inspect the page (via screenshots or snapshots) after a tool call to verify the result. If the UI is stale when the result arrives, the agent may conclude the tool failed and retry.
+
+```js
+async execute(args) {
+  addItemToCart(args.productId);
+  await renderCartUI(); // Wait for DOM update
+  return { content: [{ type: "text", text: `Added ${args.productId} to cart.` }] };
+}
+```
+
+## Token efficiency
+
+WebMCP tool responses are compact compared to screenshots. A screenshot costs around 2,000 tokens. A typical tool response costs 20-100 tokens. This difference compounds over multi-step workflows.
+
+Design your tool responses to be information-dense and action-relevant:
+
+- Return structured data, not prose.
+- Include only the fields the agent needs to decide its next step.
+- If the result is large (e.g., a product catalog), paginate or summarize.
+
+For benchmarks comparing WebMCP tool calls to screenshot-based workflows, see the [Chrome DevTools Quickstart](https://github.com/WebMCP-org/chrome-devtools-quickstart).
+
+## Dynamic tool management
+
+Expose only the tools that are currently valid. If a user is not logged in, do not expose admin tools. If the cart is empty, do not expose `checkout`.
+
+This reduces the cognitive load on the agent (fewer tools to reason about) and prevents calls to tools that will fail due to precondition violations. Use `unregisterTool()` and `registerTool()` on route changes or state transitions to keep the tool set in sync with the application. For more on this pattern, see [Tool Lifecycle and Context Replacement](/explanation/architecture/tool-lifecycle-and-context-replacement).

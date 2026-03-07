@@ -1,173 +1,35 @@
-# Documentation
+# WebMCP Documentation
 
-This documentation is built with [Mintlify](https://mintlify.com).
+Documentation site for [WebMCP](https://github.com/WebMCP-org/npm-packages) — the W3C standard for making websites AI-accessible via `navigator.modelContext`.
 
-## 🚀 Quick Start
+Built with [Mintlify](https://mintlify.com). Live at [docs.mcp-b.ai](https://docs.mcp-b.ai).
 
-### Prerequisites
-
-- Node.js v18.0.0 or higher
-- npm, yarn, or pnpm package manager
-
-### Installation
-
-Install the Mintlify CLI:
+## Development
 
 ```bash
-npm i -g mintlify
+npx mintlify dev
 ```
 
-### Development
+Preview at http://localhost:3000.
 
-Run the development server:
+## Structure
 
-```bash
-mintlify dev
-```
+| File | Purpose |
+|------|---------|
+| `docs.json` | Mintlify navigation and configuration |
+| `AGENTS.md` | Agent instructions — Diataxis framework, writing style, source material references |
+| `llms.txt` | LLM-optimized site overview for AI indexing |
+| `_design-system.mdx` | Internal design system reference |
+| `_legacy/` | Previous content (outdated, kept for reference during rewrite) |
 
-Your documentation will be available at `http://localhost:3000`.
+## Status
 
-### Building
+This documentation is being rewritten from scratch following the [Diataxis framework](https://diataxis.fr/). The previous content is archived in `_legacy/`.
 
-Build the documentation:
+## Links
 
-```bash
-mintlify build
-```
-
-## 📁 Project Structure
-
-```
-.
-├── docs.json                      # Mintlify configuration, navigation, and theme settings
-├── favicon.ico                    # Site favicon
-├── style.css                      # Custom styles
-│
-├── Root Documentation Pages/
-│   ├── introduction.mdx           # Landing page
-│   ├── quickstart.mdx             # Getting started guide
-│   ├── development.mdx            # Development workflow
-│   ├── best-practices.mdx         # Best practices guide
-│   ├── security.mdx               # Security documentation
-│   ├── troubleshooting.mdx        # Troubleshooting guide
-│   ├── advanced.mdx               # Advanced topics
-│   ├── examples.mdx               # Code examples overview
-│   ├── frontend-tools.mdx         # Frontend tooling
-│   ├── building-mcp-ui-apps.mdx   # Building MCP UI applications
-│   ├── connecting-agents.mdx      # Agent connections
-│   ├── native-host-setup.mdx      # Native host configuration
-│   ├── live-tool-examples.mdx     # Interactive examples
-│   ├── changelog.mdx              # Version history
-│   ├── why-webmcp.mdx             # WebMCP motivation
-│   └── llms-txt.mdx               # LLM context file
-│
-├── concepts/                      # Core concepts documentation
-│   ├── overview.mdx               # Concepts overview
-│   ├── architecture.mdx           # System architecture
-│   ├── tool-design.mdx            # Tool design patterns
-│   ├── tool-registration.mdx      # Tool registration
-│   ├── schemas.mdx                # Schema documentation
-│   ├── security.mdx               # Security concepts
-│   ├── performance.mdx            # Performance optimization
-│   ├── transports.mdx             # Transport layers
-│   ├── extension.mdx              # Browser extension concepts
-│   ├── mcp-ui-integration.mdx     # MCP UI integration
-│   └── glossary.mdx               # Terminology reference
-│
-├── calling-tools/                 # How agents call WebMCP tools
-│   ├── index.mdx                  # Overview of connection methods
-│   ├── embedded-agent.mdx         # Drop-in AI assistant component
-│   ├── ai-browsers.mdx            # AI browsers (Chrome AI, Perplexity, etc.)
-│   ├── extension.mdx              # MCP-B browser extension
-│   └── devtools-mcp.mdx           # Chrome DevTools MCP integration
-│
-├── frameworks/                    # Framework-specific guides
-│   ├── index.mdx                  # Frameworks overview
-│   ├── vue.mdx                    # Vue.js integration
-│   ├── nuxt.mdx                   # Nuxt integration
-│   ├── svelte.mdx                 # Svelte integration
-│   ├── angular.mdx                # Angular integration
-│   ├── rails.mdx                  # Rails/Stimulus integration
-│   └── phoenix-liveview.mdx       # Phoenix LiveView integration
-│
-├── extension/                     # Browser extension documentation
-│   ├── index.mdx                  # Extension overview
-│   ├── agents.mdx                 # Extension agents
-│   └── managing-userscripts.mdx   # Userscript management
-│
-├── packages/                      # NPM package reference
-│   ├── global.mdx                 # Global package
-│   ├── react-webmcp.mdx           # React integration
-│   ├── webmcp-ts-sdk.mdx          # TypeScript SDK
-│   ├── transports.mdx             # Transport packages
-│   ├── smart-dom-reader.mdx       # Smart DOM reader
-│   └── extension-tools.mdx        # Extension utilities
-│
-├── tools/                         # Tools documentation
-│   └── claude-code.mdx            # Claude Code integration
-│
-├── snippets/                      # Reusable code snippets
-│   ├── README.md                  # Snippets documentation
-│   ├── core/                      # Core tool snippets
-│   ├── templates/                 # Tool templates
-│   ├── imports/                   # Import statements
-│   ├── validation/                # Validation schemas
-│   ├── patterns/                  # Common patterns
-│   ├── clients/                   # Client setup
-│   └── [sample tools].jsx         # Full tool examples
-│
-├── logo/                          # Brand assets
-│   └── mcp-b-logo.png            # WebMCP logo
-│
-├── .github/                       # GitHub automation
-│   ├── workflows/                 # GitHub Actions
-│   └── CHANGELOG_AUTOMATION.md   # Changelog automation docs
-│
-└── Documentation Files/           # Contributing and guidelines
-    ├── README.md                  # This file
-    ├── CLAUDE.md                  # AI assistant instructions
-    ├── CODE_BLOCKS_STYLE_GUIDE.md # Code formatting standards
-    ├── USING_SNIPPETS.md          # Snippet usage guide
-    └── [other guides].md          # Additional documentation
-```
-
-## 🎨 Customization
-
-### Colors
-
-Edit the `colors` section in `docs.json`:
-
-```json
-{
-  "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373"
-  }
-}
-```
-
-### Navigation
-
-Update the `navigation` array in `docs.json` to customize the sidebar structure.
-
-### Logo
-
-Replace the logo file in the `/logo` directory with your own branding. Update the `logo` paths in `docs.json` to match your file format (PNG, SVG, etc.).
-
-## 📚 Resources
-
-- [Mintlify Documentation](https://mintlify.com/docs)
-- [Component Library](https://mintlify.com/docs/components)
-- [API Reference Setup](https://mintlify.com/docs/api-playground/openapi)
-
-## 🆘 Support
-
-For help with Mintlify, visit:
-- [Documentation](https://mintlify.com/docs)
-- [Community](https://mintlify.com/community)
-- [Support](mailto:support@mintlify.com)
-
-## 📝 License
-
-This documentation is powered by Mintlify.
+- **Live docs**: https://docs.mcp-b.ai
+- **NPM packages**: https://github.com/WebMCP-org/npm-packages
+- **Examples**: https://github.com/WebMCP-org/examples
+- **W3C Spec**: https://webmachinelearning.github.io/webmcp/
+- **Discord**: https://discord.gg/ZnHG4csJRB
