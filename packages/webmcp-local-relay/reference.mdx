@@ -167,19 +167,21 @@ The embed script injects a hidden iframe that opens a WebSocket to the relay on 
 
 ### Elicitation support
 
-The embed also monkey-patches `navigator.modelContext.elicitInput` so that elicitation requests from browser tool handlers are forwarded through the relay widget iframe to the local relay server, and then on to the MCP client (for example, Claude Code). This is only installed when `elicitInput` is available on the page's model context.
+When the page's model context exposes `navigator.modelContext.elicitInput`, the embed installs an elicitation bridge. Elicitation requests from browser tool handlers are forwarded through the relay widget iframe to the local relay server, which then forwards them to the connected MCP client (for example, Claude Code). Responses travel the same path back to the originating tool. The bridge is installed automatically before each tool invocation and only when `elicitInput` is present.
 
 ## Reconnection and client mode
 
 The widget reconnects automatically using exponential backoff (1.5x multiplier) from `500ms` up to `3000ms`, stopping after 100 attempts.
 
-**Port range discovery and browser discovery:** The server tries ports `9333–9348` instead of failing on a single port. The chosen port is persisted to `~/.webmcp/relay-port.json` for stable restarts. The widget probes the port range sequentially with a state machine (`connected → retry-same-endpoint → rediscover`) and caches discovered endpoints in `sessionStorage`.
+**Port range discovery and browser probing:** The server tries ports `9333–9348` instead of failing on a single port. The chosen port is persisted to `~/.webmcp/relay-port.json` for stable restarts. The widget probes the port range sequentially with a state machine (`connected → retry-same-endpoint → rediscover`) and caches discovered endpoints in `sessionStorage`.
 
-**Subprotocol handshake:** WebSocket connections use `webmcp.v1` / `webmcp-discovery.v1` subprotocols. The server sends a `server-hello` message with relay identity (`instanceId`, `label`, `workspace`, `relayId`) on connect.
+**Subprotocol handshake:** WebSocket connections negotiate `webmcp.v1` as the primary subprotocol and `webmcp-discovery.v1` for discovery probes. On connect, the server sends a `server-hello` message containing the relay's identity: `instanceId`, `host`, `port`, and optional `label`, `workspace`, and `relayId`. The browser responds with a `hello` message carrying `tabId`, `origin`, `title`, and `url`. The server completes the handshake with `hello/accepted`.
 
-**Multi-relay selection:** Use `data-relay-id` and `data-relay-workspace` embed attributes to filter relays during discovery.
+**Heartbeat:** The relay server pings connected sources every 15 seconds. Connections are closed after 25 seconds with no response, enabling fast rediscovery after ungraceful relay shutdowns.
 
-When a second relay instance starts and the port is in use (`EADDRINUSE`), it falls back to **client mode**. In client mode the relay connects as a WebSocket client to the existing server relay and proxies tool operations through it. If the server relay stops, the client promotes itself back to server mode. This lets multiple MCP clients share the same browser connections.
+**Multi-relay selection:** Use `data-relay-id` and `data-relay-workspace` embed attributes to filter relays during discovery. Only relays whose `server-hello` identity matches the configured filters are accepted.
+
+When a second relay instance starts and the port is in use (`EADDRINUSE`), it falls back to **client mode**. In client mode the relay connects as a WebSocket client to the existing server relay and proxies tool operations through it. If the server relay stops, the client promotes itself back to server mode after a reconnection cycle. This lets multiple MCP clients share the same browser connections.
 
 ## Runtime compatibility
 
