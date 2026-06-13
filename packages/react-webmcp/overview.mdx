@@ -5,17 +5,20 @@ description: "React hooks for Model Context Protocol (MCP) - Let AI agents like 
 
 > React hooks for Model Context Protocol (MCP) - Let AI agents like Claude, ChatGPT, Cursor, and Copilot control your React components
 
-[![npm version](https://img.shields.io/npm/v/@mcp-b/react-webmcp?style=flat-square)](https://www.npmjs.com/package/@mcp-b/react-webmcp)
-[![npm downloads](https://img.shields.io/npm/dm/@mcp-b/react-webmcp?style=flat-square)](https://www.npmjs.com/package/@mcp-b/react-webmcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=flat-square)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18+-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
+## Version
 
-**[Full Documentation](https://docs.mcp-b.ai/packages/react-webmcp)** | **[Quick Start](https://docs.mcp-b.ai/quickstart)** | **[AI Framework Integration](https://docs.mcp-b.ai/ai-frameworks)**
+Current release: **v3.0.0** — aligned with the WebMCP v3 document-first API. Provider hooks register tools against `document.modelContext` (the canonical v3 surface) while retaining a `navigator.modelContext` fallback for older preview runtimes.
+
+## When to use this package
+
+- You want the full MCP-B feature set from React (tools, prompts, resources, sampling, elicitation).
+- You want Zod v3 object-map support and Standard Schema v1 (e.g., Zod v4 `~standard`) in hook configuration.
+- You need client/provider hooks (`McpClientProvider`, `useMcpClient`) in addition to browser-exposed tools.
 
 **@mcp-b/react-webmcp** provides React hooks that expose your components as AI-callable tools via the Model Context Protocol. Build AI-powered React applications where Claude, ChatGPT, Gemini, Cursor, and Copilot can interact with your app's functionality.
 
-## Why Use @mcp-b/react-webmcp?
+- You only need strict-core `registerTool` behavior. Use [`usewebmcp`](/packages/usewebmcp/overview).
+- You are not using a BrowserMcpServer-based runtime. Install [`@mcp-b/global`](/packages/global/overview) first.
 
 | Feature                      | Benefit                                                                      |
 | ---------------------------- | ---------------------------------------------------------------------------- |
@@ -25,7 +28,10 @@ description: "React hooks for Model Context Protocol (MCP) - Let AI agents like 
 | **Execution State Tracking** | Built-in loading, success, and error states for UI feedback                  |
 | **Works with Any AI**        | Compatible with Claude, ChatGPT, Gemini, Cursor, Copilot, and any MCP client |
 
-## Installation
+This package sits above the full runtime stack. It expects `document.modelContext` to come from a browser-native implementation or from the MCP-B runtime that wraps the strict core with `BrowserMcpServer`.
+
+React peer dependency: `^17.0.0 || ^18.0.0 || ^19.0.0`.
+Zod peer dependency (optional): `^3.25 || ^4.0`.
 
 ```bash
 pnpm add @mcp-b/react-webmcp zod

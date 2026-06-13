@@ -77,11 +77,14 @@ A `.mcpb` bundle file is available from [GitHub Releases](https://github.com/Web
 ```text
 webmcp-local-relay [options]
 
-  --host, -H               Bind host (default: 127.0.0.1)
-  --port, -p               WebSocket port (default: 9333)
+  --host, -H               Bind host for local websocket relay (default: 127.0.0.1)
+  --port, -p               Preferred root port for the local relay cluster (default: 9333)
   --widget-origin          Allowed host page origin(s), comma-separated (default: *)
   --allowed-origin         Alias for --widget-origin
   --ws-origin              Alias for --widget-origin
+  --label                  Human-readable relay label reported during discovery
+  --workspace              Optional workspace name reported during discovery
+  --relay-id               Stable relay identifier reported during discovery
   --help, -h               Show help
 ```
 
@@ -91,6 +94,9 @@ npx @mcp-b/webmcp-local-relay --port 9444
 
 # Restrict to trusted origins
 npx @mcp-b/webmcp-local-relay --widget-origin https://myapp.com,https://other.com
+
+# Label and identify the relay for multi-relay selection
+npx @mcp-b/webmcp-local-relay --label "dev" --workspace "myapp" --relay-id "relay-01"
 ```
 
 ## Static management tools
@@ -127,7 +133,19 @@ Add a script tag to expose a page's WebMCP tools to the relay:
 
 If the page already registers tools on `navigator.modelContext`, they are picked up automatically.
 
-To use a custom relay port:
+### Embed attributes
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `data-relay-host` | `127.0.0.1` | Relay WebSocket host |
+| `data-relay-port` | `9333` | Relay WebSocket port |
+| `data-relay-id` | _(none)_ | Filter relays during discovery by stable relay identifier |
+| `data-relay-workspace` | _(none)_ | Filter relays during discovery by workspace name |
+| `data-request-timeout` | `60000` | Per-request timeout in milliseconds |
+| `data-auto-connect` | `true` | Start discovery immediately — set to `"false"` to defer until an explicit `webmcp.connect` message |
+| `data-debug` | _(none)_ | Add this attribute (with no value) to enable diagnostic logging in the browser console |
+
+Custom relay port:
 
 ```html
 <script
@@ -136,13 +154,34 @@ To use a custom relay port:
 ></script>
 ```
 
+Increase the per-request timeout for tools that chain several slow API calls:
+
+```html
+<script
+  src="https://cdn.jsdelivr.net/npm/@mcp-b/webmcp-local-relay@latest/dist/browser/embed.js"
+  data-request-timeout="120000"
+></script>
+```
+
 The embed script injects a hidden iframe that opens a WebSocket to the relay on `localhost`. Tools are discovered via `navigator.modelContext` (or `navigator.modelContextTesting` as fallback) and forwarded to the relay.
+
+### Elicitation support
+
+When the page's model context exposes `navigator.modelContext.elicitInput`, the embed installs an elicitation bridge. Elicitation requests from browser tool handlers are forwarded through the relay widget iframe to the local relay server, which then forwards them to the connected MCP client (for example, Claude Code). Responses travel the same path back to the originating tool. The bridge is installed automatically before each tool invocation and only when `elicitInput` is present.
 
 ## Reconnection and client mode
 
-The widget reconnects automatically using exponential backoff (1.5x multiplier) from 500ms up to 3000ms, stopping after 100 attempts.
+The widget reconnects automatically using exponential backoff (1.5x multiplier) from `500ms` up to `3000ms`, stopping after 100 attempts.
 
-When a second relay instance starts and the port is in use (`EADDRINUSE`), it falls back to **client mode**. In client mode the relay connects as a WebSocket client to the existing server relay and proxies tool operations through it. If the server relay stops, the client promotes itself back to server mode. This lets multiple MCP clients share the same browser connections.
+**Port range discovery and browser probing:** The server tries ports `9333–9348` instead of failing on a single port. The chosen port is persisted to `~/.webmcp/relay-port.json` for stable restarts. The widget probes the port range sequentially with a state machine (`connected → retry-same-endpoint → rediscover`) and caches discovered endpoints in `sessionStorage`.
+
+**Subprotocol handshake:** WebSocket connections negotiate `webmcp.v1` as the primary subprotocol and `webmcp-discovery.v1` for discovery probes. On connect, the server sends a `server-hello` message containing the relay's identity: `instanceId`, `host`, `port`, and optional `label`, `workspace`, and `relayId`. The browser responds with a `hello` message carrying `tabId`, `origin`, `title`, and `url`. The server completes the handshake with `hello/accepted`.
+
+**Heartbeat:** The relay server pings connected sources every 15 seconds. Connections are closed after 25 seconds with no response, enabling fast rediscovery after ungraceful relay shutdowns.
+
+**Multi-relay selection:** Use `data-relay-id` and `data-relay-workspace` embed attributes to filter relays during discovery. Only relays whose `server-hello` identity matches the configured filters are accepted.
+
+When a second relay instance starts and the port is in use (`EADDRINUSE`), it falls back to **client mode**. In client mode the relay connects as a WebSocket client to the existing server relay and proxies tool operations through it. If the server relay stops, the client promotes itself back to server mode after a reconnection cycle. This lets multiple MCP clients share the same browser connections.
 
 ## Runtime compatibility
 
@@ -173,22 +212,56 @@ The package exports the following for programmatic use:
 | `RelayRegistry` | Class | Multi-source tool aggregation and deduplication |
 | `AggregatedTool` | Type | A tool resolved across multiple sources |
 | `SourceInfo` | Type | Metadata about a connected browser tab |
+| `ResolvedInvocation` | Type | In-flight tool call resolution state |
+| `HelloRequiredError` | Class | Thrown when hello handshake is missing |
 | `sanitizeName` | Function | Sanitizes a tool name to `[a-zA-Z0-9_]` |
 | `buildPublicToolName` | Function | Builds a disambiguated public tool name |
 | `extractSanitizedDomain` | Function | Extracts and sanitizes domain from a URL |
 | `parseCliOptions` | Function | Parses CLI arguments |
+| `printHelp` | Function | Prints CLI usage to stderr |
 | `CliOptions` | Type | Parsed CLI option shape |
 
-Message schema types and Zod schemas for the browser-relay protocol are also exported: `BrowserToRelayMessageSchema`, `RelayToBrowserMessageSchema`, `RelayClientToServerMessageSchema`, `RelayServerToClientMessageSchema`, `ServerHelloMessageSchema`, and their corresponding TypeScript types.
+**Tool definition utilities** from `./protocol`:
+
+| Export | Kind | Description |
+|--------|------|-------------|
+| `ToolSchema` | Zod schema | Validates a tool descriptor |
+| `InboundToolSchema` | Zod schema | Validates an incoming tool from the browser |
+| `NormalizedToolSchema` | Zod schema | Normalized tool shape after processing |
+| `CallToolResultSchema` | Zod schema | Validates a tool execution result |
+| `CallToolRequestParamsSchema` | Zod schema | Validates call-tool request params |
+| `ToolAnnotationsSchema` | Zod schema | Validates tool annotation hints |
+| `RelayInvokeArgsSchema` | Zod schema | Validates relayed invocation arguments |
+| `DEFAULT_TOOL_INPUT_SCHEMA` | const | Default `{ type: 'object', properties: {} }` |
+| `normalizeInboundTool` | Function | Normalizes a raw inbound tool descriptor |
+| `RelayTool` | Type | Normalized relay-side tool shape |
+| `RelayCallToolResult` | Type | Result type for a relayed tool call |
+| `RelayToolAnnotations` | Type | Annotation hints for relayed tools |
+| `RelayInvokeArgs` | Type | Type for `RelayInvokeArgsSchema` output |
+
+**Message schema types and Zod schemas** for the browser-relay protocol:
+
+| Export | Kind |
+|--------|------|
+| `BrowserToRelayMessage` / `BrowserToRelayMessageSchema` | Type + Zod |
+| `RelayToBrowserMessage` / `RelayToBrowserMessageSchema` | Type + Zod |
+| `RelayClientToServerMessage` / `RelayClientToServerMessageSchema` | Type + Zod |
+| `RelayServerToClientMessage` / `RelayServerToClientMessageSchema` | Type + Zod |
+| `ServerHelloMessage` / `ServerHelloMessageSchema` | Type + Zod |
+| `RelayHelloAcceptedMessage` / `RelayHelloAcceptedMessageSchema` | Type + Zod |
+| `RelayHelloRejectedMessage` / `RelayHelloRejectedMessageSchema` | Type + Zod |
+| `RelayDescriptor` / `RelayDescriptorSchema` | Type + Zod |
+| `RelaySourceInfo` / `RelaySourceInfoSchema` | Type + Zod |
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `No sources connected` | Verify the page loaded `embed.js` and the relay process is running |
-| `No tools listed` | Verify tools are registered on the page's WebMCP runtime. Confirm the runtime emits tool-change notifications (`toolschanged` or `registerToolsChangedCallback`) |
-| `Tool not found` | Tab reloaded or disconnected. Call `webmcp_list_tools` to refresh |
-| Connection blocked | Verify `--widget-origin` matches the host page origin and the relay port matches `data-relay-port` |
+| `No sources connected` | Ensure the page loaded `embed.js` and the relay process is running |
+| `No tools listed` | Ensure tools are registered on the page's WebMCP runtime. If tools register after load, confirm your runtime emits tool-change notifications (`toolschanged` or `registerToolsChangedCallback`) |
+| `Tool not found` | Tab reloaded or disconnected — call `webmcp_list_tools` again to refresh |
+| Connection blocked | Verify `--widget-origin` matches your host page's origin (e.g., `https://myapp.com`), and relay port matches `data-relay-port` |
+| `Host response timeout:` | The host page took longer than the per-request timeout (default 60s) to respond. Increase via `data-request-timeout="<ms>"` on the embed script tag |
 
 ## Related
 
